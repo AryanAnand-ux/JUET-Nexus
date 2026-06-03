@@ -276,10 +276,11 @@ export async function authHandler(
 
     const encryptedSession = encryptSession(jsessionid);
 
+    const isProduction = process.env.NODE_ENV === "production";
     reply.setCookie("auth", encryptedSession, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 15 * 60,
       path: "/",
     });
