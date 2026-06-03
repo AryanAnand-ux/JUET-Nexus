@@ -1,12 +1,13 @@
 /**
  * Backend TypeScript Configuration
- * Strict mode, ESNext target, CommonJS output for Fastify
+ * Strict mode, ESNext target, Node16 module resolution
  */
 
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "commonjs",
+    "module": "node16",
+    "moduleResolution": "node16",
     "lib": ["ES2020", "DOM"],
     "outDir": "./dist",
     "rootDir": "..",
@@ -15,12 +16,11 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
