@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Base Styles */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-brutal-cream text-brutal-black antialiased;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  h1 {
+    @apply font-serif text-brutal-4xl font-normal normal-case tracking-tight;
+  }
+
+  h2 {
+    @apply font-serif text-brutal-3xl font-normal normal-case tracking-tight;
+  }
+
+  h3 {
+    @apply font-serif text-brutal-2xl font-semibold normal-case;
+  }
+
+  h4 {
+    @apply font-serif text-brutal-xl font-semibold normal-case;
+  }
+
+  p {
+    @apply text-brutal-base leading-relaxed;
+  }
+
+  a {
+    @apply text-brutal-black font-bold hover:opacity-80 transition-opacity;
+  }
+
+  /* Remove default input styles */
+  input,
+  textarea,
+  select {
+    @apply font-sans;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply outline-none ring-2 ring-figma-maroon ring-offset-2;
+  }
+}
+
+/* Utility Classes */
+@layer components {
+  .brutal-container {
+    @apply px-4 py-6 max-w-7xl mx-auto;
+  }
+
+  .brutal-section {
+    @apply border-4 border-brutal-black bg-brutal-cream shadow-brutal;
+  }
+
+  .brutal-grid {
+    @apply grid gap-6;
+  }
+
+  /* Loading animation */
+  @keyframes brutal-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .brutal-loading {
+    animation: brutal-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Press effect on active */
+  .brutal-press-effect {
+    @apply transition-all duration-brutal-fast active:translate-x-[2px] active:translate-y-[2px] active:shadow-brutal-none;
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  @apply w-3 h-3;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-brutal-cream;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-brutal-black border-2 border-brutal-cream hover:bg-gray-800;
+}
+
+/* Selection Styling */
+::selection {
+  @apply bg-brutal-yellow text-brutal-black;
+}
