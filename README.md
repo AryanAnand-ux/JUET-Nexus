@@ -1,6 +1,6 @@
 # JUET Nexus
 
-**JUET Nexus** is a modern, high-performance, and completely redesigned student dashboard proxy for the Jaypee University of Engineering and Technology (JUET) WebKiosk ERP system. It securely scrapes legacy HTML content, automatically solves security captchas, and presents your academic standings and attendance data in an ultra-premium, interactive dashboard.
+**JUET Nexus** is a modern, high-performance, and completely redesigned student dashboard proxy for the Jaypee University of Engineering and Technology (JUET) WebKiosk ERP system. .
 
 ---
 
@@ -70,44 +70,4 @@ npm run dev
 - Backend API starts at: `http://localhost:3001`
 
 ---
-
-## Production Deployment Guide
-
-Deploying JUET Nexus involves hosting the Fastify backend and the Next.js frontend separately.
-
-### 1. Deploying the Backend (API Server)
-You can host the Fastify API on cloud platforms like **Render**, **Railway**, **Fly.io**, or a self-hosted **VPS**.
-
-#### Option A: Deploy on Render
-1. Create a new **Web Service** on Render and connect your GitHub repository.
-2. Under **Root Directory**, enter `backend`.
-3. Set **Runtime** to `Node`.
-4. Set the **Build Command** to:
-   ```bash
-   npm install && npm run build
-   ```
-5. Set the **Start Command** to:
-   ```bash
-   npm start
-   ```
-   *(This executes `node dist/backend/src/index.js` as defined in `package.json`)*
-6. Add the following **Environment Variables** in the Render settings:
-   - `PORT`: `3001` (Render will automatically override and bind this dynamically, which is fully supported by the app)
-   - `NODE_ENV`: `production`
-   - `ENCRYPTION_KEY`: *(Generate a secure 64-character hex key)*
-   - `CORS_ORIGIN`: `https://your-frontend-domain.vercel.app` (Your deployed Vercel frontend URL)
-   - `FRONTEND_URL`: `https://your-frontend-domain.vercel.app`
-   - `WEBKIOSK_BASE_URL`: `https://webkiosk.juet.ac.in`
-
-### 2. Deploying the Frontend
-The frontend is fully optimized for static and serverless hosting on **Vercel**.
-
-#### Option B: Deploy Next.js on Vercel
-1. Create a new project on **Vercel** and import your repository.
-2. Vercel will automatically detect the monorepo structure. In the project creation settings:
-   - Set the **Root Directory** to `frontend`.
-   - Vercel will automatically configure the **Framework Preset** to **Next.js**.
-3. Configure the following **Environment Variable**:
-   - `NEXT_PUBLIC_API_URL`: `https://your-backend-api-domain.onrender.com` (The live URL of your deployed backend service)
-4. Click **Deploy**. Vercel will build, compile, and distribute your frontend globally.
 
