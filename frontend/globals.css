@@ -10,7 +10,7 @@
 
   body {
     @apply bg-brutal-cream text-brutal-black antialiased;
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 
   h1 {

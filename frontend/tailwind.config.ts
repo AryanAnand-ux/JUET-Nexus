@@ -31,9 +31,9 @@ const config: Config = {
         "figma-purple": "#8B5CF6", // Violet accent
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
-        serif: ["var(--font-newsreader)", "Georgia", "serif"],
-        nunito: ["var(--font-nunito-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["ui-sans-serif", "system-ui", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        serif: ["ui-serif", "Georgia", "Cambria", "Times New Roman", "Times", "serif"],
+        nunito: ["ui-sans-serif", "system-ui", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
       },
       boxShadow: {
         // Soft, thin geometric outlines rather than heavy brutalist blocks

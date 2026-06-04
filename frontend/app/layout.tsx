@@ -1,19 +1,6 @@
 import "../globals.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter, Newsreader, Nunito_Sans } from "next/font/google";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  variable: "--font-newsreader",
-});
-
-const nunitoSans = Nunito_Sans({
-  subsets: ["latin"],
-  variable: "--font-nunito-sans",
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -39,7 +26,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${newsreader.variable} ${nunitoSans.variable}`}>
+    <html lang="en">
       <body suppressHydrationWarning>
         {/* Skip to main content — accessibility */}
         <a
