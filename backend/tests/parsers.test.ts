@@ -8,6 +8,8 @@ import {
   parseAttendance,
   parsePerformance,
   parseNotices,
+  parseRegisteredCourses,
+  parseDetailedMarks,
   parseDashboard,
 } from '../src/parsers/dashboard';
 
@@ -214,6 +216,8 @@ describe('Dashboard Parsers', () => {
       expect(result.attendance).toBeDefined();
       expect(result.performance).toBeDefined();
       expect(result.notices).toBeDefined();
+      expect(result.courses).toBeDefined();
+      expect(result.detailedMarks).toBeDefined();
     });
 
     it('should return proper structure', () => {
@@ -233,6 +237,140 @@ describe('Dashboard Parsers', () => {
       expect(result.attendance).toEqual([]);
       expect(result.performance.currentSgpa).toBe(0);
       expect(result.notices).toEqual([]);
+      expect(result.courses).toEqual([]);
+      expect(result.detailedMarks).toEqual([]);
+    });
+  });
+
+  describe('parseRegisteredCourses', () => {
+    const mockCoursesHTML = `
+      <table class="sort-table">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Subject Code</th>
+            <th>Subject Name</th>
+            <th>Subject Type</th>
+            <th>Credits</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>18B11CI311</td>
+            <td>Data Structures</td>
+            <td>Theory</td>
+            <td>4</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>18B11CI312</td>
+            <td>Data Structures Lab</td>
+            <td>Practical</td>
+            <td>1</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    it('should parse registered courses correctly', () => {
+      const result = parseRegisteredCourses(mockCoursesHTML);
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        code: '18B11CI311',
+        title: 'Data Structures',
+        type: 'Theory',
+        credits: 4,
+      });
+      expect(result[1]).toEqual({
+        code: '18B11CI312',
+        title: 'Data Structures Lab',
+        type: 'Practical',
+        credits: 1,
+      });
+    });
+
+    it('should deduplicate courses by code', () => {
+      const duplicateHTML = `
+        <table class="sort-table">
+          <thead>
+            <tr>
+              <th>S.No.</th>
+              <th>Subject Code</th>
+              <th>Subject Name</th>
+              <th>Subject Type</th>
+              <th>Credits</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>18B11CI311</td>
+              <td>Data Structures</td>
+              <td>Theory</td>
+              <td>4</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>18B11CI311</td>
+              <td>Data Structures Duplicate</td>
+              <td>Theory</td>
+              <td>4</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+      const result = parseRegisteredCourses(duplicateHTML);
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Data Structures');
+    });
+
+    it('should return empty array for empty HTML', () => {
+      expect(parseRegisteredCourses('<html></html>')).toEqual([]);
+    });
+  });
+
+  describe('parseDetailedMarks', () => {
+    const mockMarksHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>T1 (15)</th>
+            <th>T2 (15)</th>
+            <th>End Sem (35)</th>
+            <th>Total (100)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Data Structures [18B11CI311]</td>
+            <td>12.5</td>
+            <td>11.0</td>
+            <td>28.5</td>
+            <td>52.0</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    it('should parse detailed marks correctly', () => {
+      const result = parseDetailedMarks(mockMarksHTML);
+      expect(result).toHaveLength(1);
+      const dsMarks = result[0];
+      expect(dsMarks.subject).toBe('Data Structures');
+      expect(dsMarks.code).toBe('18B11CI311');
+      expect(dsMarks.total).toBe(52.0);
+      expect(dsMarks.components).toHaveLength(3);
+      expect(dsMarks.components[0]).toEqual({
+        name: 'T1',
+        obtained: 12.5,
+        max: 15,
+      });
+    });
+
+    it('should return empty array for empty HTML', () => {
+      expect(parseDetailedMarks('<html></html>')).toEqual([]);
     });
   });
 });

@@ -31,6 +31,7 @@ const PAGES = {
   attendance: '/StudentFiles/Academic/StudentAttendanceList.jsp',
   marks:      '/StudentFiles/Exam/StudentEventMarksView.jsp',
   cgpa:       '/StudentFiles/Exam/StudCGPAReport.jsp',
+  courses:    '/StudentFiles/Academic/StudentRegistredSubjectList.jsp',
 };
 
 interface DashboardQuery {
@@ -139,7 +140,7 @@ export async function registerDashboardRoutes(
       // Phase 1: Fetch main page + attendance/marks (to discover exam codes)
       //          + CGPA (which doesn't need exam code) — 4 requests parallel
       // ----------------------------------------------------------------
-      let mainHtml: string, attendanceHtml: string, marksHtml: string, cgpaHtml: string;
+      let mainHtml: string, attendanceHtml: string, marksHtml: string, cgpaHtml: string, coursesHtml: string;
 
       try {
         // Phase 1: Get exam codes from attendance page + other data
@@ -148,6 +149,7 @@ export async function registerDashboardRoutes(
           fetchWebKioskPage(PAGES.attendance, jsessionid),
           fetchWebKioskPage(PAGES.marks, jsessionid),
           fetchWebKioskPage(PAGES.cgpa, jsessionid),
+          fetchWebKioskPage(PAGES.courses, jsessionid),
         ]);
 
         const mainRejected = phase1[0].status === 'rejected';
@@ -161,6 +163,7 @@ export async function registerDashboardRoutes(
         const attendanceInitHtml = phase1[1].status === 'fulfilled' ? phase1[1].value : '';
         const marksInitHtml = phase1[2].status === 'fulfilled' ? phase1[2].value : '';
         cgpaHtml = phase1[3].status === 'fulfilled' ? phase1[3].value : '';
+        coursesHtml = phase1[4].status === 'fulfilled' ? phase1[4].value : '';
 
         // Check for session timeout
         const allHtml = mainHtml + attendanceInitHtml;
@@ -215,7 +218,7 @@ export async function registerDashboardRoutes(
         }
 
         fastify.log.info(
-          `[Dashboard] Fetched pages: main=${mainHtml.length}b, attendance=${attendanceHtml.length}b, marks=${marksHtml.length}b, cgpa=${cgpaHtml.length}b`
+          `[Dashboard] Fetched pages: main=${mainHtml.length}b, attendance=${attendanceHtml.length}b, marks=${marksHtml.length}b, cgpa=${cgpaHtml.length}b, courses=${coursesHtml.length}b`
         );
       } catch (error: any) {
         fastify.log.error(error, '[Dashboard] WebKiosk fetch failed');
@@ -236,6 +239,7 @@ export async function registerDashboardRoutes(
         '<!-- PAGE: attendance -->', attendanceHtml,
         '<!-- PAGE: marks -->', marksHtml,
         '<!-- PAGE: cgpa -->', cgpaHtml,
+        '<!-- PAGE: courses -->', coursesHtml,
       ].join('\n');
 
       let dashboardData: DashboardResponse;
@@ -402,11 +406,12 @@ export async function registerDashboardRoutes(
     }
 
     try {
-      const [mainHtml, attendanceHtml, marksHtml, cgpaHtml] = await Promise.all([
+      const [mainHtml, attendanceHtml, marksHtml, cgpaHtml, coursesHtml] = await Promise.all([
         fetchWebKioskPage(PAGES.main, jsessionid),
         fetchWebKioskPage(PAGES.attendance, jsessionid),
         fetchWebKioskPage(PAGES.marks, jsessionid),
         fetchWebKioskPage(PAGES.cgpa, jsessionid),
+        fetchWebKioskPage(PAGES.courses, jsessionid),
       ]);
 
       return reply.send({
@@ -415,6 +420,7 @@ export async function registerDashboardRoutes(
           attendance: { length: attendanceHtml.length, preview: attendanceHtml.slice(0, 3000) },
           marks: { length: marksHtml.length, preview: marksHtml.slice(0, 3000) },
           cgpa: { length: cgpaHtml.length, preview: cgpaHtml.slice(0, 3000) },
+          courses: { length: coursesHtml.length, preview: coursesHtml.slice(0, 3000) },
         },
       });
     } catch (error: any) {

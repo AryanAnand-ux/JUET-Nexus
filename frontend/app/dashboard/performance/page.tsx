@@ -93,7 +93,7 @@ export default function PerformancePage() {
       {isLoading && !data ? (
         <LoadingSkeleton />
       ) : data ? (
-        <PerformanceHub performance={data.performance} />
+        <PerformanceHub performance={data.performance} detailedMarks={data.detailedMarks} />
       ) : (
         <div className="border border-gray-200 rounded-[24px] bg-white p-12 text-center shadow-sm">
           <p className="text-sm font-medium text-slate-400 font-nunito mb-4">

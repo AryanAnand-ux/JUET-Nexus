@@ -16,6 +16,9 @@ import type {
   PerformanceData,
   SemesterRecord,
   NoticeRecord,
+  RegisteredCourse,
+  DetailedCourseMarks,
+  MarkComponent,
 } from '../../../shared/types';
 
 // ---------------------------------------------------------------------------
@@ -313,6 +316,117 @@ export function parsePerformance(html: string): PerformanceData {
 }
 
 // ---------------------------------------------------------------------------
+// Registered Courses
+// ---------------------------------------------------------------------------
+
+export function parseRegisteredCourses(html: string): RegisteredCourse[] {
+  const $ = cheerio.load(html);
+  const courses: RegisteredCourse[] = [];
+  const seen = new Set<string>();
+
+  $('table.sort-table, table#table-1, table').each((_, table) => {
+    const $table = $(table);
+    const firstRowText = $table.find('tr').first().text().toLowerCase();
+    if (!firstRowText.includes('subject code') && !firstRowText.includes('course code')) return;
+
+    $table.find('tr').each((rowIdx, row) => {
+      if (rowIdx === 0) return;
+      const cells: string[] = [];
+      $(row).find('td').each((_, td) => { cells.push($(td).text().trim()); });
+      if (cells.length < 4) return;
+
+      const code = cells[1];
+      const title = cells[2];
+      const rawType = cells[3];
+      const credits = safeInt(cells[4]);
+
+      if (!code || seen.has(code)) return;
+      seen.add(code);
+
+      let type: 'Theory' | 'Practical' | 'Project' | 'Unknown' = 'Unknown';
+      if (rawType.toLowerCase().includes('theory') || rawType.toLowerCase().includes('lecture')) {
+        type = 'Theory';
+      } else if (rawType.toLowerCase().includes('practical') || rawType.toLowerCase().includes('lab')) {
+        type = 'Practical';
+      } else if (rawType.toLowerCase().includes('project')) {
+        type = 'Project';
+      }
+
+      courses.push({ code, title, type, credits });
+    });
+  });
+  return courses;
+}
+
+// ---------------------------------------------------------------------------
+// Detailed Marks
+// ---------------------------------------------------------------------------
+
+export function parseDetailedMarks(html: string): DetailedCourseMarks[] {
+  const $ = cheerio.load(html);
+  const detailedMarks: DetailedCourseMarks[] = [];
+  const seen = new Set<string>();
+
+  $('table').each((_, table) => {
+    const $table = $(table);
+    const headerRow = $table.find('tr').first();
+    const headers: Array<{ name: string; max: number }> = [];
+
+    headerRow.find('th, td').each((_, th) => {
+      const text = $(th).text().trim();
+      const maxMatch = text.match(/\((\d+(?:\.\d+)?)\)/);
+      const max = maxMatch ? parseFloat(maxMatch[1]) : 100;
+      headers.push({ name: text.replace(/\s*\([^)]*\)/, ''), max });
+    });
+
+    const headerText = headerRow.text().toLowerCase();
+    if (!headerText.includes('subject') || !headerText.includes('total')) return;
+
+    const subjectIdx = headers.findIndex(h => h.name.toLowerCase().includes('subject'));
+
+    $table.find('tr').each((rowIdx, row) => {
+      if (rowIdx === 0) return;
+      const cells: string[] = [];
+      $(row).find('td').each((_, td) => { cells.push($(td).text().trim()); });
+      if (cells.length < 2) return;
+
+      const rawSubjectName = cells[subjectIdx] || '';
+      if (!rawSubjectName || rawSubjectName.toLowerCase().includes('total')) return;
+
+      const codeMatch = rawSubjectName.match(/\[(.*?)\]/);
+      const code = codeMatch ? codeMatch[1].trim() : '';
+      const subject = rawSubjectName.replace(/\[.*?\]/, '').trim();
+
+      if (seen.has(subject)) return;
+      seen.add(subject);
+
+      const components: MarkComponent[] = [];
+      let total = 0;
+
+      cells.forEach((val, colIdx) => {
+        if (colIdx === subjectIdx) return;
+        const header = headers[colIdx];
+        if (!header) return;
+
+        const name = header.name;
+        const obtained = safeFloat(val);
+        const max = header.max;
+
+        if (name.toLowerCase().includes('total')) {
+          total = obtained;
+        } else if (obtained > 0 || name.toLowerCase().includes('t1') || name.toLowerCase().includes('t2') || name.toLowerCase().includes('end')) {
+          components.push({ name, obtained, max });
+        }
+      });
+
+      detailedMarks.push({ subject, code, components, total });
+    });
+  });
+
+  return detailedMarks;
+}
+
+// ---------------------------------------------------------------------------
 // Notices
 // ---------------------------------------------------------------------------
 
@@ -359,11 +473,15 @@ export function parseDashboard(html: string): {
   attendance: AttendanceRecord[];
   performance: PerformanceData;
   notices: NoticeRecord[];
+  courses: RegisteredCourse[];
+  detailedMarks: DetailedCourseMarks[];
 } {
   return {
     student: parseStudentInfo(html),
     attendance: parseAttendance(html),
     performance: parsePerformance(html),
     notices: parseNotices(html),
+    courses: parseRegisteredCourses(html),
+    detailedMarks: parseDetailedMarks(html),
   };
 }
