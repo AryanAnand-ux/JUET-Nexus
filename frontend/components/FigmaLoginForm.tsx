@@ -41,6 +41,7 @@ export function FigmaLoginForm({
   const [dob, setDob] = useState("");
   const [password, setPassword] = useState("");
   const [captchaInput, setCaptchaInput] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
 
   // Auto-fill captcha when backend provides the solved value (text-based captcha)
   useEffect(() => {
@@ -108,11 +109,11 @@ export function FigmaLoginForm({
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-[120%] bg-[#4F46E5] rounded-full"></div>
           </div>
         </div>
-        <h1 className="text-2xl font-bold text-figma-dark font-nunito tracking-tight mb-2">
+        <h1 className="text-[36px] font-bold text-figma-dark-gray font-nunito tracking-tight mb-2 leading-tight">
           Login to your Account
         </h1>
-        <p className="text-sm text-figma-gray font-nunito">
-          Enter your WebKiosk credentials to continue
+        <p className="text-base text-gray-500 font-nunito">
+          Seamless connection to your academic profile
         </p>
       </div>
 
@@ -131,7 +132,7 @@ export function FigmaLoginForm({
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as any)}
-              className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-figma-dark focus:outline-none focus:ring-2 focus:ring-figma-maroon focus:border-transparent transition-all appearance-none font-nunito"
+              className="w-full bg-white border border-figma-input-border rounded-lg px-4 py-3 text-sm text-figma-dark focus:outline-none focus:ring-2 focus:ring-figma-burgundy focus:border-transparent transition-all appearance-none font-nunito"
             >
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
@@ -157,7 +158,7 @@ export function FigmaLoginForm({
             value={enrollment}
             onChange={handleEnrollmentChange}
             onBlur={() => handleBlur("enrollment")}
-            className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-figma-dark placeholder-figma-gray-light focus:outline-none focus:ring-2 focus:ring-figma-maroon focus:border-transparent transition-all font-nunito"
+            className="w-full bg-white border border-figma-input-border rounded-lg px-4 py-3 text-sm text-figma-dark placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-figma-burgundy focus:border-transparent transition-all font-nunito"
             required
           />
           {touched.enrollment && !isValidEnrollment(enrollment) && (
@@ -176,7 +177,7 @@ export function FigmaLoginForm({
               value={dob}
               onChange={handleDobChange}
               onBlur={() => handleBlur("dob")}
-              className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-figma-dark placeholder-figma-gray-light focus:outline-none focus:ring-2 focus:ring-figma-maroon focus:border-transparent transition-all font-nunito"
+              className="w-full bg-white border border-figma-input-border rounded-lg px-4 py-3 text-sm text-figma-dark placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-figma-burgundy focus:border-transparent transition-all font-nunito"
               required
             />
             {touched.dob && dob.length === 10 && !isValidDOB(dob) && (
@@ -193,10 +194,26 @@ export function FigmaLoginForm({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onBlur={() => handleBlur("password")}
-              className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-figma-dark placeholder-figma-gray-light focus:outline-none focus:ring-2 focus:ring-figma-maroon focus:border-transparent transition-all font-nunito"
+              className="w-full bg-white border border-figma-input-border rounded-lg px-4 py-3 text-sm text-figma-dark placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-figma-burgundy focus:border-transparent transition-all font-nunito"
               required
             />
           </div>
+        </div>
+
+        {/* Remember Me & Forgot Password */}
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border border-figma-burgundy text-figma-burgundy focus:ring-figma-burgundy bg-transparent checked:bg-figma-burgundy checked:border-figma-burgundy checked:text-white transition-all"
+            />
+            <span className="text-xs font-semibold text-gray-400 font-nunito">Remember Me</span>
+          </label>
+          <button type="button" className="text-xs font-semibold text-figma-burgundy hover:text-figma-burgundy-dark transition-colors font-nunito">
+            Forgot Password?
+          </button>
         </div>
 
         {/* Captcha Section — only shown when backend can't auto-solve */}
@@ -211,7 +228,7 @@ export function FigmaLoginForm({
                 placeholder="Enter text..."
                 value={captchaInput}
                 onChange={(e) => setCaptchaInput(e.target.value.toUpperCase())}
-                className="flex-1 bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-figma-dark placeholder-figma-gray-light focus:outline-none focus:ring-2 focus:ring-figma-maroon focus:border-transparent transition-all uppercase font-nunito"
+                className="flex-1 bg-white border border-figma-input-border rounded-lg px-4 py-3 text-sm text-figma-dark placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-figma-burgundy focus:border-transparent transition-all uppercase font-nunito"
                 required
               />
               <div className="shrink-0 flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
@@ -251,7 +268,7 @@ export function FigmaLoginForm({
         <button
           type="submit"
           disabled={isLoading || (!isFormValid && touched.enrollment)}
-          className="w-full bg-figma-maroon hover:bg-figma-maroon-dark text-white font-bold py-3.5 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-figma-maroon disabled:opacity-70 flex justify-center items-center gap-2 mt-6 font-nunito text-lg"
+          className="w-full bg-figma-burgundy hover:bg-figma-burgundy-dark text-white font-bold py-3.5 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-figma-burgundy disabled:opacity-70 flex justify-center items-center gap-2 mt-6 font-nunito text-lg"
         >
           {isLoading ? (
             <>
