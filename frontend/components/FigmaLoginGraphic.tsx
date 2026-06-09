@@ -2,7 +2,7 @@ import React from "react";
 
 export function FigmaLoginGraphic() {
   return (
-    <div className="hidden lg:flex w-1/2 flex-col items-start justify-center relative overflow-hidden bg-gradient-to-br from-figma-burgundy-dark to-figma-burgundy p-12">
+    <div className="hidden lg:flex w-1/2 flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br from-figma-burgundy-dark to-figma-burgundy p-12">
       {/* Decorative Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-figma-burgundy opacity-40 blur-[4px]" />
       <div className="absolute top-[20%] right-[20%] w-[60px] h-[60px] rounded-full bg-figma-lavender-light opacity-10" />
@@ -10,7 +10,7 @@ export function FigmaLoginGraphic() {
       <div className="absolute bottom-[-5%] right-[10%] w-[250px] h-[250px] rounded-full bg-figma-lavender-medium opacity-20 blur-[2px]" />
 
       {/* Main Skeleton Graphic Area */}
-      <div className="relative z-10 flex flex-col items-start mt-10">
+      <div className="relative z-10 flex flex-col items-center mt-10 w-full max-w-lg">
         <div className="relative flex justify-center items-center w-[300px] h-[300px] mb-8">
           <div className="absolute inset-0 bg-figma-lavender-light rounded-full opacity-20"></div>
           {/* Mock skeleton shape using CSS */}
@@ -46,13 +46,12 @@ export function FigmaLoginGraphic() {
         </div>
 
         {/* Text */}
-        <div className="text-left mt-12 px-8">
-          <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-6 font-nunito leading-tight text-left">
-            Turn WebKiosk into a premium experience.
+        <div className="text-center mt-12 px-8">
+          <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-6 font-nunito leading-tight text-center">
+            WebKiosk Sucks??
           </h2>
-          <p className="text-figma-lavender-light opacity-90 text-lg lg:text-xl font-medium font-nunito leading-relaxed text-left">
-            Access your attendance, simulate safe classes, and view your academic grades instantly in a high-performance dashboard.
-          </p>
+          <p className="text-figma-lavender-light opacity-90 text-lg lg:text-xl font-medium font-nunito leading-relaxed text-center">
+            I got U          </p>
         </div>
       </div>
     </div>
