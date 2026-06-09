@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
-import axios from 'axios';
+import axios from '../utils/axios';
 import { parseAttendanceDetails } from '../parsers/attendanceDetails';
-import { decryptSession } from '../utils/encryption';
+import { getValidSession } from './session';
 import type { AttendanceDetailsResponse } from '../../../shared/types';
 
 const WEBKIOSK_URL =
@@ -12,27 +12,28 @@ const WEBKIOSK_URL =
 export async function registerAttendanceRoutes(fastify: FastifyInstance) {
   fastify.get<{ Querystring: { link: string; subject: string } }>(
     '/api/attendance/details',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          required: ['link', 'subject'],
+          properties: {
+            link: { type: 'string', minLength: 1 },
+            subject: { type: 'string', minLength: 1 },
+          },
+        },
+      },
+    },
     async (request, reply) => {
       try {
-        const encryptedSession = request.cookies.auth;
-
-        if (!encryptedSession) {
-          return reply.status(401).send({
-            success: false,
-            error: 'Not authenticated',
-            code: 'NO_SESSION',
-          });
-        }
-
         let jsessionid: string;
         try {
-          jsessionid = decryptSession(encryptedSession);
-        } catch (error) {
-          fastify.log.warn(error, '[AttendanceDetails] Decryption failed');
-          return reply.status(401).send({
+          jsessionid = await getValidSession(request, reply);
+        } catch (err: any) {
+          return reply.status(err.statusCode || 401).send({
             success: false,
-            error: 'Unauthorized: Invalid session',
-            code: 'INVALID_SESSION',
+            error: err.message || 'Unauthorized',
+            code: err.code || 'UNAUTHORIZED',
           });
         }
 
@@ -44,6 +45,26 @@ export async function registerAttendanceRoutes(fastify: FastifyInstance) {
             error: 'Missing link or subject parameter',
             code: 'BAD_REQUEST',
           });
+        }
+
+        if (link.startsWith('http') || link.startsWith('//')) {
+          try {
+            const parsedUrl = new URL(link, WEBKIOSK_URL);
+            const parsedBase = new URL(WEBKIOSK_URL);
+            if (parsedUrl.origin !== parsedBase.origin) {
+              return reply.status(400).send({
+                success: false,
+                error: 'Cross-origin URLs are not allowed',
+                code: 'BAD_REQUEST',
+              });
+            }
+          } catch (e) {
+            return reply.status(400).send({
+              success: false,
+              error: 'Invalid URL format',
+              code: 'BAD_REQUEST',
+            });
+          }
         }
 
         // Validate that the link is actually a WebKiosk attendance page

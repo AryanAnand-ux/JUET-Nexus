@@ -16,12 +16,12 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { AxiosError } from "axios";
 import axios from "../utils/axios";
 import crypto from "crypto";
-import { encryptSession } from "../utils/encryption";
+import { encryptSessionData, SessionData } from "../utils/encryption";
 import { parseCaptchaImage, extractJSessionId } from "../parsers/auth";
 import { CacheService } from "../utils/cache";
 
 // Types
-interface AuthPayload {
+export interface AuthPayload {
   enrollment: string;
   dob: string;
   password: string;
@@ -274,14 +274,21 @@ export async function authHandler(
     // ---------- AUTH SUCCEEDED ----------
     logger.info(`Session verified for ${enrollment} (${verifyBody.length} bytes)`);
 
-    const encryptedSession = encryptSession(jsessionid);
+    const sessionData: SessionData = {
+      jsessionid,
+      enrollment: enrollment.toUpperCase(),
+      password,
+      dob,
+      role,
+    };
+    const encryptedSession = encryptSessionData(sessionData);
 
     const isProduction = process.env.NODE_ENV === "production";
     reply.setCookie("auth", encryptedSession, {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
-      maxAge: 15 * 60,
+      maxAge: 30 * 24 * 60 * 60,
       path: "/",
     });
 

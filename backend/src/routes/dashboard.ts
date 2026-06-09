@@ -16,7 +16,9 @@ import { FastifyInstance } from 'fastify';
 import axios from '../utils/axios';
 import { parseDashboard } from '../parsers/dashboard';
 import { CacheService } from '../utils/cache';
-import { decryptSession } from '../utils/encryption';
+import { getValidSession } from './session';
+import { decryptSessionData } from '../utils/encryption';
+import type { DashboardResponse } from '../../../shared/types';
 
 const WEBKIOSK_URL =
   process.env.WEBKIOSK_URL ||
@@ -75,33 +77,21 @@ export async function registerDashboardRoutes(
    * Fetches multiple WebKiosk frame pages in parallel, concatenates the HTML,
    * parses it into structured JSON, and caches the result.
    */
-  fastify.get<{ Querystring: any }>('/api/dashboard', async (request, reply) => {
+  fastify.get<{ Querystring: DashboardQuery }>('/api/dashboard', async (request, reply) => {
     try {
-      const encryptedSession = request.cookies.auth;
-
-      if (!encryptedSession) {
-        return reply.status(401).send({
-          success: false,
-          error: 'Not authenticated',
-          code: 'NO_SESSION',
-        });
-      }
-
-      // Decrypt JSESSIONID
       let jsessionid: string;
       try {
-        jsessionid = decryptSession(encryptedSession);
-      } catch (error) {
-        fastify.log.warn(error, '[Dashboard] Decryption failed');
-        return reply.status(401).send({
+        jsessionid = await getValidSession(request, reply);
+      } catch (err: any) {
+        return reply.status(err.statusCode || 401).send({
           success: false,
-          error: 'Unauthorized: Invalid session',
-          code: 'INVALID_SESSION',
+          error: err.message || 'Unauthorized',
+          code: err.code || 'UNAUTHORIZED',
         });
       }
 
       const enrollment =
-        firstString((request.query as DashboardQuery)?.enrollment) ||
+        firstString(request.query.enrollment) ||
         firstString(request.headers['x-enrollment']);
 
       if (!enrollment) {
@@ -112,9 +102,22 @@ export async function registerDashboardRoutes(
         });
       }
 
+      const encryptedSession = request.cookies.auth;
+      if (encryptedSession) {
+        const session = decryptSessionData(encryptedSession);
+        const enrollmentFromSession = session.enrollment;
+        if (enrollment && enrollment !== enrollmentFromSession) {
+          return reply.status(403).send({
+            success: false,
+            error: 'Forbidden: You cannot access data for another enrollment',
+            code: 'FORBIDDEN',
+          });
+        }
+      }
+
       // Check cache
       fastify.log.info(`[Dashboard] Checking cache for ${enrollment}`);
-      const cached = await cache.get<any>('dashboard', enrollment);
+      const cached = await cache.get<DashboardResponse>('dashboard', enrollment);
 
       if (cached) {
         fastify.log.info(`[Dashboard] Cache hit for ${enrollment}`);
@@ -147,6 +150,13 @@ export async function registerDashboardRoutes(
           fetchWebKioskPage(PAGES.cgpa, jsessionid),
         ]);
 
+        const mainRejected = phase1[0].status === 'rejected';
+        const attendanceRejected = phase1[1].status === 'rejected';
+        if (mainRejected || attendanceRejected) {
+          const errorReason = (phase1[0].status === 'rejected' ? (phase1[0] as PromiseRejectedResult).reason : (phase1[1] as PromiseRejectedResult).reason) || new Error('Network error');
+          throw errorReason;
+        }
+
         mainHtml = phase1[0].status === 'fulfilled' ? phase1[0].value : '';
         const attendanceInitHtml = phase1[1].status === 'fulfilled' ? phase1[1].value : '';
         const marksInitHtml = phase1[2].status === 'fulfilled' ? phase1[2].value : '';
@@ -171,9 +181,9 @@ export async function registerDashboardRoutes(
         // Phase 2: Extract the latest exam code from the <select> dropdown
         // and re-fetch attendance + marks WITH the exam code selected
         const examCodeMatch = attendanceInitHtml.match(
-          /<option\s[^>]*value\s*=\s*['"]?([\dA-Z]+EVESEM)['"]?/i
+          /<option\s[^>]*value\s*=\s*['"]?([\dA-Z]+(?:EVESEM|ODDSEM))['"]?/i
         ) || marksInitHtml.match(
-          /<option\s[^>]*value\s*=\s*['"]?([\dA-Z]+EVESEM)['"]?/i
+          /<option\s[^>]*value\s*=\s*['"]?([\dA-Z]+(?:EVESEM|ODDSEM))['"]?/i
         );
 
         const examCode = examCodeMatch?.[1];
@@ -228,7 +238,7 @@ export async function registerDashboardRoutes(
         '<!-- PAGE: cgpa -->', cgpaHtml,
       ].join('\n');
 
-      let dashboardData: any;
+      let dashboardData: DashboardResponse;
       try {
         dashboardData = parseDashboard(combinedHtml);
       } catch (error) {
@@ -267,24 +277,38 @@ export async function registerDashboardRoutes(
   /**
    * GET /api/dashboard/invalidate
    */
-  fastify.get<{ Querystring: any }>('/api/dashboard/invalidate', async (request, reply) => {
+  fastify.get<{ Querystring: DashboardQuery }>('/api/dashboard/invalidate', async (request, reply) => {
     try {
-      const encryptedSession = request.cookies.auth;
-      if (!encryptedSession) {
-        return reply.status(401).send({
+      try {
+        await getValidSession(request, reply);
+      } catch (err: any) {
+        return reply.status(err.statusCode || 401).send({
           success: false,
-          error: 'Not authenticated',
-          code: 'NO_SESSION',
+          error: err.message || 'Unauthorized',
+          code: err.code || 'UNAUTHORIZED',
         });
       }
 
-      const enrollment = (request.query as DashboardQuery).enrollment;
+      const enrollment = request.query.enrollment;
 
       if (!enrollment) {
         return reply.status(400).send({
           success: false,
           error: 'Missing enrollment parameter',
         });
+      }
+
+      const encryptedSession = request.cookies.auth;
+      if (encryptedSession) {
+        const session = decryptSessionData(encryptedSession);
+        const enrollmentFromSession = session.enrollment;
+        if (enrollment !== enrollmentFromSession) {
+          return reply.status(403).send({
+            success: false,
+            error: 'Forbidden: You cannot access data for another enrollment',
+            code: 'FORBIDDEN',
+          });
+        }
       }
 
       await cache.invalidate('dashboard', enrollment);
@@ -305,15 +329,38 @@ export async function registerDashboardRoutes(
   /**
    * GET /api/dashboard/cache-status
    */
-  fastify.get<{ Querystring: any }>('/api/dashboard/cache-status', async (request, reply) => {
+  fastify.get<{ Querystring: DashboardQuery }>('/api/dashboard/cache-status', async (request, reply) => {
     try {
-      const enrollment = (request.query as DashboardQuery).enrollment;
+      try {
+        await getValidSession(request, reply);
+      } catch (err: any) {
+        return reply.status(err.statusCode || 401).send({
+          success: false,
+          error: err.message || 'Unauthorized',
+          code: err.code || 'UNAUTHORIZED',
+        });
+      }
+
+      const enrollment = request.query.enrollment;
 
       if (!enrollment) {
         return reply.status(400).send({
           success: false,
           error: 'Missing enrollment parameter',
         });
+      }
+
+      const encryptedSession = request.cookies.auth;
+      if (encryptedSession) {
+        const session = decryptSessionData(encryptedSession);
+        const enrollmentFromSession = session.enrollment;
+        if (enrollment !== enrollmentFromSession) {
+          return reply.status(403).send({
+            success: false,
+            error: 'Forbidden: You cannot access data for another enrollment',
+            code: 'FORBIDDEN',
+          });
+        }
       }
 
       const isValid = await cache.isValid('dashboard', enrollment);
@@ -343,16 +390,15 @@ export async function registerDashboardRoutes(
       return reply.status(404).send({ error: 'Not found' });
     }
 
-    const encryptedSession = request.cookies.auth;
-    if (!encryptedSession) {
-      return reply.status(401).send({ error: 'Unauthorized', code: 'NO_SESSION' });
-    }
-
     let jsessionid: string;
     try {
-      jsessionid = decryptSession(encryptedSession);
-    } catch {
-      return reply.status(401).send({ error: 'Invalid session', code: 'INVALID_SESSION' });
+      jsessionid = await getValidSession(request, reply);
+    } catch (err: any) {
+      return reply.status(err.statusCode || 401).send({
+        success: false,
+        error: err.message || 'Unauthorized',
+        code: err.code || 'UNAUTHORIZED',
+      });
     }
 
     try {

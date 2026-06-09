@@ -3,7 +3,7 @@
  * Tests encryption/decryption round-trip and edge cases
  */
 
-import { encryptSession, decryptSession, generateEncryptionKey } from "../src/utils/encryption";
+import { encryptSession, decryptSession, generateEncryptionKey, encryptSessionData, decryptSessionData, SessionData } from "../src/utils/encryption";
 
 // Mock environment for testing
 const TEST_ENCRYPTION_KEY = "0".repeat(64); // Valid hex
@@ -133,5 +133,29 @@ describe("Encryption Utilities", () => {
 
       process.env.ENCRYPTION_KEY = originalKey;
     });
+  });
+});
+
+describe("encryptSessionData & decryptSessionData", () => {
+  const sampleData: SessionData = {
+    jsessionid: "1234567890ABCDEF1234567890ABCDEF",
+    enrollment: "201B001",
+    password: "SuperSecretPassword123",
+    dob: "01-01-2002",
+    role: "Student"
+  };
+
+  it("should encrypt and decrypt SessionData correctly", () => {
+    const encrypted = encryptSessionData(sampleData);
+    const decrypted = decryptSessionData(encrypted);
+    expect(decrypted).toEqual(sampleData);
+  });
+
+  it("should fallback gracefully if decrypting a legacy plain string", () => {
+    const plainId = "LEGACY_SESSION_ID_12345";
+    const encrypted = encryptSession(plainId);
+    const decrypted = decryptSessionData(encrypted);
+    expect(decrypted.jsessionid).toBe(plainId);
+    expect(decrypted.enrollment).toBe("");
   });
 });

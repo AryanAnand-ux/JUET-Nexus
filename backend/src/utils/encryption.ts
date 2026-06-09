@@ -5,6 +5,7 @@
  */
 
 import crypto from "crypto";
+import type { AuthPayload } from "../routes/auth";
 
 // 256-bit (32 bytes) for AES-256
 const ALGORITHM = "aes-256-gcm";
@@ -23,7 +24,6 @@ export function validateKey(key?: string): void {
       "ENCRYPTION_KEY must be 64 hex characters (256 bits). Generate with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
     );
   }
-
   // Verify it's valid hex
   if (!/^[0-9a-f]{64}$/i.test(key)) {
     throw new Error("ENCRYPTION_KEY must be valid hexadecimal");
@@ -91,4 +91,51 @@ export function decryptSession(token: string): string {
  */
 export function generateEncryptionKey(): string {
   return crypto.randomBytes(32).toString("hex");
+}
+
+export interface SessionData {
+  jsessionid: string;
+  enrollment: string;
+  password: string;
+  dob: string;
+  role: AuthPayload["role"];
+}
+
+/**
+ * Encrypt SessionData payload as JSON
+ * @param data - The session data to encrypt
+ * @returns Encrypted token as hex string
+ */
+export function encryptSessionData(data: SessionData): string {
+  return encryptSession(JSON.stringify(data));
+}
+
+/**
+ * Decrypt SessionData from encrypted token, falling back to legacy plain string format if JSON parsing fails
+ * @param token - Encrypted token
+ * @returns Decrypted SessionData payload
+ */
+export function decryptSessionData(token: string): SessionData {
+  const decrypted = decryptSession(token);
+  try {
+    const parsed = JSON.parse(decrypted);
+    if (parsed && typeof parsed === "object" && "jsessionid" in parsed) {
+      return parsed as SessionData;
+    }
+    return {
+      jsessionid: decrypted,
+      enrollment: "",
+      password: "",
+      dob: "",
+      role: "Student"
+    };
+  } catch (error) {
+    return {
+      jsessionid: decrypted,
+      enrollment: "",
+      password: "",
+      dob: "",
+      role: "Student"
+    };
+  }
 }
