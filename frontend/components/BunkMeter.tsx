@@ -9,6 +9,7 @@ import React from "react";
 import Link from "next/link";
 import { FigmaCard } from "./base";
 import type { AttendanceRecord } from "@/types";
+import { calculateBunkStatus } from "@/utils/bunkHelpers";
 import { CheckCircle2, AlertTriangle, XCircle, BarChart3, ArrowUpRight } from "lucide-react";
 
 export interface BunkMeterProps {
@@ -111,6 +112,30 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
               
               const status = getAttendanceStatus(record.percentage);
 
+              const skipInfo = (() => {
+                if (record.classesHeld <= 0) {
+                  return {
+                    text: "Sync details to plan skips",
+                    className: "text-slate-400 border-slate-200 bg-slate-50/40",
+                  };
+                }
+                const bunkStatus = calculateBunkStatus(record.classesAttended, record.classesHeld, 75);
+                if (bunkStatus.status === "critical") {
+                  return {
+                    text: `Must attend next ${bunkStatus.count} class${bunkStatus.count > 1 ? "es" : ""}`,
+                    className: "text-rose-600 border-rose-100 bg-rose-50/40",
+                  };
+                }
+                return {
+                  text: bunkStatus.count > 0 
+                    ? `Safe to skip ${bunkStatus.count} class${bunkStatus.count > 1 ? "es" : ""}`
+                    : "Caution: Cannot skip any classes",
+                  className: bunkStatus.count > 0
+                    ? "text-green-600 border-green-100 bg-green-50/40"
+                    : "text-amber-600 border-amber-100 bg-amber-50/40",
+                };
+              })();
+
               return (
                 <Link
                   href={`/dashboard/subject/${encodeURIComponent(record.subject)}?pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
@@ -165,6 +190,13 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
                         <span className={`px-3 py-1 rounded-full text-xs font-bold font-nunito flex items-center shadow-sm shrink-0 ${status.badgeClass}`}>
                           {status.icon}
                           {status.text}
+                        </span>
+                      </div>
+
+                      {/* Quick-Info Skip Indicator */}
+                      <div className="mb-3 flex items-center">
+                        <span className={`px-2.5 py-1 rounded-xl text-xs font-bold font-nunito border shadow-sm ${skipInfo.className}`}>
+                          {skipInfo.text}
                         </span>
                       </div>
 
