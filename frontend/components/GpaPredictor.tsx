@@ -7,7 +7,6 @@
 
 import React, { useState } from "react";
 import { FigmaCard } from "./FigmaCard";
-import { FigmaButton } from "./FigmaButton";
 import type { RegisteredCourse, PerformanceData } from "@/types";
 import { 
   predictAcademicStanding, 
@@ -17,9 +16,7 @@ import {
   Calculator, 
   Sparkles, 
   RotateCcw, 
-  GraduationCap, 
   Info, 
-  Check, 
   TrendingUp, 
   Award 
 } from "lucide-react";
@@ -172,24 +169,28 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
             {/* Quick action buttons */}
             <div className="flex flex-wrap items-center gap-1.5">
               <button
+                type="button"
                 onClick={() => setBulkGrades("A+")}
                 className="text-[10px] font-extrabold text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100/70 px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
               >
                 All A+
               </button>
               <button
+                type="button"
                 onClick={() => setBulkGrades("A")}
                 className="text-[10px] font-extrabold text-figma-purple bg-figma-lavender-light border border-figma-lavender-medium/20 hover:bg-brutal-lavender px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
               >
                 All A
               </button>
               <button
+                type="button"
                 onClick={() => setBulkGrades("B+")}
                 className="text-[10px] font-extrabold text-slate-700 bg-slate-100 border border-slate-200 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
               >
                 All B+
               </button>
               <button
+                type="button"
                 onClick={resetAllGrades}
                 title="Reset simulation"
                 className="p-1.5 text-slate-400 hover:text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg transition-all active:scale-95"
@@ -238,6 +239,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
                     {/* Grade Selector */}
                     <div className="relative">
                       <select
+                        aria-label={`Select grade for ${course.title}`}
                         value={selectedGrades[course.code] || ""}
                         onChange={(e) => handleGradeChange(course.code, e.target.value)}
                         className={`text-xs font-bold rounded-xl border px-3 py-2 pr-8 appearance-none bg-white cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-nunito ${

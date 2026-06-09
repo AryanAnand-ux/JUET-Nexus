@@ -113,8 +113,9 @@ export const predictAcademicStanding = (
 
   const predictedSgpa = calculateCurrentSemesterSgpa(coursesWithGrades);
 
+  const semesters = performance?.semesters || [];
   const { priorCredits, priorPoints } = getPriorSemesterStats(
-    performance.semesters
+    semesters
   );
 
   const predictedCgpa = calculatePredictedCgpa(
