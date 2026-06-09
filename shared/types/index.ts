@@ -71,12 +71,35 @@ export interface NoticeRecord {
 
 export type Notice = NoticeRecord;
 
+// Registered Courses and Marks
+export interface RegisteredCourse {
+  code: string;
+  title: string;
+  type: 'Theory' | 'Practical' | 'Project' | 'Unknown';
+  credits: number;
+}
+
+export interface MarkComponent {
+  name: string;
+  obtained: number;
+  max: number;
+}
+
+export interface DetailedCourseMarks {
+  subject: string;
+  code: string;
+  components: MarkComponent[];
+  total: number;
+}
+
 // Complete Dashboard Response
 export interface DashboardResponse {
   student: StudentInfo;
   attendance: AttendanceRecord[];
   performance: PerformanceData;
   notices: NoticeRecord[];
+  courses: RegisteredCourse[];        // Added
+  detailedMarks: DetailedCourseMarks[]; // Added
 }
 
 // Auth Request Payload
