@@ -29,6 +29,12 @@ const config: Config = {
         "figma-orange": "#E0E7FF", // light Indigo overlay
         "figma-peach": "#EEF2F6", // soft slate-blue
         "figma-purple": "#8B5CF6", // Violet accent
+        "figma-burgundy": "#7F265B",
+        "figma-burgundy-dark": "#73114B",
+        "figma-lavender-light": "#EDE8FF",
+        "figma-lavender-medium": "#9D93E2",
+        "figma-dark-gray": "#525252",
+        "figma-input-border": "#E0E0E0",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
