@@ -41,10 +41,12 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
   courses = [],
   performance
 }) => {
+  const courseList = courses || [];
+
   // Initialize all course grades to "" (Select Grade)
   const [selectedGrades, setSelectedGrades] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
-    courses.forEach(c => {
+    courseList.forEach(c => {
       initial[c.code] = "";
     });
     return initial;
@@ -61,7 +63,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
   // Bulk grade actions for simulation
   const setBulkGrades = (grade: string) => {
     const updated: Record<string, string> = {};
-    courses.forEach(c => {
+    courseList.forEach(c => {
       updated[c.code] = grade;
     });
     setSelectedGrades(updated);
@@ -69,7 +71,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
 
   const resetAllGrades = () => {
     const updated: Record<string, string> = {};
-    courses.forEach(c => {
+    courseList.forEach(c => {
       updated[c.code] = "";
     });
     setSelectedGrades(updated);
@@ -77,13 +79,13 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
 
   // Run predictions
   const { currentCreditsSum, predictedSgpa, predictedCgpa } = predictAcademicStanding(
-    courses,
+    courseList,
     selectedGrades,
     performance
   );
 
   // Total credits in the registered list
-  const totalSemCredits = courses.reduce((sum, c) => sum + (c.credits || 0), 0);
+  const totalSemCredits = courseList.reduce((sum, c) => sum + (c.credits || 0), 0);
 
   // Prior stats for tooltip / details card
   const { priorCredits, priorPoints } = getPriorSemesterStats(performance?.semesters || []);
@@ -200,7 +202,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
             </div>
           </div>
 
-          {courses.length === 0 ? (
+          {courseList.length === 0 ? (
             <div className="text-center py-12 bg-white/50 border border-slate-100 rounded-[20px]">
               <p className="text-sm font-medium text-slate-400 font-nunito">
                 No registered courses available to simulate.
@@ -208,7 +210,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
             </div>
           ) : (
             <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
-              {courses.map((course) => (
+              {courseList.map((course) => (
                 <div
                   key={course.code}
                   className={`group bg-white hover:bg-slate-50/50 border rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-200 shadow-sm ${

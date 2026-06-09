@@ -5,10 +5,11 @@
  * Displays the CGPA Viewer (PerformanceHub) with a premium visual design
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PerformanceHub } from "@/components/PerformanceHub";
+import { GpaPredictor } from "@/components/GpaPredictor";
 import { useDashboard } from "@/hooks/useDashboard";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
@@ -31,6 +32,7 @@ const LoadingSkeleton: React.FC = () => (
 export default function PerformancePage() {
   const router = useRouter();
   const [enrollment, setEnrollment] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"standing" | "predictor">("standing");
 
   useEffect(() => {
     const storedEnrollment = localStorage.getItem("enrollment");
@@ -88,12 +90,42 @@ export default function PerformancePage() {
         </button>
       </div>
 
+      {/* Tabs Switcher */}
+      {data && (
+        <div className="mb-6 flex items-center gap-1 bg-slate-100/80 backdrop-blur-sm p-1 rounded-xl w-fit border border-slate-200/60 shadow-sm">
+          <button
+            onClick={() => setActiveTab("standing")}
+            className={`px-4 py-2 rounded-lg text-sm font-bold font-nunito transition-all duration-200 ${
+              activeTab === "standing"
+                ? "bg-white text-indigo-600 shadow-sm border border-slate-200/30"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Academic Standing
+          </button>
+          <button
+            onClick={() => setActiveTab("predictor")}
+            className={`px-4 py-2 rounded-lg text-sm font-bold font-nunito transition-all duration-200 ${
+              activeTab === "predictor"
+                ? "bg-white text-indigo-600 shadow-sm border border-slate-200/30"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            GPA Predictor
+          </button>
+        </div>
+      )}
+
       {error && <ErrorBanner error={error} />}
 
       {isLoading && !data ? (
         <LoadingSkeleton />
       ) : data ? (
-        <PerformanceHub performance={data.performance} detailedMarks={data.detailedMarks} />
+        activeTab === "standing" ? (
+          <PerformanceHub performance={data.performance} detailedMarks={data.detailedMarks} />
+        ) : (
+          <GpaPredictor courses={data.courses} performance={data.performance} />
+        )
       ) : (
         <div className="border border-gray-200 rounded-[24px] bg-white p-12 text-center shadow-sm">
           <p className="text-sm font-medium text-slate-400 font-nunito mb-4">
