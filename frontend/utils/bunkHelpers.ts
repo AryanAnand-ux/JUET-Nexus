@@ -19,13 +19,17 @@ export function calculateBunkStatus(
   held: number,
   target: number = 75
 ): BunkStatus {
+  if (target <= 0) {
+    return { status: 'safe', count: Infinity };
+  }
+  
   const percentage = held > 0 ? (attended / held) * 100 : 0;
   
   if (percentage >= target) {
-    let safeSkips = 0;
-    while (((attended) / (held + safeSkips + 1)) * 100 >= target) {
-      safeSkips++;
-    }
+    // Math.floor gives maximum classes that could have been held
+    const maxHeld = Math.floor((100 * attended) / target);
+    const safeSkips = Math.max(0, maxHeld - held);
+    
     let status: 'safe' | 'caution' | 'critical' = 'safe';
     if (percentage >= 85) {
       status = 'safe';
@@ -36,10 +40,11 @@ export function calculateBunkStatus(
     }
     return { status, count: safeSkips };
   } else {
-    let mustAttend = 0;
-    while (((attended + mustAttend) / (held + mustAttend)) * 100 < target) {
-      mustAttend++;
+    if (target >= 100) {
+      return { status: 'critical', count: Infinity };
     }
+    // Math.ceil determines minimum consecutive classes required
+    const mustAttend = Math.max(0, Math.ceil((target * held - 100 * attended) / (100 - target)));
     return { status: 'critical', count: mustAttend };
   }
 }

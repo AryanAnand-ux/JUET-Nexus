@@ -3,9 +3,9 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { FigmaCard, FigmaButton } from "@/components/base";
+import { FigmaCard } from "@/components/base";
 import { useAttendanceDetails } from "@/hooks/useAttendanceDetails";
-import { computeScenarioPercentage } from "@/utils/bunkHelpers";
+import { computeScenarioPercentage, calculateBunkStatus } from "@/utils/bunkHelpers";
 
 function SubjectDetailContent() {
   const params = useParams();
@@ -152,28 +152,17 @@ function SubjectDetailContent() {
   // Compute action text only when we have raw counts
   let actionText = "";
   if (simulatedTotal > 0) {
-    if (isMeetingTarget) {
-      let bunks = 0;
-      while (
-        (simulatedAttended / (simulatedTotal + bunks)) * 100 >=
-        targetPercentage
-      ) {
-        bunks++;
-        if (bunks > 1000) break; // safety
+    const bunkStatus = calculateBunkStatus(simulatedAttended, simulatedTotal, targetPercentage);
+    if (bunkStatus.status === "critical") {
+      if (bunkStatus.count === Infinity) {
+        actionText = "It is impossible to reach 100% attendance.";
+      } else {
+        actionText = `Attend ${bunkStatus.count} consecutive class${bunkStatus.count !== 1 ? "es" : ""} to reach ${targetPercentage}%.`;
       }
-      actionText = bunks > 1
-        ? `You can safely bunk ${bunks - 1} more class${bunks - 1 !== 1 ? "es" : ""}.`
-        : "You cannot bunk any more classes.";
     } else {
-      let attends = 0;
-      while (
-        ((simulatedAttended + attends) / (simulatedTotal + attends)) * 100 <
-        targetPercentage
-      ) {
-        attends++;
-        if (attends > 1000) break; // safety
-      }
-      actionText = `Attend ${attends} consecutive class${attends !== 1 ? "es" : ""} to reach ${targetPercentage}%.`;
+      actionText = bunkStatus.count > 0
+        ? `You can safely bunk ${bunkStatus.count} more class${bunkStatus.count !== 1 ? "es" : ""}.`
+        : "You cannot bunk any more classes.";
     }
   }
 
@@ -417,7 +406,7 @@ function SubjectDetailContent() {
                       min="0"
                       max="100"
                       value={simulatedBunks}
-                      onChange={(e) => setSimulatedBunks(Math.max(0, Number(e.target.value)))}
+                      onChange={(e) => setSimulatedBunks(Math.max(0, Number(e.target.value) || 0))}
                       className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-center font-extrabold text-slate-800 text-sm shadow-inner font-mono focus:outline-none focus:border-red-500"
                     />
                   </div>
@@ -447,7 +436,7 @@ function SubjectDetailContent() {
                       min="0"
                       max="100"
                       value={simulatedAttends}
-                      onChange={(e) => setSimulatedAttends(Math.max(0, Number(e.target.value)))}
+                      onChange={(e) => setSimulatedAttends(Math.max(0, Number(e.target.value) || 0))}
                       className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-center font-extrabold text-slate-800 text-sm shadow-inner font-mono focus:outline-none focus:border-green-500"
                     />
                   </div>

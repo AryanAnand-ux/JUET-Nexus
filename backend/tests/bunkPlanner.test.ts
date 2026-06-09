@@ -1,4 +1,5 @@
-import { computeScenarioPercentage, calculateBunkStatus } from './bunkHelpers';
+import { computeScenarioPercentage, calculateBunkStatus } from '../../frontend/utils/bunkHelpers';
+
 
 describe('Bunk Planner Helpers', () => {
   describe('computeScenarioPercentage', () => {
