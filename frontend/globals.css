@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Variables for Dynamic Accent Colors */
+:root {
+  --accent-primary: #6366F1; /* Default: Indigo */
+  --accent-primary-hover: #4F46E5;
+  --accent-primary-light: rgba(99, 102, 241, 0.1);
+}
+
+:root.accent-indigo {
+  --accent-primary: #6366F1;
+  --accent-primary-hover: #4F46E5;
+  --accent-primary-light: rgba(99, 102, 241, 0.1);
+}
+
+:root.accent-burgundy {
+  --accent-primary: #7F265B;
+  --accent-primary-hover: #73114B;
+  --accent-primary-light: rgba(127, 38, 91, 0.15);
+}
+
+:root.accent-purple {
+  --accent-primary: #8B5CF6;
+  --accent-primary-hover: #7C3AED;
+  --accent-primary-light: rgba(139, 92, 246, 0.1);
+}
+
+:root.accent-emerald {
+  --accent-primary: #10B981;
+  --accent-primary-hover: #059669;
+  --accent-primary-light: rgba(16, 185, 129, 0.1);
+}
+
 /* Global Base Styles */
 @layer base {
   html {
@@ -9,7 +40,7 @@
   }
 
   body {
-    @apply bg-brutal-cream text-brutal-black antialiased;
+    @apply bg-brutal-cream text-brutal-black antialiased transition-colors duration-200 dark:bg-slate-900 dark:text-slate-100;
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   }
 

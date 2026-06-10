@@ -60,8 +60,8 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
   return (
     <FigmaCard 
       heading={
-        <span className="flex items-center text-slate-800 font-extrabold text-lg md:text-xl font-nunito tracking-tight">
-          <BarChart3 className="w-5 h-5 mr-2 text-indigo-600" /> Bunk Meter — Attendance Tracker
+        <span className="flex items-center text-slate-800 dark:text-slate-100 font-extrabold text-lg md:text-xl font-nunito tracking-tight">
+          <BarChart3 className="w-5 h-5 mr-2 text-accent-primary" /> Bunk Meter — Attendance Tracker
         </span>
       } 
       className="border border-slate-200/80 shadow-md rounded-[24px] p-6 md:p-8"
@@ -76,24 +76,24 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
         <>
           {/* Overall Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-100 hover:border-slate-200 rounded-[20px] p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                 Enrolled Subjects
               </p>
-              <p className="text-4xl font-extrabold text-slate-850 font-nunito tracking-tight">
+              <p className="text-4xl font-extrabold text-slate-850 dark:text-slate-100 font-nunito tracking-tight">
                 {stats.subjectCount}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-100 hover:border-slate-200 rounded-[20px] p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                 Average Attendance
               </p>
-              <p className="text-4xl font-extrabold text-indigo-600 font-nunito tracking-tight">
+              <p className="text-4xl font-extrabold text-accent-primary font-nunito tracking-tight">
                 {stats.avgPercentage.toFixed(1)}%
               </p>
             </div>
-            <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-100 hover:border-slate-200 rounded-[20px] p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                 Defaulter Warnings
               </p>
               <p className={`text-4xl font-extrabold font-nunito tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600' : 'text-green-600'}`}>
@@ -180,7 +180,7 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
                       {/* Header Title */}
                       <div className="flex justify-between items-start gap-4 mb-3">
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-850 leading-snug font-nunito group-hover:text-indigo-600 transition-colors">
+                          <h4 className="text-base font-extrabold text-slate-850 dark:text-slate-200 leading-snug font-nunito group-hover:text-accent-primary transition-colors">
                             {record.subject}
                           </h4>
                           <p className="text-[11px] text-slate-400 font-medium font-nunito mt-1 flex items-center gap-1">

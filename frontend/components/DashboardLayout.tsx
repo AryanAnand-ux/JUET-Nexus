@@ -11,6 +11,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import { FigmaButton } from "./base";
 import { usePathname } from "next/navigation";
+import { ThemeSelector } from "./ThemeSelector";
 
 export interface DashboardLayoutProps {
   children: ReactNode;
@@ -94,7 +95,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 font-nunito overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-slate-900 font-nunito overflow-hidden transition-colors duration-200">
       {/* Mobile Drawer Backdrop */}
       {sidebarOpen && (
         <button
@@ -110,7 +111,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         ref={sidebarRef}
         onClick={handleSidebarClick}
         className={clsx(
-          "fixed inset-y-0 left-0 z-50 lg:static flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 lg:static flex flex-col bg-white dark:bg-slate-950/40 border-r border-gray-200 dark:border-slate-900 transition-all duration-300 ease-in-out",
           // Mobile state
           sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0",
           // Desktop state
@@ -119,15 +120,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       >
         {/* Brand Header */}
         <div className={clsx(
-          "border-b border-gray-100 flex items-center justify-between transition-all duration-300",
+          "border-b border-gray-100 dark:border-slate-800 flex items-center justify-between transition-all duration-300",
           sidebarCollapsed ? "p-4 justify-center" : "p-6"
         )}>
           {!sidebarCollapsed ? (
-            <h2 className="font-nunito text-2xl font-black tracking-tight text-figma-dark truncate">
-              JUET <span className="text-indigo-600">Nexus</span>
+            <h2 className="font-nunito text-2xl font-black tracking-tight text-figma-dark dark:text-slate-100 truncate">
+              JUET <span className="text-accent-primary">Nexus</span>
             </h2>
           ) : (
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center font-bold text-indigo-600 border border-indigo-100">
+            <div className="w-10 h-10 rounded-xl bg-accent-light flex items-center justify-center font-bold text-accent-primary border border-accent-primary/20">
               JN
             </div>
           )}
@@ -135,25 +136,25 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         {/* User Card */}
         <div className={clsx(
-          "border-b border-gray-100 transition-all duration-300",
+          "border-b border-gray-100 dark:border-slate-800 transition-all duration-300",
           sidebarCollapsed ? "p-4 text-center" : "p-6"
         )}>
           {sidebarCollapsed ? (
             <div className="flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm shadow-sm" title={studentName}>
+              <div className="w-10 h-10 rounded-full bg-accent-light text-accent-primary font-bold flex items-center justify-center text-sm shadow-sm" title={studentName}>
                 {getInitials(studentName)}
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-accent-light text-accent-primary font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
                 {getInitials(studentName)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-figma-dark truncate" title={studentName}>
+                <p className="text-sm font-bold text-figma-dark dark:text-slate-200 truncate" title={studentName}>
                   {studentName}
                 </p>
-                <p className="text-xs text-figma-gray truncate">
+                <p className="text-xs text-figma-gray dark:text-slate-400 truncate">
                   {enrollment}
                 </p>
               </div>
@@ -177,8 +178,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 className={clsx(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium tracking-wide transition-all font-nunito",
                   isActive
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
-                    : "text-figma-gray hover:bg-gray-50 hover:text-figma-dark",
+                    ? "bg-accent-primary text-white shadow-md shadow-accent-primary/20"
+                    : "text-figma-gray dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-figma-dark dark:hover:text-slate-100",
                   sidebarCollapsed && "justify-center"
                 )}
                 title={sidebarCollapsed ? item.label : undefined}
@@ -192,14 +193,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </nav>
 
         {/* Collapse Toggle Footer (Desktop only) */}
-        <div className="border-t border-gray-100 p-4 hidden lg:block">
+        <div className="border-t border-gray-100 dark:border-slate-800 p-4 hidden lg:block">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setSidebarCollapsed(!sidebarCollapsed);
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-figma-gray hover:text-figma-dark hover:bg-gray-50 transition-colors font-nunito text-xs font-bold"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-figma-gray dark:text-slate-400 hover:text-figma-dark dark:hover:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-nunito text-xs font-bold"
           >
             <svg
               className={clsx("w-5 h-5 transition-transform duration-300", sidebarCollapsed && "rotate-180")}
@@ -217,7 +218,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header bar */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-3 shadow-sm z-10">
+        <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between gap-3 shadow-sm z-10 transition-colors duration-200">
           <div className="flex items-center gap-3 min-w-0">
             {/* Mobile menu trigger */}
             <button
@@ -226,13 +227,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               aria-expanded={sidebarOpen}
               aria-label="Toggle navigation menu"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 rounded-lg text-figma-dark hover:bg-gray-100 transition-colors"
+              className="lg:hidden p-2 rounded-lg text-figma-dark dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-xl font-bold text-figma-dark font-nunito truncate">
+            <h1 className="text-xl font-bold text-figma-dark dark:text-slate-100 font-nunito truncate">
               {pathname === "/dashboard/performance"
                 ? "Academic Performance"
                 : pathname === "/dashboard/courses"
@@ -242,6 +243,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-4 shrink-0">
+            <ThemeSelector />
             <FigmaButton size="sm" variant="ghost" onClick={onLogout}>
               Logout
             </FigmaButton>
@@ -249,7 +251,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </header>
 
         {/* Content body */}
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-gray-50 p-4 md:p-6">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900 p-4 md:p-6 transition-colors duration-200">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

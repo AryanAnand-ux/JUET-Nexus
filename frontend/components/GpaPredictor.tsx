@@ -105,9 +105,9 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
     if (gpa >= 8.0) {
       return {
         label: "Excellent (A Range)",
-        gradient: "from-indigo-500/20 via-violet-500/10 to-transparent border-indigo-500/30",
-        text: "text-indigo-700",
-        bg: "bg-indigo-50 text-indigo-800 border-indigo-100",
+        gradient: "from-accent-primary/20 via-accent-primary/5 to-transparent border-accent-primary/30",
+        text: "text-accent-primary",
+        bg: "bg-accent-light text-accent-primary border-accent-primary/20",
         badge: "Excellent"
       };
     }
@@ -144,15 +144,15 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
   return (
     <FigmaCard
       heading={
-        <span className="flex items-center text-slate-900 font-extrabold text-lg md:text-xl font-nunito tracking-tight">
-          <Calculator className="w-6 h-6 mr-2 text-indigo-600" /> GPA Predictor — Interactive Simulator
+        <span className="flex items-center text-slate-900 dark:text-slate-100 font-extrabold text-lg md:text-xl font-nunito tracking-tight">
+          <Calculator className="w-6 h-6 mr-2 text-accent-primary" /> GPA Predictor — Interactive Simulator
         </span>
       }
-      className="border border-slate-200/80 shadow-md rounded-[24px] p-6 md:p-8 bg-gradient-to-tr from-white via-slate-50/50 to-indigo-50/10 relative overflow-hidden"
+      className="border border-slate-200/80 dark:border-slate-800/80 shadow-md rounded-[24px] p-6 md:p-8 bg-gradient-to-tr from-white dark:from-slate-950/20 via-slate-50/50 dark:via-slate-900/10 to-indigo-50/10 dark:to-accent-primary/5 relative overflow-hidden"
     >
       {/* Visual background accents */}
-      <div className="absolute -top-10 -right-10 w-40 h-40 bg-figma-lavender-light/30 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-10 -right-10 w-40 h-40 bg-accent-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-accent-primary/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Grid: Left side interactive list, Right side glassmorphic predictions */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -173,7 +173,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
               <button
                 type="button"
                 onClick={() => setBulkGrades("A+")}
-                className="text-[10px] font-extrabold text-indigo-600 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100/70 px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
+                className="text-[10px] font-extrabold text-accent-primary bg-accent-light border border-accent-primary/20 hover:bg-accent-primary/20 px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
               >
                 All A+
               </button>
@@ -203,7 +203,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
           </div>
 
           {courseList.length === 0 ? (
-            <div className="text-center py-12 bg-white/50 border border-slate-100 rounded-[20px]">
+            <div className="text-center py-12 bg-white/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 rounded-[20px]">
               <p className="text-sm font-medium text-slate-400 font-nunito">
                 No registered courses available to simulate.
               </p>
@@ -213,28 +213,28 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
               {courseList.map((course) => (
                 <div
                   key={course.code}
-                  className={`group bg-white hover:bg-slate-50/50 border rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-200 shadow-sm ${
+                  className={`group bg-white dark:bg-slate-950/20 hover:bg-slate-50/50 dark:hover:bg-slate-900/20 border rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-200 shadow-sm ${
                     selectedGrades[course.code]
-                      ? "border-indigo-100 bg-indigo-50/5"
-                      : "border-slate-200/80"
+                      ? "border-accent-primary/20 bg-accent-light/10"
+                      : "border-slate-200/80 dark:border-slate-800"
                   }`}
                 >
                   <div className="space-y-1 truncate max-w-full sm:max-w-[65%] min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100/50 px-2 py-0.5 rounded-md font-mono">
+                      <span className="text-[10px] font-bold text-accent-primary bg-accent-light border border-accent-primary/20 px-2 py-0.5 rounded-md font-mono">
                         {course.code}
                       </span>
-                      <span className="text-[10px] font-bold text-figma-gray bg-slate-50 border border-slate-150 px-2 py-0.5 rounded-md">
+                      <span className="text-[10px] font-bold text-figma-gray dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 px-2 py-0.5 rounded-md">
                         {course.type}
                       </span>
                     </div>
-                    <h4 className="text-sm font-extrabold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors truncate">
+                    <h4 className="text-sm font-extrabold text-slate-800 dark:text-slate-200 leading-snug group-hover:text-accent-primary transition-colors truncate">
                       {course.title}
                     </h4>
                   </div>
 
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0">
-                    <span className="text-[11px] font-bold text-slate-400 font-nunito bg-slate-50 border border-slate-250/30 px-2.5 py-1 rounded-xl">
+                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 font-nunito bg-slate-50 dark:bg-slate-900 border border-slate-250/30 dark:border-slate-800 px-2.5 py-1 rounded-xl">
                       {course.credits} Credits
                     </span>
                     
@@ -244,10 +244,10 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
                         aria-label={`Select grade for ${course.title}`}
                         value={selectedGrades[course.code] || ""}
                         onChange={(e) => handleGradeChange(course.code, e.target.value)}
-                        className={`text-xs font-bold rounded-xl border px-3 py-2 pr-8 appearance-none bg-white cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-nunito ${
+                        className={`text-xs font-bold rounded-xl border px-3 py-2 pr-8 appearance-none bg-white dark:bg-slate-900 dark:text-slate-200 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-primary/20 dark:focus:ring-offset-slate-950 font-nunito ${
                           selectedGrades[course.code]
-                            ? "border-indigo-200 bg-indigo-50/30 text-indigo-700 font-extrabold"
-                            : "border-slate-200 text-slate-500"
+                            ? "border-accent-primary/30 bg-accent-light text-accent-primary font-extrabold"
+                            : "border-slate-200 dark:border-slate-800 text-slate-500"
                         }`}
                         style={{
                           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E")`,
@@ -281,35 +281,35 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
             
             {/* Predicted SGPA Card */}
-            <div className={`relative overflow-hidden bg-white/70 backdrop-blur-md border rounded-[22px] p-5 shadow-lg transition-all hover:scale-[1.01] duration-300 bg-gradient-to-tr ${sgpaStanding.gradient}`}>
-              <div className="absolute top-3 right-3 text-slate-300">
-                <Sparkles className="w-5 h-5 text-indigo-400/60" />
+            <div className={`relative overflow-hidden bg-white/70 dark:bg-slate-950/45 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-[22px] p-5 shadow-lg transition-all hover:scale-[1.01] duration-300 bg-gradient-to-tr ${sgpaStanding.gradient}`}>
+              <div className="absolute top-3 right-3 text-slate-350 dark:text-slate-600">
+                <Sparkles className="w-5 h-5 text-accent-primary/60" />
               </div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                 Predicted SGPA
               </p>
-              <p className={`text-4xl font-black font-nunito tracking-tight ${predictedSgpa > 0 ? sgpaStanding.text : 'text-slate-400'}`}>
+              <p className={`text-4xl font-black font-nunito tracking-tight ${predictedSgpa > 0 ? sgpaStanding.text : 'text-slate-400 dark:text-slate-600'}`}>
                 {predictedSgpa > 0 ? predictedSgpa.toFixed(2) : "0.00"}
               </p>
               <div className="mt-2.5 flex items-center justify-between">
                 <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border font-nunito ${sgpaStanding.bg}`}>
                   {sgpaStanding.badge}
                 </span>
-                <span className="text-[10px] text-slate-400 font-bold font-nunito">
+                <span className="text-[10px] text-slate-400 dark:text-slate-550 font-bold font-nunito">
                   {currentCreditsSum} / {totalSemCredits} Credits Graded
                 </span>
               </div>
             </div>
 
             {/* Predicted Cumulative CGPA Card */}
-            <div className={`relative overflow-hidden bg-white/70 backdrop-blur-md border rounded-[22px] p-5 shadow-lg transition-all hover:scale-[1.01] duration-300 bg-gradient-to-tr ${cgpaStanding.gradient}`}>
-              <div className="absolute top-3 right-3 text-slate-300">
-                <TrendingUp className="w-5 h-5 text-indigo-400/60" />
+            <div className={`relative overflow-hidden bg-white/70 dark:bg-slate-950/45 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-[22px] p-5 shadow-lg transition-all hover:scale-[1.01] duration-300 bg-gradient-to-tr ${cgpaStanding.gradient}`}>
+              <div className="absolute top-3 right-3 text-slate-355 dark:text-slate-600">
+                <TrendingUp className="w-5 h-5 text-accent-primary/60" />
               </div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                 Predicted CGPA
               </p>
-              <p className={`text-4xl font-black font-nunito tracking-tight ${predictedCgpa > 0 ? cgpaStanding.text : 'text-slate-400'}`}>
+              <p className={`text-4xl font-black font-nunito tracking-tight ${predictedCgpa > 0 ? cgpaStanding.text : 'text-slate-400 dark:text-slate-600'}`}>
                 {predictedCgpa > 0 ? predictedCgpa.toFixed(2) : "0.00"}
               </p>
               <div className="mt-2.5 flex items-center justify-between">
@@ -317,7 +317,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
                   {cgpaStanding.badge}
                 </span>
                 {hasPriorSemesters && typeof performance?.cgpa === "number" && (
-                  <span className="text-[10px] text-slate-400 font-bold font-nunito">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-550 font-bold font-nunito">
                     Prior CGPA: {performance.cgpa.toFixed(2)}
                   </span>
                 )}
@@ -326,36 +326,36 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
           </div>
 
           {/* Aggregation Detail Cards */}
-          <div className="bg-white/40 backdrop-blur-md border border-slate-200/50 rounded-2xl p-5 shadow-sm space-y-4">
-            <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 border-b border-slate-150/40 pb-2">
-              <Award className="w-4 h-4 text-indigo-500" /> Calculation breakdown
+          <div className="bg-white/40 dark:bg-slate-950/20 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm space-y-4">
+            <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-450 flex items-center gap-1.5 border-b border-slate-150/40 dark:border-slate-800/60 pb-2">
+              <Award className="w-4 h-4 text-accent-primary" /> Calculation breakdown
             </h5>
             
             <div className="space-y-2.5 text-xs">
               <div className="flex justify-between font-nunito">
-                <span className="font-bold text-slate-400">Prior Semesters Credits:</span>
-                <span className="font-extrabold text-slate-700">{priorCredits}</span>
+                <span className="font-bold text-slate-400 dark:text-slate-500">Prior Semesters Credits:</span>
+                <span className="font-extrabold text-slate-700 dark:text-slate-300">{priorCredits}</span>
               </div>
               {hasPriorSemesters && (
                 <div className="flex justify-between font-nunito">
-                  <span className="font-bold text-slate-400">Prior Aggregated Points:</span>
-                  <span className="font-extrabold text-slate-700">{priorPoints.toFixed(1)}</span>
+                  <span className="font-bold text-slate-400 dark:text-slate-500">Prior Aggregated Points:</span>
+                  <span className="font-extrabold text-slate-700 dark:text-slate-300">{priorPoints.toFixed(1)}</span>
                 </div>
               )}
               <div className="flex justify-between font-nunito">
-                <span className="font-bold text-slate-400">Current Simulated Credits:</span>
-                <span className="font-extrabold text-slate-700">{currentCreditsSum}</span>
+                <span className="font-bold text-slate-400 dark:text-slate-500">Current Simulated Credits:</span>
+                <span className="font-extrabold text-slate-700 dark:text-slate-300">{currentCreditsSum}</span>
               </div>
-              <div className="flex justify-between font-nunito border-t border-slate-100 pt-2.5">
+              <div className="flex justify-between font-nunito border-t border-slate-100 dark:border-slate-800/80 pt-2.5">
                 <span className="font-extrabold text-slate-500">Cumulative Total Credits:</span>
-                <span className="font-extrabold text-indigo-600">{priorCredits + currentCreditsSum}</span>
+                <span className="font-extrabold text-accent-primary">{priorCredits + currentCreditsSum}</span>
               </div>
             </div>
 
             {!hasPriorSemesters && (
-              <div className="border border-indigo-100 bg-indigo-50/40 rounded-xl p-3 flex items-start gap-2">
-                <Info className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
-                <p className="text-[10px] font-medium text-indigo-700 leading-relaxed font-nunito">
+              <div className="border border-accent-primary/20 bg-accent-light rounded-xl p-3 flex items-start gap-2">
+                <Info className="w-4 h-4 text-accent-primary shrink-0 mt-0.5" />
+                <p className="text-[10px] font-medium text-accent-primary leading-relaxed font-nunito">
                   <strong>First-Semester Fallback active:</strong> No prior semester history found. The SGPA of the current semester is used directly as the predicted CGPA.
                 </p>
               </div>

@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -35,6 +36,11 @@ const config: Config = {
         "figma-lavender-medium": "#9D93E2",
         "figma-dark-gray": "#525252",
         "figma-input-border": "#E0E0E0",
+        accent: {
+          primary: "var(--accent-primary)",
+          hover: "var(--accent-primary-hover)",
+          light: "var(--accent-primary-light)",
+        },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
