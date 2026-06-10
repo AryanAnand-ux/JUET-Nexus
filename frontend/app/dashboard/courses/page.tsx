@@ -41,7 +41,7 @@ export default function CoursesPage() {
     }
   }, [router]);
 
-  const { data, isLoading, error, refresh } = useDashboard(enrollment);
+  const { data, isLoading, error, invalidateCache } = useDashboard(enrollment);
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
@@ -89,7 +89,7 @@ export default function CoursesPage() {
         </div>
         
         <button
-          onClick={refresh}
+          onClick={invalidateCache}
           disabled={isLoading}
           className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl px-5 py-3 text-sm font-bold disabled:opacity-50 transition-all shadow-sm active:scale-95 self-start sm:self-auto"
         >
@@ -196,7 +196,7 @@ export default function CoursesPage() {
             No registered courses data available. Let&apos;s sync your WebKiosk curriculum.
           </p>
           <button
-            onClick={refresh}
+            onClick={invalidateCache}
             disabled={isLoading}
             className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-sm"
           >

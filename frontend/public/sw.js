@@ -53,7 +53,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   // CRITICAL: Do not intercept or cache backend API calls (security & privacy boundary)
-  if (url.pathname.includes("/api/")) {
+  if (url.pathname.startsWith("/api/") || url.pathname === "/api") {
     return;
   }
 

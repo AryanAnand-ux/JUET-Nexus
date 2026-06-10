@@ -47,7 +47,7 @@ export default function DashboardPage() {
     data,
     isLoading,
     error,
-    refresh,
+    invalidateCache,
     cachedAt,
   } = useDashboard(enrollment);
 
@@ -119,7 +119,7 @@ export default function DashboardPage() {
 
           <div className="shrink-0 self-start md:self-center">
             <button
-              onClick={refresh}
+              onClick={invalidateCache}
               disabled={isLoading}
               className="flex items-center gap-2 border border-slate-700 bg-slate-800/80 hover:bg-slate-800 hover:border-indigo-500 text-white rounded-xl px-5 py-3 text-sm font-bold disabled:opacity-50 transition-all shadow-lg hover:shadow-indigo-950/20 active:scale-95"
             >
@@ -157,7 +157,7 @@ export default function DashboardPage() {
             No data available. Let&apos;s sync your WebKiosk credentials.
           </p>
           <button
-            onClick={refresh}
+            onClick={invalidateCache}
             disabled={isLoading}
             className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all"
           >

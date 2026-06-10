@@ -30,7 +30,8 @@ for (let n = 0; n < 256; n++) {
 }
 
 // Generate a valid PNG file buffer with a flat background and stylized 'N' shape
-function generatePngBuffer(width, height) {
+function generatePngBuffer(width, height, options = {}) {
+  const { fillBackground = false } = options;
   // Color specifications
   // Background: Indigo #4F46E5 (RGBA: 79, 70, 229, 255)
   // Foreground: White #FFFFFF (RGBA: 255, 255, 255, 255)
@@ -55,7 +56,7 @@ function generatePngBuffer(width, height) {
       // Default: transparent
       let r = 0, g = 0, b = 0, a = 0;
 
-      if (dist <= rCircle) {
+      if (fillBackground || dist <= rCircle) {
         // Draw background circle with a simple linear gradient from Indigo to Burgundy
         const ratio = (x + y) / (width + height);
         r = Math.floor(79 + ratio * (127 - 79));
@@ -139,22 +140,22 @@ if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
 
-// 1. Apple Touch Icon: 180x180
-const appleIcon = generatePngBuffer(180, 180);
+// 1. Apple Touch Icon: 180x180 (Needs solid background, no transparent corners)
+const appleIcon = generatePngBuffer(180, 180, { fillBackground: true });
 fs.writeFileSync(path.join(outputDir, 'apple-touch-icon.png'), appleIcon);
 console.log('Generated apple-touch-icon.png (180x180) - Size:', appleIcon.length, 'bytes');
 
-// 2. Icon 192x192
-const icon192 = generatePngBuffer(192, 192);
+// 2. Icon 192x192 (Circular with transparent corners)
+const icon192 = generatePngBuffer(192, 192, { fillBackground: false });
 fs.writeFileSync(path.join(outputDir, 'icon-192x192.png'), icon192);
 console.log('Generated icon-192x192.png (192x192) - Size:', icon192.length, 'bytes');
 
-// 3. Icon 512x512
-const icon512 = generatePngBuffer(512, 512);
+// 3. Icon 512x512 (Circular with transparent corners)
+const icon512 = generatePngBuffer(512, 512, { fillBackground: false });
 fs.writeFileSync(path.join(outputDir, 'icon-512x512.png'), icon512);
 console.log('Generated icon-512x512.png (512x512) - Size:', icon512.length, 'bytes');
 
-// 4. Icon Maskable 512x512 (with slightly smaller logo for safe-zone mask padding)
-const iconMaskable = generatePngBuffer(512, 512);
+// 4. Icon Maskable 512x512 (Needs solid background, no transparent corners)
+const iconMaskable = generatePngBuffer(512, 512, { fillBackground: true });
 fs.writeFileSync(path.join(outputDir, 'icon-maskable.png'), iconMaskable);
 console.log('Generated icon-maskable.png (512x512) - Size:', iconMaskable.length, 'bytes');

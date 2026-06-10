@@ -114,6 +114,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     if (!enrollment) return;
 
     try {
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
       await axios.get(
         `${API_URL}/api/dashboard/invalidate?enrollment=${encodeURIComponent(
           enrollment
@@ -122,8 +123,16 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       );
       // Fetch fresh data
       await fetchDashboard();
-    } catch (error) {
+    } catch (error: any) {
       console.error("[Dashboard] Cache invalidation error:", error);
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: {
+          message: error.response?.data?.error || error.message || "Failed to sync WebKiosk data",
+          code: error.response?.data?.code
+        }
+      }));
     }
   }, [enrollment, API_URL, fetchDashboard]);
 
