@@ -182,10 +182,10 @@ function SubjectDetailContent() {
         </button>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-3xl font-bold text-figma-dark tracking-tight font-nunito">
+            <h2 className="text-xl sm:text-3xl font-bold text-figma-dark dark:text-slate-100 tracking-tight font-nunito break-words">
               {subjectName}
             </h2>
-            <p className="text-sm font-medium text-gray-500 mt-1 font-nunito">
+            <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mt-1 font-nunito">
               Attendance Details & Simulation
             </p>
           </div>
@@ -305,7 +305,7 @@ function SubjectDetailContent() {
                 <label className="text-xs uppercase font-bold tracking-wider text-gray-500 font-nunito">
                   Target Criteria
                 </label>
-                <span className="text-sm font-black bg-figma-dark text-white px-2.5 py-0.5 rounded-full font-nunito">
+                <span className="text-sm font-black bg-accent-primary text-white px-2.5 py-0.5 rounded-full font-nunito">
                   {targetPercentage}%
                 </span>
               </div>
@@ -315,7 +315,7 @@ function SubjectDetailContent() {
                 max="100"
                 value={targetPercentage}
                 onChange={(e) => setTargetPercentage(Number(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-figma-maroon"
+                className="w-full h-2 bg-gray-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-accent-primary"
               />
             </div>
 
@@ -527,17 +527,17 @@ function SubjectDetailContent() {
               ))}
             </div>
           ) : data && data.logs.length > 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <table className="w-full text-left border-collapse">
+            <div className="bg-white dark:bg-slate-950/20 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-x-auto shadow-sm">
+              <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-0">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 font-nunito">
+                  <tr className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800">
+                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
                       Date
                     </th>
-                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 font-nunito">
+                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
                       Type
                     </th>
-                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 font-nunito">
+                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
                       Status
                     </th>
                   </tr>
@@ -564,12 +564,12 @@ function SubjectDetailContent() {
                     return [...filteredLogs].reverse().map((log, i) => (
                       <tr
                         key={i}
-                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0"
+                        className="border-b border-gray-100 dark:border-slate-900/60 hover:bg-gray-50 dark:hover:bg-slate-900/30 transition-colors last:border-0 dark:border-slate-800/50"
                       >
-                        <td className="p-4 text-sm font-semibold text-figma-dark whitespace-nowrap font-nunito">
+                        <td className="p-4 text-sm font-semibold text-figma-dark dark:text-slate-200 whitespace-nowrap font-nunito">
                           {log.date}
                         </td>
-                        <td className="p-4 text-sm font-medium text-gray-500 font-nunito">
+                        <td className="p-4 text-sm font-medium text-gray-500 dark:text-slate-400 font-nunito">
                           {log.type}
                         </td>
                         <td className="p-4">

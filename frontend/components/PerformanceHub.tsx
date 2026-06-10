@@ -266,12 +266,10 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
           <div
             className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity"
             onClick={() => setIsModalOpen(false)}
-          />
-
-          {/* Modal Container */}
-          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] shadow-2xl w-full max-w-lg overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+          />          {/* Modal Container */}
+          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
-            <div className="bg-slate-900 px-6 py-5 border-b border-slate-800 relative">
+            <div className="bg-slate-900 px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-800 relative shrink-0">
               <div className="absolute top-0 right-0 w-32 h-32 bg-accent-primary/10 rounded-full blur-2xl pointer-events-none" />
               <button
                 type="button"
@@ -283,7 +281,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
               <span className="text-[10px] font-extrabold text-accent-primary uppercase tracking-widest font-mono bg-slate-950/80 border border-slate-800 px-2.5 py-0.5 rounded-md">
                 {selectedCourseMarks.code || "COURSE CODE"}
               </span>
-              <h3 className="text-xl font-extrabold text-white mt-2 leading-snug font-nunito">
+              <h3 className="text-xl font-extrabold text-white mt-2 leading-snug font-nunito break-words pr-8">
                 {selectedCourseMarks.subject}
               </h3>
               
@@ -312,8 +310,8 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
             </div>
 
             {/* Content Body */}
-            <div className="p-6 space-y-5 max-h-[380px] overflow-y-auto">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
                 Evaluation Component Breakdown
               </p>
               
@@ -324,11 +322,11 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                     const pct = comp.max > 0 ? (obtained / comp.max) * 100 : 0;
                     return (
                       <div key={`${comp.name}-${idx}`} className="space-y-2">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="font-extrabold text-slate-700 dark:text-slate-200 font-nunito">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4 text-sm">
+                          <span className="font-extrabold text-slate-700 dark:text-slate-200 font-nunito break-words">
                             {comp.name}
                           </span>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                             {isSimulating ? (
                               <input
                                 type="number"
@@ -337,7 +335,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                                 step="0.5"
                                 value={obtained}
                                 onChange={(e) => handleSimulatedMarkChange(comp.name, Math.min(comp.max, Math.max(0, parseFloat(e.target.value) || 0)))}
-                                className="w-14 px-1.5 py-0.5 text-center text-xs font-bold bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md focus:ring-1 focus:ring-accent-primary focus:outline-none dark:text-slate-200"
+                                className="w-14 px-1.5 py-0.5 text-center text-xs font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md focus:ring-1 focus:ring-accent-primary focus:outline-none dark:text-slate-200"
                               />
                             ) : (
                               <span className="text-slate-850 dark:text-slate-100 font-extrabold">{obtained}</span>
@@ -380,13 +378,13 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
             </div>
 
             {/* Total Marks Footer */}
-            <div className="bg-slate-50 dark:bg-slate-950/40 px-6 py-5 border-t border-slate-100 dark:border-slate-850 flex items-center justify-between transition-colors duration-200">
-              <div className="flex flex-col gap-1">
+            <div className="bg-slate-50 dark:bg-slate-950/40 px-4 py-4 sm:px-6 sm:py-5 border-t border-slate-100 dark:border-slate-850 flex items-center justify-between transition-colors duration-200 shrink-0">
+              <div className="flex flex-col gap-1 min-w-0 pr-2">
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   {isSimulating ? "Simulated Total" : "Aggregated Score"}
                 </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-nunito">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-nunito whitespace-nowrap">
                     Grade projection: <span className="font-extrabold text-accent-primary">{getProjectedGrade(isSimulating ? getSimulatedTotal() : selectedCourseMarks.total)}</span>
                   </span>
                   {isSimulating && (
@@ -406,11 +404,11 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                   )}
                 </div>
               </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-2.5 shadow-sm text-right">
-                <span className="text-2xl font-black text-slate-800 dark:text-slate-100 font-nunito tracking-tight">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 shadow-sm text-right shrink-0">
+                <span className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 font-nunito tracking-tight">
                   {(isSimulating ? getSimulatedTotal() : selectedCourseMarks.total).toFixed(1)}
                 </span>
-                <span className="text-sm font-bold text-slate-400 dark:text-slate-500 font-nunito ml-1">
+                <span className="text-xs sm:text-sm font-bold text-slate-400 dark:text-slate-550 font-nunito ml-0.5">
                   / 100
                 </span>
               </div>

@@ -76,24 +76,24 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
         <>
           {/* Overall Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550 mb-1">
                 Enrolled Subjects
               </p>
               <p className="text-4xl font-extrabold text-slate-850 dark:text-slate-100 font-nunito tracking-tight">
                 {stats.subjectCount}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550 mb-1">
                 Average Attendance
               </p>
               <p className="text-4xl font-extrabold text-accent-primary font-nunito tracking-tight">
                 {stats.avgPercentage.toFixed(1)}%
               </p>
             </div>
-            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550 mb-1">
                 Defaulter Warnings
               </p>
               <p className={`text-4xl font-extrabold font-nunito tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600' : 'text-green-600'}`}>
@@ -140,7 +140,7 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
                 <Link
                   href={`/dashboard/subject/${encodeURIComponent(record.subject)}?pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
                   key={record.subject}
-                  className="group relative block bg-white hover:bg-slate-50/30 border border-slate-200/80 rounded-[20px] p-5 transition-all duration-300 hover:shadow-md hover:scale-[1.005] hover:border-slate-300 cursor-pointer"
+                  className="group relative block bg-white dark:bg-slate-950/20 hover:bg-slate-50/30 dark:hover:bg-slate-900/25 border border-slate-200/80 dark:border-slate-800/60 rounded-[20px] p-4 sm:p-5 transition-all duration-300 hover:shadow-md hover:scale-[1.005] hover:border-slate-350 dark:hover:border-slate-700 cursor-pointer"
                 >
                   <div className="flex flex-col md:flex-row items-center md:items-stretch gap-6">
                     {/* Circular Progress Indicator */}
@@ -201,18 +201,18 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
                       </div>
 
                       {/* Stats Breakdowns */}
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center transition-all hover:bg-white hover:shadow-sm">
-                          <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">Lectures</p>
-                          <p className="text-sm font-extrabold text-slate-800 font-nunito">{record.lecturePercent.toFixed(0)}%</p>
+                      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
+                          <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Lectures</p>
+                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">{record.lecturePercent.toFixed(0)}%</p>
                         </div>
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center transition-all hover:bg-white hover:shadow-sm">
-                          <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">Tutorials</p>
-                          <p className="text-sm font-extrabold text-slate-800 font-nunito">{record.tutorialPercent.toFixed(0)}%</p>
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
+                          <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Tutorials</p>
+                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">{record.tutorialPercent.toFixed(0)}%</p>
                         </div>
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center transition-all hover:bg-white hover:shadow-sm">
-                          <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">Practicals</p>
-                          <p className="text-sm font-extrabold text-slate-800 font-nunito">{record.practicalPercent.toFixed(0)}%</p>
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
+                          <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Practicals</p>
+                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">{record.practicalPercent.toFixed(0)}%</p>
                         </div>
                       </div>
                     </div>
@@ -223,22 +223,22 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
           </div>
 
           {/* Footer Legends */}
-          <div className="mt-8 border-t border-slate-100 pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-green-100 bg-green-50/50 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-sm">
+          <div className="mt-8 border-t border-slate-100 dark:border-slate-800/80 pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border border-green-100 dark:border-green-950/30 bg-green-50/50 dark:bg-green-950/10 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-sm">
               <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
-              <p className="text-xs font-bold text-green-700">
+              <p className="text-xs font-bold text-green-700 dark:text-green-300">
                 SAFE: Attendance ≥ 85%
               </p>
             </div>
-            <div className="border border-amber-100 bg-amber-50/50 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-sm">
+            <div className="border border-amber-100 dark:border-amber-950/30 bg-amber-50/50 dark:bg-amber-950/10 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-sm">
               <AlertTriangle className="w-4 h-4 mr-2 text-amber-600" />
-              <p className="text-xs font-bold text-amber-700">
+              <p className="text-xs font-bold text-amber-700 dark:text-amber-300">
                 CAUTION: Attendance 75-84%
               </p>
             </div>
-            <div className="border border-rose-100 bg-rose-50/50 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-sm">
+            <div className="border border-rose-100 dark:border-rose-950/30 bg-rose-50/50 dark:bg-rose-950/10 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-sm">
               <XCircle className="w-4 h-4 mr-2 text-rose-600" />
-              <p className="text-xs font-bold text-rose-700">
+              <p className="text-xs font-bold text-rose-700 dark:text-rose-300">
                 CRITICAL: Attendance &lt; 75%
               </p>
             </div>

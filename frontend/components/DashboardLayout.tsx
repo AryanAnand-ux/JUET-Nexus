@@ -218,8 +218,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header bar */}
-        <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between gap-3 shadow-sm z-10 transition-colors duration-200">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 shadow-sm z-10 transition-colors duration-200">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Mobile menu trigger */}
             <button
               type="button"
@@ -233,7 +233,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-xl font-bold text-figma-dark dark:text-slate-100 font-nunito truncate">
+            <h1 className="text-base sm:text-xl font-bold text-figma-dark dark:text-slate-100 font-nunito truncate">
               {pathname === "/dashboard/performance"
                 ? "Academic Performance"
                 : pathname === "/dashboard/courses"
@@ -242,10 +242,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </h1>
           </div>
 
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <ThemeSelector />
-            <FigmaButton size="sm" variant="ghost" onClick={onLogout}>
-              Logout
+            <FigmaButton size="sm" variant="ghost" onClick={onLogout} className="px-2 sm:px-3">
+              <span className="hidden sm:inline">Logout</span>
+              <svg className="w-5 h-5 sm:hidden text-figma-gray dark:text-slate-400 hover:text-figma-dark dark:hover:text-slate-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
             </FigmaButton>
           </div>
         </header>

@@ -158,7 +158,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Left Side: Interactive Courses Form */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7 space-y-6 lg:order-1 order-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -272,7 +272,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
         </div>
 
         {/* Right Side: Prediction Cards (Glassmorphism) */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-5 space-y-6 lg:order-2 order-1">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Predictions Standing
           </p>
@@ -281,7 +281,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
             
             {/* Predicted SGPA Card */}
-            <div className={`relative overflow-hidden bg-white/70 dark:bg-slate-950/45 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-[22px] p-5 shadow-lg transition-all hover:scale-[1.01] duration-300 bg-gradient-to-tr ${sgpaStanding.gradient}`}>
+            <div className={`relative overflow-hidden bg-white/70 dark:bg-slate-950/45 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-[22px] p-4 sm:p-5 shadow-lg transition-all hover:scale-[1.01] duration-300 bg-gradient-to-tr ${sgpaStanding.gradient}`}>
               <div className="absolute top-3 right-3 text-slate-350 dark:text-slate-600">
                 <Sparkles className="w-5 h-5 text-accent-primary/60" />
               </div>
@@ -302,7 +302,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
             </div>
 
             {/* Predicted Cumulative CGPA Card */}
-            <div className={`relative overflow-hidden bg-white/70 dark:bg-slate-950/45 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-[22px] p-5 shadow-lg transition-all hover:scale-[1.01] duration-300 bg-gradient-to-tr ${cgpaStanding.gradient}`}>
+            <div className={`relative overflow-hidden bg-white/70 dark:bg-slate-950/45 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-[22px] p-4 sm:p-5 shadow-lg transition-all hover:scale-[1.01] duration-300 bg-gradient-to-tr ${cgpaStanding.gradient}`}>
               <div className="absolute top-3 right-3 text-slate-355 dark:text-slate-600">
                 <TrendingUp className="w-5 h-5 text-accent-primary/60" />
               </div>
@@ -326,7 +326,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
           </div>
 
           {/* Aggregation Detail Cards */}
-          <div className="bg-white/40 dark:bg-slate-950/20 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="bg-white/40 dark:bg-slate-950/20 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
             <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-450 flex items-center gap-1.5 border-b border-slate-150/40 dark:border-slate-800/60 pb-2">
               <Award className="w-4 h-4 text-accent-primary" /> Calculation breakdown
             </h5>

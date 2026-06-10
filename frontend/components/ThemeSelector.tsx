@@ -15,7 +15,7 @@ export const ThemeSelector: React.FC = () => {
   ];
 
   return (
-    <div className="flex items-center gap-4 border border-slate-200/60 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 backdrop-blur-md rounded-2xl px-4 py-2 shadow-sm transition-all duration-300">
+    <div className="flex items-center gap-2 sm:gap-4 border border-slate-200/60 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 backdrop-blur-md rounded-2xl px-2.5 sm:px-4 py-1.5 sm:py-2 shadow-sm transition-all duration-300">
       {/* Theme Mode Toggle (Sun/Moon) */}
       <button
         type="button"
@@ -30,7 +30,7 @@ export const ThemeSelector: React.FC = () => {
       <span className="w-px h-4 bg-slate-200 dark:bg-slate-800" />
 
       {/* Accent Colors Dots */}
-      <div className="flex items-center gap-2" role="group" aria-label="Choose Accent Color">
+      <div className="flex items-center gap-1.5 sm:gap-2" role="group" aria-label="Choose Accent Color">
         {accents.map((acc) => {
           const isActive = accentColor === acc.name;
           return (
@@ -38,7 +38,7 @@ export const ThemeSelector: React.FC = () => {
               key={acc.name}
               type="button"
               onClick={() => setAccentColor(acc.name)}
-              className={`w-4 h-4 rounded-full ${acc.colorClass} relative transition-all duration-200 hover:scale-125 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 focus:ring-accent-primary`}
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full ${acc.colorClass} relative transition-all duration-200 hover:scale-125 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 focus:ring-accent-primary`}
               aria-label={acc.label}
               aria-pressed={isActive}
             >
