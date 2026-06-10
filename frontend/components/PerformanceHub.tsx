@@ -9,6 +9,7 @@ import React, { useState } from "react";
 import { FigmaCard } from "./base";
 import type { PerformanceData, DetailedCourseMarks } from "@/types";
 import { TrendingUp, ClipboardList, BarChart2, Lightbulb, GraduationCap, X, Info } from "lucide-react";
+import { PerformanceChart } from "./PerformanceChart";
 
 export interface PerformanceHubProps {
   performance: PerformanceData;
@@ -38,33 +39,33 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
   const getGradeTheme = (gpa: number): { cardBg: string; textClass: string; labelClass: string; badge: string } => {
     if (gpa >= 8.5) {
       return {
-        cardBg: "from-green-500/10 via-emerald-500/5 to-transparent border-green-200/60",
-        textClass: "text-green-700",
-        labelClass: "text-green-800",
-        badge: "bg-green-100 text-green-800 border-green-200"
+        cardBg: "from-green-500/10 via-emerald-500/5 to-transparent border-green-200/60 dark:border-green-800/30",
+        textClass: "text-green-700 dark:text-green-450",
+        labelClass: "text-green-800 dark:text-green-300",
+        badge: "bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-850/40"
       };
     }
     if (gpa >= 7.5) {
       return {
-        cardBg: "from-indigo-500/10 via-violet-500/5 to-transparent border-indigo-200/60",
-        textClass: "text-indigo-700",
-        labelClass: "text-indigo-800",
-        badge: "bg-indigo-100 text-indigo-800 border-indigo-200"
+        cardBg: "from-accent-primary/10 via-accent-primary/5 to-transparent border-accent-primary/20 dark:border-accent-primary/20",
+        textClass: "text-accent-primary dark:text-accent-primary",
+        labelClass: "text-accent-primary dark:text-accent-primary/80",
+        badge: "bg-accent-light text-accent-primary border-accent-primary/20"
       };
     }
     if (gpa >= 6.5) {
       return {
-        cardBg: "from-amber-500/10 via-yellow-500/5 to-transparent border-amber-200/60",
-        textClass: "text-amber-700",
-        labelClass: "text-amber-800",
-        badge: "bg-amber-100 text-amber-800 border-amber-200"
+        cardBg: "from-amber-500/10 via-yellow-500/5 to-transparent border-amber-200/60 dark:border-amber-800/30",
+        textClass: "text-amber-700 dark:text-amber-450",
+        labelClass: "text-amber-800 dark:text-amber-300",
+        badge: "bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-850/40"
       };
     }
     return {
-      cardBg: "from-rose-500/10 via-red-500/5 to-transparent border-rose-200/60",
-      textClass: "text-rose-700",
-      labelClass: "text-rose-800",
-      badge: "bg-rose-100 text-rose-800 border-rose-200"
+      cardBg: "from-rose-500/10 via-red-500/5 to-transparent border-rose-200/60 dark:border-rose-800/30",
+      textClass: "text-rose-700 dark:text-rose-450",
+      labelClass: "text-rose-800 dark:text-rose-300",
+      badge: "bg-rose-100 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-850/40"
     };
   };
 
@@ -85,12 +86,18 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
   return (
     <FigmaCard
       heading={
-        <span className="flex items-center text-slate-800 font-extrabold text-lg md:text-xl font-nunito tracking-tight">
-          <GraduationCap className="w-6 h-6 mr-2 text-indigo-600" /> Performance Hub — Academic Standing
+        <span className="flex items-center text-slate-800 dark:text-slate-100 font-extrabold text-lg md:text-xl font-nunito tracking-tight">
+          <GraduationCap className="w-6 h-6 mr-2 text-accent-primary" /> Performance Hub — Academic Standing
         </span>
       }
-      className="border border-slate-200/80 shadow-md rounded-[24px] p-6 md:p-8"
+      className="border border-slate-200/80 dark:border-slate-800 shadow-md rounded-[24px] p-6 md:p-8"
     >
+      {/* Dynamic Performance Chart */}
+      {performance.semesters && performance.semesters.length > 0 && (
+        <div className="mb-8 border-b border-slate-100 dark:border-slate-800/60 pb-8">
+          <PerformanceChart semesters={performance.semesters} />
+        </div>
+      )}
       {/* SGPA and CGPA Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Current SGPA */}
@@ -126,9 +133,9 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
 
       {/* Recent Marks */}
       {performance.recentMarks && performance.recentMarks.length > 0 && (
-        <div className="border-t border-slate-100 pt-6">
+        <div className="border-t border-slate-100 dark:border-slate-800/80 pt-6">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center">
-            <ClipboardList className="w-4 h-4 mr-2 text-indigo-500" /> Recent Marks & Evaluations
+            <ClipboardList className="w-4 h-4 mr-2 text-accent-primary" /> Recent Marks & Evaluations
           </h4>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -147,21 +154,21 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                   disabled={!hasDetails}
                   className={`group border rounded-2xl p-4 flex justify-between items-center shadow-sm transition-all text-left w-full ${
                     hasDetails
-                      ? "border-slate-100 bg-slate-50/40 hover:border-slate-200 hover:bg-white cursor-pointer active:scale-[0.99]"
-                      : "border-slate-100 bg-slate-50/20 opacity-80 cursor-default"
+                      ? "border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-950/20 cursor-pointer active:scale-[0.99]"
+                      : "border-slate-100 dark:border-slate-800/30 bg-slate-50/20 dark:bg-slate-900/5 opacity-80 cursor-default"
                   }`}
                 >
-                  <span className="font-extrabold text-sm text-slate-700 font-nunito group-hover:text-indigo-600 transition-colors truncate pr-2">
+                  <span className="font-extrabold text-sm text-slate-700 dark:text-slate-350 font-nunito group-hover:text-accent-primary transition-colors truncate pr-2">
                     {mark.subject}
                   </span>
                   <div className="flex items-center gap-2">
                     {hasDetails && (
-                      <span className="text-[10px] font-bold text-slate-400 font-nunito bg-slate-100 border border-slate-200/50 px-2 py-0.5 rounded-lg group-hover:text-indigo-500 group-hover:bg-indigo-50 group-hover:border-indigo-100 transition-all flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-slate-400 font-nunito bg-slate-100 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-2 py-0.5 rounded-lg group-hover:text-accent-primary group-hover:bg-accent-light group-hover:border-accent-primary/20 transition-all flex items-center gap-1">
                         <Info className="w-3 h-3" /> Details
                       </span>
                     )}
-                    <div className="border border-slate-200 bg-white rounded-xl px-3 py-1.5 shadow-sm text-center shrink-0">
-                      <span className="font-extrabold text-sm text-slate-800 font-nunito">
+                    <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl px-3 py-1.5 shadow-sm text-center shrink-0">
+                      <span className="font-extrabold text-sm text-slate-800 dark:text-slate-200 font-nunito">
                         {mark.marks.toFixed(1)}
                       </span>
                     </div>
@@ -174,44 +181,44 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
       )}
 
       {/* GPA Scale Reference */}
-      <div className="mt-8 border-t border-slate-100 pt-6">
+      <div className="mt-8 border-t border-slate-100 dark:border-slate-800/80 pt-6">
         <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center">
-          <BarChart2 className="w-4 h-4 mr-2 text-indigo-500" /> GPA Grading Scale Reference
+          <BarChart2 className="w-4 h-4 mr-2 text-accent-primary" /> GPA Grading Scale Reference
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          <div className="border border-green-100 bg-green-50/50 rounded-xl px-2 py-3 text-center">
+          <div className="border border-green-100 dark:border-green-950/30 bg-green-50/50 dark:bg-green-950/10 rounded-xl px-2 py-3 text-center">
             <p className="text-[9px] font-bold text-slate-400 uppercase">9.0-10.0</p>
-            <p className="text-base font-extrabold text-green-700 mt-0.5 font-nunito">A+</p>
+            <p className="text-base font-extrabold text-green-700 dark:text-green-450 mt-0.5 font-nunito">A+</p>
           </div>
-          <div className="border border-green-100 bg-green-50/50 rounded-xl px-2 py-3 text-center">
+          <div className="border border-green-100 dark:border-green-950/30 bg-green-50/50 dark:bg-green-950/10 rounded-xl px-2 py-3 text-center">
             <p className="text-[9px] font-bold text-slate-400 uppercase">8.5-9.0</p>
-            <p className="text-base font-extrabold text-green-700 mt-0.5 font-nunito">A</p>
+            <p className="text-base font-extrabold text-green-700 dark:text-green-450 mt-0.5 font-nunito">A</p>
           </div>
-          <div className="border border-indigo-100 bg-indigo-50/50 rounded-xl px-2 py-3 text-center">
-            <p className="text-[9px] font-bold text-slate-400 uppercase">8.0-8.5</p>
-            <p className="text-base font-extrabold text-indigo-700 mt-0.5 font-nunito">A-</p>
+          <div className="border border-accent-primary/20 bg-accent-light rounded-xl px-2 py-3 text-center">
+            <p className="text-[9px] font-bold text-slate-450 uppercase">8.0-8.5</p>
+            <p className="text-base font-extrabold text-accent-primary mt-0.5 font-nunito">A-</p>
           </div>
-          <div className="border border-indigo-100 bg-indigo-50/50 rounded-xl px-2 py-3 text-center">
-            <p className="text-[9px] font-bold text-slate-400 uppercase">7.5-8.0</p>
-            <p className="text-base font-extrabold text-indigo-700 mt-0.5 font-nunito">B+</p>
+          <div className="border border-accent-primary/20 bg-accent-light rounded-xl px-2 py-3 text-center">
+            <p className="text-[9px] font-bold text-slate-455 uppercase">7.5-8.0</p>
+            <p className="text-base font-extrabold text-accent-primary mt-0.5 font-nunito">B+</p>
           </div>
-          <div className="border border-amber-100 bg-amber-50/50 rounded-xl px-2 py-3 text-center">
+          <div className="border border-amber-100 dark:border-amber-950/30 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl px-2 py-3 text-center">
             <p className="text-[9px] font-bold text-slate-400 uppercase">7.0-7.5</p>
-            <p className="text-base font-extrabold text-amber-700 mt-0.5 font-nunito">B</p>
+            <p className="text-base font-extrabold text-amber-700 dark:text-amber-450 mt-0.5 font-nunito">B</p>
           </div>
-          <div className="border border-rose-100 bg-rose-50/50 rounded-xl px-2 py-3 text-center">
+          <div className="border border-rose-100 dark:border-rose-950/30 bg-rose-50/50 dark:bg-rose-950/10 rounded-xl px-2 py-3 text-center">
             <p className="text-[9px] font-bold text-slate-400 uppercase">&lt;7.0</p>
-            <p className="text-base font-extrabold text-rose-700 mt-0.5 font-nunito">C/D</p>
+            <p className="text-base font-extrabold text-rose-700 dark:text-rose-450 mt-0.5 font-nunito">C/D</p>
           </div>
         </div>
       </div>
 
       {/* Performance Insights */}
-      <div className="mt-8 relative overflow-hidden bg-slate-50 border border-slate-100 rounded-2xl p-5">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 mb-2 flex items-center">
+      <div className="mt-8 relative overflow-hidden bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-2xl p-5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-accent-primary mb-2 flex items-center">
           <Lightbulb className="w-4 h-4 mr-2" /> Performance Insight
         </p>
-        <p className="text-sm font-semibold text-slate-700 leading-relaxed font-nunito">
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 leading-relaxed font-nunito">
           {performance.currentSgpa >= 8.0
             ? "Excellent performance this semester! Keep up the momentum."
             : performance.currentSgpa >= 7.0
