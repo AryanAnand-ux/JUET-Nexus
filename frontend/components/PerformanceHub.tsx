@@ -22,6 +22,8 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
 }) => {
   const [selectedCourseMarks, setSelectedCourseMarks] = useState<DetailedCourseMarks | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulatedMarks, setSimulatedMarks] = useState<Record<string, number>>({});
 
   const handleMarkClick = (subjectName: string) => {
     if (!detailedMarks) return;
@@ -33,8 +35,38 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
     );
     if (match) {
       setSelectedCourseMarks(match);
+      setIsSimulating(false);
+      const initial: Record<string, number> = {};
+      if (match.components) {
+        match.components.forEach((c) => {
+          initial[c.name] = c.obtained;
+        });
+      }
+      setSimulatedMarks(initial);
       setIsModalOpen(true);
     }
+  };
+
+  const handleSimulatedMarkChange = (name: string, value: number) => {
+    setSimulatedMarks((prev) => ({
+      ...prev,
+      [name]: isNaN(value) ? 0 : value,
+    }));
+  };
+
+  const getSimulatedTotal = () => {
+    return Object.values(simulatedMarks).reduce((acc, val) => acc + val, 0);
+  };
+
+  const getProjectedGrade = (marks: number): string => {
+    if (marks >= 80) return "A+";
+    if (marks >= 75) return "A";
+    if (marks >= 70) return "B+";
+    if (marks >= 65) return "B";
+    if (marks >= 60) return "C+";
+    if (marks >= 50) return "C";
+    if (marks >= 40) return "D";
+    return "F";
   };
   const getGradeTheme = (gpa: number): { cardBg: string; textClass: string; labelClass: string; badge: string } => {
     if (gpa >= 8.5) {
@@ -232,15 +264,15 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity"
             onClick={() => setIsModalOpen(false)}
           />
 
           {/* Modal Container */}
-          <div className="relative bg-white border border-slate-200 rounded-[28px] shadow-2xl w-full max-w-lg overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] shadow-2xl w-full max-w-lg overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="bg-slate-900 px-6 py-5 border-b border-slate-800 relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-accent-primary/10 rounded-full blur-2xl pointer-events-none" />
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -248,41 +280,94 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
               >
                 <X className="w-4 h-4" />
               </button>
-              <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest font-mono bg-slate-950/80 border border-slate-800 px-2.5 py-0.5 rounded-md">
+              <span className="text-[10px] font-extrabold text-accent-primary uppercase tracking-widest font-mono bg-slate-950/80 border border-slate-800 px-2.5 py-0.5 rounded-md">
                 {selectedCourseMarks.code || "COURSE CODE"}
               </span>
               <h3 className="text-xl font-extrabold text-white mt-2 leading-snug font-nunito">
                 {selectedCourseMarks.subject}
               </h3>
+              
+              {/* Simulation Toggle Switch */}
+              {selectedCourseMarks.components && selectedCourseMarks.components.length > 0 && (
+                <div className="flex items-center justify-between mt-4 border-t border-slate-800/60 pt-3">
+                  <span className="text-xs font-bold text-slate-350 dark:text-slate-400">
+                    Simulate Mock Marks
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsSimulating(!isSimulating)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                      isSimulating ? "bg-accent-primary" : "bg-slate-800"
+                    }`}
+                    aria-pressed={isSimulating}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        isSimulating ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Content Body */}
-            <div className="p-6 space-y-5 max-h-[350px] overflow-y-auto">
+            <div className="p-6 space-y-5 max-h-[380px] overflow-y-auto">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
                 Evaluation Component Breakdown
               </p>
               
               {selectedCourseMarks.components && selectedCourseMarks.components.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {selectedCourseMarks.components.map((comp, idx) => {
-                    const pct = comp.max > 0 ? (comp.obtained / comp.max) * 100 : 0;
+                    const obtained = isSimulating ? (simulatedMarks[comp.name] ?? comp.obtained) : comp.obtained;
+                    const pct = comp.max > 0 ? (obtained / comp.max) * 100 : 0;
                     return (
-                      <div key={`${comp.name}-${idx}`} className="space-y-1.5">
+                      <div key={`${comp.name}-${idx}`} className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
-                          <span className="font-extrabold text-slate-700 font-nunito">
+                          <span className="font-extrabold text-slate-700 dark:text-slate-200 font-nunito">
                             {comp.name}
                           </span>
-                          <span className="font-bold text-slate-500 font-nunito">
-                            <span className="text-slate-800 font-extrabold">{comp.obtained}</span> / {comp.max}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {isSimulating ? (
+                              <input
+                                type="number"
+                                min="0"
+                                max={comp.max}
+                                step="0.5"
+                                value={obtained}
+                                onChange={(e) => handleSimulatedMarkChange(comp.name, Math.min(comp.max, Math.max(0, parseFloat(e.target.value) || 0)))}
+                                className="w-14 px-1.5 py-0.5 text-center text-xs font-bold bg-slate-55 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md focus:ring-1 focus:ring-accent-primary focus:outline-none dark:text-slate-200"
+                              />
+                            ) : (
+                              <span className="text-slate-850 dark:text-slate-100 font-extrabold">{obtained}</span>
+                            )}
+                            <span className="font-bold text-slate-450 dark:text-slate-500">/ {comp.max}</span>
+                          </div>
                         </div>
-                        {/* Progress Bar Container */}
-                        <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 transition-all duration-500"
-                            style={{ width: `${Math.min(pct, 100)}%` }}
-                          />
-                        </div>
+
+                        {isSimulating ? (
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              aria-label={`Simulate mark for ${comp.name}`}
+                              min="0"
+                              max={comp.max}
+                              step="0.5"
+                              value={obtained}
+                              onChange={(e) => handleSimulatedMarkChange(comp.name, parseFloat(e.target.value))}
+                              className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-accent-primary"
+                            />
+                          </div>
+                        ) : (
+                          /* Progress Bar Container */
+                          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-850">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-accent-primary to-violet-600 transition-all duration-500"
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -295,20 +380,37 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
             </div>
 
             {/* Total Marks Footer */}
-            <div className="bg-slate-50 px-6 py-5 border-t border-slate-100 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Aggregated Score
+            <div className="bg-slate-50 dark:bg-slate-950/40 px-6 py-5 border-t border-slate-100 dark:border-slate-850 flex items-center justify-between transition-colors duration-200">
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  {isSimulating ? "Simulated Total" : "Aggregated Score"}
                 </p>
-                <p className="text-sm font-medium text-slate-500 font-nunito mt-0.5">
-                  Sum of components
-                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-nunito">
+                    Grade projection: <span className="font-extrabold text-accent-primary">{getProjectedGrade(isSimulating ? getSimulatedTotal() : selectedCourseMarks.total)}</span>
+                  </span>
+                  {isSimulating && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const initial: Record<string, number> = {};
+                        selectedCourseMarks.components.forEach((c) => {
+                          initial[c.name] = c.obtained;
+                        });
+                        setSimulatedMarks(initial);
+                      }}
+                      className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline transition-all font-nunito"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="bg-white border border-slate-200 rounded-2xl px-5 py-2.5 shadow-sm text-right">
-                <span className="text-2xl font-black text-slate-800 font-nunito tracking-tight">
-                  {selectedCourseMarks.total.toFixed(1)}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-2.5 shadow-sm text-right">
+                <span className="text-2xl font-black text-slate-800 dark:text-slate-100 font-nunito tracking-tight">
+                  {(isSimulating ? getSimulatedTotal() : selectedCourseMarks.total).toFixed(1)}
                 </span>
-                <span className="text-sm font-bold text-slate-400 font-nunito ml-1">
+                <span className="text-sm font-bold text-slate-400 dark:text-slate-500 font-nunito ml-1">
                   / 100
                 </span>
               </div>
