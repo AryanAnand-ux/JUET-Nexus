@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Inter, Newsreader, Nunito_Sans } from "next/font/google";
 
+import Script from "next/script";
+
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const newsreader = Newsreader({
   subsets: ["latin"],
@@ -29,6 +31,11 @@ export const metadata: Metadata = {
   description:
     "JUET Nexus is a modern, secure proxy dashboard for JUET WebKiosk. View attendance, SGPA/CGPA, and notices in one place.",
   applicationName: "JUET Nexus",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: "JUET Nexus Dashboard",
     description: "Modern, secure proxy dashboard for JUET WebKiosk.",
@@ -49,6 +56,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to main content
         </a>
         {children}
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              const register = function() {
+                navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                  console.log('[SW] Registered:', reg.scope);
+                }).catch(function(err) {
+                  console.error('[SW] Registration failed:', err);
+                });
+              };
+              if (document.readyState === 'complete') {
+                register();
+              } else {
+                window.addEventListener('load', register);
+              }
+            }
+          `}
+        </Script>
       </body>
     </html>
   );
