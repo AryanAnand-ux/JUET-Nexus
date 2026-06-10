@@ -5,13 +5,17 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { FigmaLoginForm } from "@/components/FigmaLoginForm";
 import { FigmaLoginGraphic } from "@/components/FigmaLoginGraphic";
 import { useAuthFlow } from "@/hooks/useAuthFlow";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
+
   const {
     isLoading,
     isFetchingCaptcha,
@@ -21,6 +25,26 @@ export default function LoginPage() {
     submitLogin,
     clearError,
   } = useAuthFlow();
+
+  useEffect(() => {
+    const enrollment = localStorage.getItem("enrollment");
+    if (enrollment) {
+      router.replace("/dashboard");
+    } else {
+      setIsChecking(false);
+    }
+  }, [router]);
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center font-nunito">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm font-bold text-gray-550 dark:text-slate-400">Verifying session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] flex">
