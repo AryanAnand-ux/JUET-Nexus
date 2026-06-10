@@ -219,7 +219,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
                       : "border-slate-200/80"
                   }`}
                 >
-                  <div className="space-y-1 truncate max-w-full sm:max-w-[65%]">
+                  <div className="space-y-1 truncate max-w-full sm:max-w-[65%] min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100/50 px-2 py-0.5 rounded-md font-mono">
                         {course.code}
@@ -316,7 +316,7 @@ export const GpaPredictor: React.FC<GpaPredictorProps> = ({
                 <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border font-nunito ${cgpaStanding.bg}`}>
                   {cgpaStanding.badge}
                 </span>
-                {hasPriorSemesters && (
+                {hasPriorSemesters && typeof performance?.cgpa === "number" && (
                   <span className="text-[10px] text-slate-400 font-bold font-nunito">
                     Prior CGPA: {performance.cgpa.toFixed(2)}
                   </span>

@@ -124,7 +124,11 @@ export default function PerformancePage() {
         activeTab === "standing" ? (
           <PerformanceHub performance={data.performance} detailedMarks={data.detailedMarks} />
         ) : (
-          <GpaPredictor courses={data.courses} performance={data.performance} />
+          <GpaPredictor 
+            key={data.courses ? data.courses.map(c => c.code).join(',') : 'empty'}
+            courses={data.courses} 
+            performance={data.performance} 
+          />
         )
       ) : (
         <div className="border border-gray-200 rounded-[24px] bg-white p-12 text-center shadow-sm">
