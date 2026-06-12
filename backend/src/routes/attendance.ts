@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import axios from '../utils/axios';
 import { parseAttendanceDetails } from '../parsers/attendanceDetails';
 import { getValidSession } from './session';
+import { getRandomUserAgent } from '../utils/userAgent';
 import type { AttendanceDetailsResponse } from '../../../shared/types';
 
 const WEBKIOSK_URL =
@@ -98,8 +99,7 @@ export async function registerAttendanceRoutes(fastify: FastifyInstance) {
           validateStatus: () => true,
           headers: {
             Cookie: `JSESSIONID=${jsessionid}`,
-            'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'User-Agent': getRandomUserAgent(),
             Referer: `${WEBKIOSK_URL}/StudentFiles/Academic/StudentAttendanceList.jsp`,
           },
         });

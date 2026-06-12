@@ -19,6 +19,7 @@ import crypto from "crypto";
 import { encryptSessionData, SessionData } from "../utils/encryption";
 import { parseCaptchaImage, extractJSessionId } from "../parsers/auth";
 import { CacheService } from "../utils/cache";
+import { getRandomUserAgent } from "../utils/userAgent";
 
 // Types
 export interface AuthPayload {
@@ -227,8 +228,7 @@ export async function authHandler(
       validateStatus: () => true,
       headers: {
         Cookie: `JSESSIONID=${jsessionid}`,
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": getRandomUserAgent(),
       },
     });
 

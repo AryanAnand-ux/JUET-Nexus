@@ -18,6 +18,8 @@ import { parseDashboard } from '../parsers/dashboard';
 import { CacheService } from '../utils/cache';
 import { getValidSession } from './session';
 import { decryptSessionData } from '../utils/encryption';
+import { getRandomUserAgent } from '../utils/userAgent';
+import { withJitter } from '../utils/delay';
 import type { DashboardResponse } from '../../../shared/types';
 
 const WEBKIOSK_URL =
@@ -60,12 +62,124 @@ async function fetchWebKioskPage(
     validateStatus: () => true,
     headers: {
       Cookie: `JSESSIONID=${jsessionid}`,
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'User-Agent': getRandomUserAgent(),
       Referer: `${WEBKIOSK_URL}/StudentFiles/StudentPage.jsp`,
     },
   });
   return typeof resp.data === 'string' ? resp.data : '';
+}
+
+const FRESH_TTL_SEC = 300; // 5 minutes
+const STALE_TTL_SEC = 7200; // 2 hours
+const activeRefreshes = new Set<string>();
+
+async function fetchAndParseDashboard(
+  jsessionid: string,
+  enrollment: string,
+  log: any
+): Promise<DashboardResponse> {
+  // Phase 1: Get exam codes from attendance page + other data
+  // Stagger requests with random jitter
+  const phase1 = await Promise.allSettled([
+    fetchWebKioskPage(PAGES.main, jsessionid),
+    withJitter(() => fetchWebKioskPage(PAGES.attendance, jsessionid), 100, 350),
+    withJitter(() => fetchWebKioskPage(PAGES.marks, jsessionid), 200, 500),
+    withJitter(() => fetchWebKioskPage(PAGES.cgpa, jsessionid), 300, 650),
+    withJitter(() => fetchWebKioskPage(PAGES.courses, jsessionid), 450, 800)
+  ]);
+
+  const mainRejected = phase1[0].status === 'rejected';
+  const attendanceRejected = phase1[1].status === 'rejected';
+  if (mainRejected || attendanceRejected) {
+    const errorReason =
+      (phase1[0].status === 'rejected' ? (phase1[0] as PromiseRejectedResult).reason : (phase1[1] as PromiseRejectedResult).reason) ||
+      new Error('Network error');
+    throw errorReason;
+  }
+
+  const mainHtml = phase1[0].status === 'fulfilled' ? phase1[0].value : '';
+  const attendanceInitHtml = phase1[1].status === 'fulfilled' ? phase1[1].value : '';
+  const marksInitHtml = phase1[2].status === 'fulfilled' ? phase1[2].value : '';
+  const cgpaHtml = phase1[3].status === 'fulfilled' ? phase1[3].value : '';
+  const coursesHtml = phase1[4].status === 'fulfilled' ? phase1[4].value : '';
+
+  // Check for session timeout
+  const allHtml = mainHtml + attendanceInitHtml;
+  const isSessionDead =
+    allHtml.includes('Session timeout') ||
+    (allHtml.includes('Please') && allHtml.includes('Login')) ||
+    (mainHtml.length < 100 && attendanceInitHtml.length < 100);
+
+  if (isSessionDead) {
+    throw { statusCode: 401, message: 'Session expired. Please log in again.', code: 'SESSION_EXPIRED' };
+  }
+
+  // Phase 2: Extract the latest exam code from the <select> dropdown
+  const examCodeMatch =
+    attendanceInitHtml.match(/<option\s[^>]*value\s*=\s*['"]?([\dA-Z]+(?:EVESEM|ODDSEM))['"]?/i) ||
+    marksInitHtml.match(/<option\s[^>]*value\s*=\s*['"]?([\dA-Z]+(?:EVESEM|ODDSEM))['"]?/i);
+
+  const examCode = examCodeMatch?.[1];
+  let attendanceHtml = attendanceInitHtml;
+  let marksHtml = marksInitHtml;
+
+  if (examCode) {
+    log.info(`[Dashboard] Found exam code: ${examCode}, fetching data with form params...`);
+    const phase2 = await Promise.allSettled([
+      withJitter(() => fetchWebKioskPage(PAGES.attendance, jsessionid, { x: 'ddd', exam: examCode }), 100, 300),
+      withJitter(() => fetchWebKioskPage(PAGES.marks, jsessionid, { x: 'ddd', exam: examCode }), 200, 500)
+    ]);
+
+    const attnResult = phase2[0].status === 'fulfilled' ? phase2[0].value : '';
+    const marksResult = phase2[1].status === 'fulfilled' ? phase2[1].value : '';
+
+    if (attnResult.length > attendanceInitHtml.length) attendanceHtml = attnResult;
+    if (marksResult.length > marksInitHtml.length) marksHtml = marksResult;
+  }
+
+  const combinedHtml = [
+    '<!-- PAGE: main -->', mainHtml,
+    '<!-- PAGE: attendance -->', attendanceHtml,
+    '<!-- PAGE: marks -->', marksHtml,
+    '<!-- PAGE: cgpa -->', cgpaHtml,
+    '<!-- PAGE: courses -->', coursesHtml,
+  ].join('\n');
+
+  return parseDashboard(combinedHtml);
+}
+
+async function triggerBackgroundRefresh(
+  enrollment: string,
+  request: any,
+  cache: CacheService
+): Promise<void> {
+  if (activeRefreshes.has(enrollment)) return;
+  activeRefreshes.add(enrollment);
+
+  try {
+    request.log.info(`[Dashboard SWR] Starting background refresh for ${enrollment}`);
+
+    // Create a mock reply object to catch cookie updates
+    const mockReply = {
+      setCookie: (name: string, value: string, opts?: any) => {
+        request.log.info(`[Dashboard SWR] Cookie '${name}' updated in background`);
+      },
+      clearCookie: (name: string, opts?: any) => {
+        request.log.warn(`[Dashboard SWR] Cookie '${name}' cleared in background`);
+      },
+    } as any;
+
+    const jsessionid = await getValidSession(request, mockReply);
+    const dashboardData = await fetchAndParseDashboard(jsessionid, enrollment, request.log);
+
+    // Cache the updated result wrapper
+    await cache.set('dashboard', enrollment, { data: dashboardData, fetchedAt: Date.now() }, STALE_TTL_SEC);
+    request.log.info(`[Dashboard SWR] Background refresh successful for ${enrollment}`);
+  } catch (err: any) {
+    request.log.error(err, `[Dashboard SWR] Background refresh failed for ${enrollment}`);
+  } finally {
+    activeRefreshes.delete(enrollment);
+  }
 }
 
 export async function registerDashboardRoutes(
@@ -116,147 +230,61 @@ export async function registerDashboardRoutes(
         }
       }
 
-      // Check cache
+      // Check cache with SWR support
       fastify.log.info(`[Dashboard] Checking cache for ${enrollment}`);
-      const cached = await cache.get<DashboardResponse>('dashboard', enrollment);
+      const cachedWrapper = await cache.get<any>('dashboard', enrollment);
 
-      if (cached) {
-        fastify.log.info(`[Dashboard] Cache hit for ${enrollment}`);
-        const ttl = await cache.getTTL('dashboard', enrollment);
-        return reply
-          .header('X-Cache', 'hit')
-          .header('X-Cache-TTL', ttl.toString())
-          .send({
-            success: true,
-            data: cached,
-            cached: true,
-            ttl,
+      if (cachedWrapper) {
+        // Support both old direct format and new SWR wrapper format
+        const data = cachedWrapper.data ? cachedWrapper.data : cachedWrapper;
+        const fetchedAt = cachedWrapper.fetchedAt || (Date.now() - (FRESH_TTL_SEC + 1) * 1000);
+
+        const ageSec = (Date.now() - fetchedAt) / 1000;
+
+        if (ageSec <= FRESH_TTL_SEC) {
+          fastify.log.info(`[Dashboard] Fresh cache hit for ${enrollment} (age: ${Math.round(ageSec)}s)`);
+          const ttl = await cache.getTTL('dashboard', enrollment);
+          return reply
+            .header('X-Cache', 'hit')
+            .header('X-Cache-Status', 'fresh')
+            .header('X-Cache-TTL', ttl.toString())
+            .send({
+              success: true,
+              data,
+              cached: true,
+              ttl,
+            });
+        }
+
+        if (ageSec <= STALE_TTL_SEC) {
+          fastify.log.info(`[Dashboard] Stale cache hit for ${enrollment} (age: ${Math.round(ageSec)}s), triggering background refresh...`);
+          triggerBackgroundRefresh(enrollment, request, cache).catch((err) => {
+            request.log.error(err, `[Dashboard] Background refresh trigger failed for ${enrollment}`);
           });
-      }
 
-      fastify.log.info(`[Dashboard] Cache miss for ${enrollment}, fetching from WebKiosk...`);
-
-      // ----------------------------------------------------------------
-      // Phase 1: Fetch main page + attendance/marks (to discover exam codes)
-      //          + CGPA (which doesn't need exam code) — 4 requests parallel
-      // ----------------------------------------------------------------
-      let mainHtml: string, attendanceHtml: string, marksHtml: string, cgpaHtml: string, coursesHtml: string;
-
-      try {
-        // Phase 1: Get exam codes from attendance page + other data
-        const phase1 = await Promise.allSettled([
-          fetchWebKioskPage(PAGES.main, jsessionid),
-          fetchWebKioskPage(PAGES.attendance, jsessionid),
-          fetchWebKioskPage(PAGES.marks, jsessionid),
-          fetchWebKioskPage(PAGES.cgpa, jsessionid),
-          fetchWebKioskPage(PAGES.courses, jsessionid),
-        ]);
-
-        const mainRejected = phase1[0].status === 'rejected';
-        const attendanceRejected = phase1[1].status === 'rejected';
-        if (mainRejected || attendanceRejected) {
-          const errorReason = (phase1[0].status === 'rejected' ? (phase1[0] as PromiseRejectedResult).reason : (phase1[1] as PromiseRejectedResult).reason) || new Error('Network error');
-          throw errorReason;
+          const ttl = await cache.getTTL('dashboard', enrollment);
+          return reply
+            .header('X-Cache', 'hit')
+            .header('X-Cache-Status', 'stale')
+            .header('X-Cache-TTL', ttl.toString())
+            .send({
+              success: true,
+              data,
+              cached: true,
+              ttl,
+            });
         }
 
-        mainHtml = phase1[0].status === 'fulfilled' ? phase1[0].value : '';
-        const attendanceInitHtml = phase1[1].status === 'fulfilled' ? phase1[1].value : '';
-        const marksInitHtml = phase1[2].status === 'fulfilled' ? phase1[2].value : '';
-        cgpaHtml = phase1[3].status === 'fulfilled' ? phase1[3].value : '';
-        coursesHtml = phase1[4].status === 'fulfilled' ? phase1[4].value : '';
-
-        // Check for session timeout
-        const allHtml = mainHtml + attendanceInitHtml;
-        const isSessionDead =
-          allHtml.includes('Session timeout') ||
-          (allHtml.includes('Please') && allHtml.includes('Login')) ||
-          (mainHtml.length < 100 && attendanceInitHtml.length < 100);
-
-        if (isSessionDead) {
-          fastify.log.warn('[Dashboard] Session expired');
-          return reply.status(401).send({
-            success: false,
-            error: 'Session expired. Please log in again.',
-            code: 'SESSION_EXPIRED',
-          });
-        }
-
-        // Phase 2: Extract the latest exam code from the <select> dropdown
-        // and re-fetch attendance + marks WITH the exam code selected
-        const examCodeMatch = attendanceInitHtml.match(
-          /<option\s[^>]*value\s*=\s*['"]?([\dA-Z]+(?:EVESEM|ODDSEM))['"]?/i
-        ) || marksInitHtml.match(
-          /<option\s[^>]*value\s*=\s*['"]?([\dA-Z]+(?:EVESEM|ODDSEM))['"]?/i
-        );
-
-        const examCode = examCodeMatch?.[1];
-
-        if (examCode) {
-          fastify.log.info(`[Dashboard] Found exam code: ${examCode}, fetching data with form params...`);
-
-          // WebKiosk form includes a hidden 'x' field that must be sent.
-          // The RefreshContents() JS function sets x='ddd' before submitting.
-          const phase2 = await Promise.allSettled([
-            fetchWebKioskPage(PAGES.attendance, jsessionid, { x: 'ddd', exam: examCode }),
-            fetchWebKioskPage(PAGES.marks, jsessionid, { x: 'ddd', exam: examCode }),
-          ]);
-
-          const attnResult = phase2[0].status === 'fulfilled' ? phase2[0].value : '';
-          const marksResult = phase2[1].status === 'fulfilled' ? phase2[1].value : '';
-
-          fastify.log.info(
-            `[Dashboard] Phase 2 results: attendance=${attnResult.length}b, marks=${marksResult.length}b`
-          );
-
-          // Only use Phase 2 result if it's larger (has data)
-          attendanceHtml = attnResult.length > attendanceInitHtml.length ? attnResult : attendanceInitHtml;
-          marksHtml = marksResult.length > marksInitHtml.length ? marksResult : marksInitHtml;
-        } else {
-          fastify.log.warn('[Dashboard] No exam code found in dropdowns');
-          attendanceHtml = attendanceInitHtml;
-          marksHtml = marksInitHtml;
-        }
-
-        fastify.log.info(
-          `[Dashboard] Fetched pages: main=${mainHtml.length}b, attendance=${attendanceHtml.length}b, marks=${marksHtml.length}b, cgpa=${cgpaHtml.length}b, courses=${coursesHtml.length}b`
-        );
-      } catch (error: any) {
-        fastify.log.error(error, '[Dashboard] WebKiosk fetch failed');
-        return reply.status(502).send({
-          success: false,
-          error: 'Failed to fetch dashboard data from WebKiosk',
-          code: 'FETCH_FAILED',
-        });
+        fastify.log.info(`[Dashboard] Cache entry is too old for ${enrollment} (age: ${Math.round(ageSec)}s), fetching synchronously...`);
       }
 
-      // ----------------------------------------------------------------
-      // Combine all HTML and parse into structured data
-      // ----------------------------------------------------------------
-      // We concatenate the HTML from all pages so the parser can find
-      // tables from each page. Each page has unique table structures.
-      const combinedHtml = [
-        '<!-- PAGE: main -->', mainHtml,
-        '<!-- PAGE: attendance -->', attendanceHtml,
-        '<!-- PAGE: marks -->', marksHtml,
-        '<!-- PAGE: cgpa -->', cgpaHtml,
-        '<!-- PAGE: courses -->', coursesHtml,
-      ].join('\n');
+      fastify.log.info(`[Dashboard] Cache miss/expired for ${enrollment}, fetching from WebKiosk...`);
 
-      let dashboardData: DashboardResponse;
-      try {
-        dashboardData = parseDashboard(combinedHtml);
-      } catch (error) {
-        fastify.log.error(error, '[Dashboard] Parsing failed');
-        return reply.status(500).send({
-          success: false,
-          error: 'Failed to parse dashboard data',
-          code: 'PARSE_ERROR',
-        });
-      }
+      const dashboardData = await fetchAndParseDashboard(jsessionid, enrollment, fastify.log);
 
-      // Cache the result
+      // Cache the result in new wrapper format
       try {
-        await cache.set('dashboard', enrollment, dashboardData, 15 * 60);
+        await cache.set('dashboard', enrollment, { data: dashboardData, fetchedAt: Date.now() }, STALE_TTL_SEC);
       } catch (error) {
         fastify.log.warn(error, '[Dashboard] Cache write failed');
       }
@@ -268,12 +296,20 @@ export async function registerDashboardRoutes(
           data: dashboardData,
           cached: false,
         });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.statusCode === 401 || error.code === 'SESSION_EXPIRED') {
+        return reply.status(401).send({
+          success: false,
+          error: error.message || 'Session expired. Please log in again.',
+          code: 'SESSION_EXPIRED',
+        });
+      }
+
       fastify.log.error(error, '[Dashboard] Unhandled error');
-      return reply.status(500).send({
+      return reply.status(error.statusCode || 500).send({
         success: false,
-        error: 'Internal server error',
-        code: 'INTERNAL_ERROR',
+        error: error.message || 'Internal server error',
+        code: error.code || 'INTERNAL_ERROR',
       });
     }
   });

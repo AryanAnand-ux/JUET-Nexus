@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import axios from "../utils/axios";
 import { decryptSessionData, encryptSessionData, SessionData } from "../utils/encryption";
 import { parseCaptchaImage, extractJSessionId } from "../parsers/auth";
+import { getRandomUserAgent } from "../utils/userAgent";
 
 const WEBKIOSK_BASE_URL = process.env.WEBKIOSK_BASE_URL || "https://webkiosk.juet.ac.in";
 const WEBKIOSK_LOGIN_PAGE = "/CommonFiles/Userlogin.jsp";
@@ -29,7 +30,7 @@ async function verifyWebKioskSession(jsessionid: string, roleCode: string): Prom
       validateStatus: () => true,
       headers: {
         Cookie: `JSESSIONID=${jsessionid}`,
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": getRandomUserAgent(),
       },
     });
     const verifyBody = typeof response.data === "string" ? response.data : "";
