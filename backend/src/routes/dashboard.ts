@@ -73,7 +73,7 @@ const FRESH_TTL_SEC = 300; // 5 minutes
 const STALE_TTL_SEC = 7200; // 2 hours
 const activeRefreshes = new Set<string>();
 
-async function fetchAndParseDashboard(
+export async function fetchAndParseDashboard(
   jsessionid: string,
   enrollment: string,
   log: any

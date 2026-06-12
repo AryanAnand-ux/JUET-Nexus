@@ -12,6 +12,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { BunkMeter } from "@/components/BunkMeter";
 import { useDashboard } from "@/hooks/useDashboard";
 import { AlertTriangle, MapPin, RefreshCw } from "lucide-react";
+import { NotificationToggle } from "@/components/NotificationToggle";
 
 /**
  * Error Display Component
@@ -117,7 +118,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="shrink-0 self-start md:self-center">
+          <div className="shrink-0 self-start md:self-center flex flex-wrap items-center gap-3">
+            <NotificationToggle enrollment={enrollment} />
             <button
               onClick={invalidateCache}
               disabled={isLoading}

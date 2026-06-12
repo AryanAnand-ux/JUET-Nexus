@@ -38,10 +38,12 @@
     "jsdom": "^22.1.0",
     "pino": "^8.14.0",
     "pino-pretty": "^10.2.0",
-    "typescript": "^5.1.0"
+    "typescript": "^5.1.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
+    "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.45.0",

@@ -133,3 +133,42 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// Push Event Handler
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  try {
+    const data = event.data.json();
+    const title = data.title || "JUET Nexus Update";
+    const options = {
+      body: data.body || "Your academic dashboard has been updated.",
+      icon: "/favicon.ico",
+      badge: "/favicon.ico",
+      vibrate: [100, 50, 100],
+      data: { url: data.url || "/dashboard" },
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (err) {
+    console.error("[SW] Failed to parse push data:", err);
+  }
+});
+
+// Notification Click Event Handler
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // If a window is already open at /dashboard, focus it
+      for (let i = 0; i < clientList.length; i++) {
+        let client = clientList[i];
+        if (client.url.includes("/dashboard") && "focus" in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(event.notification.data.url);
+      }
+    })
+  );
+});

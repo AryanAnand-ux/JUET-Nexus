@@ -11,8 +11,10 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import { registerAuthRoutes } from './routes/auth';
 import { registerDashboardRoutes } from './routes/dashboard';
 import { registerAttendanceRoutes } from './routes/attendance';
+import { registerNotificationRoutes } from './routes/notifications';
 import { CacheService } from './utils/cache';
 import { validateKey } from './utils/encryption';
+import { checkAcademicUpdates } from './utils/pushWorker';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -76,10 +78,10 @@ export async function createServer() {
     }),
   });
 
-  // Note: /api/auth has a stricter per-route rate limit (10/min) set in routes/auth.ts
   await registerAuthRoutes(fastify, globalCache);
   await registerDashboardRoutes(fastify, globalCache);
   await registerAttendanceRoutes(fastify);
+  await registerNotificationRoutes(fastify, globalCache);
 
   fastify.get('/health', async () => ({
     status: 'ok',
@@ -110,7 +112,7 @@ export async function createServer() {
 
 export async function startServer() {
   try {
-    const { fastify } = await createServer();
+    const { fastify, cache } = await createServer();
 
     await fastify.listen({ port: PORT, host: HOST });
 
@@ -124,6 +126,13 @@ export async function startServer() {
     fastify.log.info(
       'Endpoints: GET /health, GET /api/init, POST /api/auth, GET /api/dashboard'
     );
+
+    // Run the background academic updates check every 30 minutes
+    setInterval(() => {
+      checkAcademicUpdates(cache, fastify.log).catch((err: any) => {
+        fastify.log.error(err, '[PushWorker] Background execution failed');
+      });
+    }, 30 * 60 * 1000);
   } catch (error) {
     console.error('[Server] Failed to start:', error);
     process.exit(1);

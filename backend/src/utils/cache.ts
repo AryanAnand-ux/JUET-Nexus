@@ -14,6 +14,7 @@ type MemoryEntry<T> = {
 export class CacheService {
   private redis: Redis | null;
   private memoryCache = new Map<string, MemoryEntry<any>>();
+  private memorySets = new Map<string, Set<string>>();
 
   constructor(redisUrl?: string) {
     this.redis = redisUrl
@@ -166,7 +167,75 @@ export class CacheService {
    */
   async close(): Promise<void> {
     this.memoryCache.clear();
+    this.memorySets.clear();
     await this.redis?.quit();
+  }
+
+  /**
+   * Add a value to a Set key
+   */
+  async sAdd(prefix: string, key: string, value: string): Promise<void> {
+    try {
+      const cacheKey = this.getCacheKey(prefix, key);
+      if (!this.redis) {
+        if (!this.memorySets.has(cacheKey)) {
+          this.memorySets.set(cacheKey, new Set<string>());
+        }
+        this.memorySets.get(cacheKey)!.add(value);
+        return;
+      }
+      await this.redis.sadd(cacheKey, value);
+    } catch (error) {
+      console.error(`[Cache] sAdd failed for ${prefix}:${key}:`, error);
+    }
+  }
+
+  /**
+   * Get all members of a Set key
+   */
+  async sMembers(prefix: string, key: string): Promise<string[]> {
+    try {
+      const cacheKey = this.getCacheKey(prefix, key);
+      if (!this.redis) {
+        return Array.from(this.memorySets.get(cacheKey) || []);
+      }
+      return await this.redis.smembers(cacheKey);
+    } catch (error) {
+      console.error(`[Cache] sMembers failed for ${prefix}:${key}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Remove a value from a Set key
+   */
+  async sRem(prefix: string, key: string, value: string): Promise<void> {
+    try {
+      const cacheKey = this.getCacheKey(prefix, key);
+      if (!this.redis) {
+        this.memorySets.get(cacheKey)?.delete(value);
+        return;
+      }
+      await this.redis.srem(cacheKey, value);
+    } catch (error) {
+      console.error(`[Cache] sRem failed for ${prefix}:${key}:`, error);
+    }
+  }
+
+  /**
+   * Get the size (cardinality) of a Set key
+   */
+  async sCard(prefix: string, key: string): Promise<number> {
+    try {
+      const cacheKey = this.getCacheKey(prefix, key);
+      if (!this.redis) {
+        return this.memorySets.get(cacheKey)?.size || 0;
+      }
+      return await this.redis.scard(cacheKey);
+    } catch (error) {
+      console.error(`[Cache] sCard failed for ${prefix}:${key}:`, error);
+      return 0;
+    }
   }
 
   private getCacheKey(prefix: string, key: string): string {
