@@ -305,6 +305,15 @@ export async function registerDashboardRoutes(
         });
       }
 
+      // Transient re-login failure — credentials are intact, just retry later
+      if (error.statusCode === 503 || error.code === 'RELOGIN_FAILED') {
+        return reply.status(503).send({
+          success: false,
+          error: error.message || 'Unable to refresh session. Please try again.',
+          code: 'RELOGIN_FAILED',
+        });
+      }
+
       fastify.log.error(error, '[Dashboard] Unhandled error');
       return reply.status(error.statusCode || 500).send({
         success: false,

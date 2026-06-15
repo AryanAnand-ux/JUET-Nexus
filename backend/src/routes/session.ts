@@ -81,106 +81,124 @@ export async function getValidSession(
 
   logger.info(`Session expired. Performing silent re-login for enrollment: ${session.enrollment}`);
 
-  try {
-    // 3. Request login page to obtain new JSESSIONID and captcha
-    const initResp = await axios.get(`${WEBKIOSK_BASE_URL}${WEBKIOSK_LOGIN_PAGE}`, {
-      timeout: REQUEST_TIMEOUT,
-    });
-    const cookies = initResp.headers["set-cookie"] || [];
-    const cookieHeader = cookies.map((c) => c.split(";")[0]).join("; ");
-    const jsessionidInit = extractJSessionId(cookieHeader);
+  const MAX_RELOGIN_ATTEMPTS = 3;
 
-    if (!jsessionidInit) {
-      throw new Error("Could not extract initial JSESSIONID for re-login");
-    }
-
-    // 4. Auto-solve captcha using .noselect parser
-    const parsedCaptcha = await parseCaptchaImage(
-      typeof initResp.data === "string" ? initResp.data : "",
-      WEBKIOSK_BASE_URL,
-      cookieHeader,
-      REQUEST_TIMEOUT
-    );
-
-    if (!parsedCaptcha.captchaValue) {
-      throw new Error("Re-login failed: Captcha could not be auto-solved.");
-    }
-
-    // 5. POST credentials
-    const form = new URLSearchParams({
-      InstCode: "JUET",
-      UserType: roleCode,
-      MemberCode: session.enrollment,
-      DATE1: session.dob,
-      Password: session.password,
-      txtcap: parsedCaptcha.captchaValue,
-      BTNSubmit: "Submit",
-    });
-
-    const authResp = await axios.post(
-      new URL(WEBKIOSK_AUTH_ACTION, WEBKIOSK_BASE_URL).toString(),
-      form.toString(),
-      {
+  for (let attempt = 1; attempt <= MAX_RELOGIN_ATTEMPTS; attempt++) {
+    try {
+      // 3. Request login page to obtain new JSESSIONID and captcha
+      const initResp = await axios.get(`${WEBKIOSK_BASE_URL}${WEBKIOSK_LOGIN_PAGE}`, {
         timeout: REQUEST_TIMEOUT,
-        maxRedirects: 5,
-        validateStatus: () => true,
-        headers: {
-          Cookie: cookieHeader,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+      });
+      const cookies = initResp.headers["set-cookie"] || [];
+      const cookieHeader = cookies.map((c) => c.split(";")[0]).join("; ");
+      const jsessionidInit = extractJSessionId(cookieHeader);
+
+      if (!jsessionidInit) {
+        throw new Error("Could not extract initial JSESSIONID for re-login");
       }
-    );
 
-    // 6. Get new JSESSIONID
-    const setCookieHeaders = authResp.headers["set-cookie"] || [];
-    const newCookieStr = (
-      Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders]
-    )
-      .map((c: string) => c.split(";")[0])
-      .join("; ");
+      // 4. Auto-solve captcha using .noselect parser
+      const parsedCaptcha = await parseCaptchaImage(
+        typeof initResp.data === "string" ? initResp.data : "",
+        WEBKIOSK_BASE_URL,
+        cookieHeader,
+        REQUEST_TIMEOUT
+      );
 
-    const newJSessionId = extractJSessionId(newCookieStr) || jsessionidInit;
+      if (!parsedCaptcha.captchaValue) {
+        logger.warn(`[Session] Captcha auto-solve failed on attempt ${attempt}/${MAX_RELOGIN_ATTEMPTS}`);
+        if (attempt < MAX_RELOGIN_ATTEMPTS) continue; // Retry with a fresh captcha
+        throw new Error("Re-login failed: Captcha could not be auto-solved after retries.");
+      }
 
-    // 7. Verify new session
-    const verifySuccess = await verifyWebKioskSession(newJSessionId, roleCode);
-    if (!verifySuccess) {
-      throw new Error("Failed to verify newly generated re-login session");
+      // 5. POST credentials
+      const form = new URLSearchParams({
+        InstCode: "JUET",
+        UserType: roleCode,
+        MemberCode: session.enrollment,
+        DATE1: session.dob,
+        Password: session.password,
+        txtcap: parsedCaptcha.captchaValue,
+        BTNSubmit: "Submit",
+      });
+
+      const authResp = await axios.post(
+        new URL(WEBKIOSK_AUTH_ACTION, WEBKIOSK_BASE_URL).toString(),
+        form.toString(),
+        {
+          timeout: REQUEST_TIMEOUT,
+          maxRedirects: 5,
+          validateStatus: () => true,
+          headers: {
+            Cookie: cookieHeader,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+      // 6. Get new JSESSIONID
+      const setCookieHeaders = authResp.headers["set-cookie"] || [];
+      const newCookieStr = (
+        Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders]
+      )
+        .map((c: string) => c.split(";")[0])
+        .join("; ");
+
+      const newJSessionId = extractJSessionId(newCookieStr) || jsessionidInit;
+
+      // 7. Verify new session
+      const verifySuccess = await verifyWebKioskSession(newJSessionId, roleCode);
+      if (!verifySuccess) {
+        logger.warn(`[Session] Session verification failed on attempt ${attempt}/${MAX_RELOGIN_ATTEMPTS}`);
+        if (attempt < MAX_RELOGIN_ATTEMPTS) continue; // Retry
+        throw new Error("Failed to verify newly generated re-login session after retries");
+      }
+
+      logger.info(`Silent re-login successful for enrollment: ${session.enrollment} (attempt ${attempt})`);
+
+      // 8. Update session object and issue new cookie
+      const updatedSession: SessionData = {
+        ...session,
+        jsessionid: newJSessionId,
+      };
+
+      const encryptedUpdatedSession = encryptSessionData(updatedSession);
+      const isProduction = process.env.NODE_ENV === "production";
+      reply.setCookie("auth", encryptedUpdatedSession, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+        maxAge: 30 * 24 * 60 * 60, // Extend cookie life to 30 days
+        path: "/",
+      });
+
+      return newJSessionId;
+    } catch (error: any) {
+      const isNetworkError =
+        error.code === 'ECONNABORTED' ||
+        error.code === 'ETIMEDOUT' ||
+        error.message?.toLowerCase().includes('timeout') ||
+        (error.response?.status && error.response.status >= 500);
+
+      // On last attempt, throw the error
+      if (attempt >= MAX_RELOGIN_ATTEMPTS || isNetworkError) {
+        logger.error(`Silent re-login failed after ${attempt} attempt(s): ${error.message}`);
+        // IMPORTANT: Never clear the auth cookie here.
+        // The cookie stores encrypted credentials needed for future re-login attempts.
+        // Only an explicit /api/logout should clear it.
+        throw {
+          statusCode: isNetworkError ? 502 : 503,
+          message: isNetworkError
+            ? "WebKiosk server is unreachable. Try again."
+            : "Unable to refresh session. Please try again in a moment.",
+          code: isNetworkError ? "NETWORK_ERROR" : "RELOGIN_FAILED"
+        };
+      }
+
+      logger.warn(`[Session] Re-login attempt ${attempt} failed: ${error.message}. Retrying...`);
     }
-
-    logger.info(`Silent re-login successful for enrollment: ${session.enrollment}`);
-
-    // 8. Update session object and issue new cookie
-    const updatedSession: SessionData = {
-      ...session,
-      jsessionid: newJSessionId,
-    };
-
-    const encryptedUpdatedSession = encryptSessionData(updatedSession);
-    const isProduction = process.env.NODE_ENV === "production";
-    reply.setCookie("auth", encryptedUpdatedSession, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: 30 * 24 * 60 * 60, // Extend cookie life to 30 days
-      path: "/",
-    });
-
-    return newJSessionId;
-  } catch (error: any) {
-    logger.error(`Silent re-login failed: ${error.message}`);
-    const isNetworkError =
-      error.code === 'ECONNABORTED' ||
-      error.code === 'ETIMEDOUT' ||
-      error.message?.toLowerCase().includes('timeout') ||
-      (error.response?.status && error.response.status >= 500);
-
-    if (!isNetworkError) {
-      reply.clearCookie("auth", { path: "/" });
-    }
-    throw {
-      statusCode: isNetworkError ? 502 : 401,
-      message: isNetworkError ? "WebKiosk server is unreachable. Try again." : "Session expired. Please log in again.",
-      code: isNetworkError ? "NETWORK_ERROR" : "SESSION_EXPIRED"
-    };
   }
+
+  // Unreachable, but TypeScript needs it
+  throw { statusCode: 503, message: "Unable to refresh session.", code: "RELOGIN_FAILED" };
 }

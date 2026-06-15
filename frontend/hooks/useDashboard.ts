@@ -94,6 +94,20 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         return;
       }
 
+      // Transient re-login failure — credentials are still intact, auto-retry
+      if (error.response?.status === 503 && error.response?.data?.code === "RELOGIN_FAILED" && !isRetry) {
+        setState((prev) => ({
+          ...prev,
+          error: {
+            message: "Refreshing your session… retrying automatically.",
+            code: "RELOGIN_FAILED",
+          },
+          isLoading: true,
+        }));
+        setTimeout(() => fetchDashboard(true), 3000);
+        return;
+      }
+
       const errorMessage =
         error.response?.data?.error ||
         error.message ||

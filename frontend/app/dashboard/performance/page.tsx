@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { performLogout } from "@/utils/logout";
 import { PerformanceHub } from "@/components/PerformanceHub";
 import { GpaPredictor } from "@/components/GpaPredictor";
 import { useDashboard } from "@/hooks/useDashboard";
@@ -45,11 +46,8 @@ export default function PerformancePage() {
 
   const { data, isLoading, error, refresh } = useDashboard(enrollment);
 
-  const handleLogout = () => {
-    localStorage.removeItem("enrollment");
-    localStorage.removeItem("dob");
-    localStorage.removeItem("password");
-    localStorage.removeItem("role");
+  const handleLogout = async () => {
+    await performLogout();
     router.push("/login");
   };
 

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useDashboard } from "@/hooks/useDashboard";
+import { performLogout } from "@/utils/logout";
 import { ArrowLeft, RefreshCw, Search, BookOpen, Layers, Award } from "lucide-react";
 import Link from "next/link";
 
@@ -43,13 +44,8 @@ export default function CoursesPage() {
 
   const { data, isLoading, error, invalidateCache } = useDashboard(enrollment);
 
-  const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("enrollment");
-      localStorage.removeItem("dob");
-      localStorage.removeItem("password");
-      localStorage.removeItem("role");
-    }
+  const handleLogout = async () => {
+    await performLogout();
     router.push("/login");
   };
 

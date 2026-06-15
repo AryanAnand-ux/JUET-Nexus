@@ -16,7 +16,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { AxiosError } from "axios";
 import axios from "../utils/axios";
 import crypto from "crypto";
-import { encryptSessionData, SessionData } from "../utils/encryption";
+import { encryptSessionData, decryptSessionData, SessionData } from "../utils/encryption";
 import { parseCaptchaImage, extractJSessionId } from "../parsers/auth";
 import { CacheService } from "../utils/cache";
 import { getRandomUserAgent } from "../utils/userAgent";
@@ -337,5 +337,41 @@ export function registerAuthRoutes(fastify: FastifyInstance, cache: CacheService
     config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
     handler: authHandler,
   });
-  fastify.log.info("Auth routes registered: GET /api/init, POST /api/auth");
+
+  // POST /api/logout — clears the httpOnly auth cookie and any push subscriptions
+  fastify.post("/api/logout", async (request, reply) => {
+    try {
+      const encryptedSession = request.cookies.auth;
+      if (encryptedSession) {
+        try {
+          const session = decryptSessionData(encryptedSession);
+          // Clean up push notification subscriptions for this user
+          await cache.invalidate('push_subscriptions', session.enrollment);
+          // Clean up cached dashboard data
+          await cache.invalidate('dashboard', session.enrollment);
+          request.log.info(`[Auth] Logout for enrollment: ${session.enrollment}`);
+        } catch {
+          // Cookie decryption failed — still proceed with clearing it
+          request.log.warn('[Auth] Logout: could not decrypt session cookie');
+        }
+      }
+
+      const isProduction = process.env.NODE_ENV === "production";
+      reply.clearCookie("auth", {
+        path: "/",
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+      });
+
+      return reply.send({ success: true, message: "Logged out successfully" });
+    } catch (error: any) {
+      request.log.error(error, '[Auth] Logout error');
+      // Even if cleanup fails, still clear the cookie
+      reply.clearCookie("auth", { path: "/" });
+      return reply.send({ success: true, message: "Logged out" });
+    }
+  });
+
+  fastify.log.info("Auth routes registered: GET /api/init, POST /api/auth, POST /api/logout");
 }

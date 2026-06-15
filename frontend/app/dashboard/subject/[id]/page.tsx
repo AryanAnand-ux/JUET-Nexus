@@ -6,6 +6,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { FigmaCard } from "@/components/base";
 import { useAttendanceDetails } from "@/hooks/useAttendanceDetails";
 import { computeScenarioPercentage, calculateBunkStatus } from "@/utils/bunkHelpers";
+import { performLogout } from "@/utils/logout";
 
 function SubjectDetailContent() {
   const params = useParams();
@@ -94,11 +95,8 @@ function SubjectDetailContent() {
     }
   }, [data]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("enrollment");
-    localStorage.removeItem("dob");
-    localStorage.removeItem("password");
-    localStorage.removeItem("role");
+  const handleLogout = async () => {
+    await performLogout();
     router.push("/login");
   };
 

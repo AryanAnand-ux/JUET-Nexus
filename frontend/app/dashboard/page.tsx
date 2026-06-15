@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BunkMeter } from "@/components/BunkMeter";
 import { useDashboard } from "@/hooks/useDashboard";
+import { performLogout } from "@/utils/logout";
 import { AlertTriangle, MapPin, RefreshCw } from "lucide-react";
 import { NotificationToggle } from "@/components/NotificationToggle";
 
@@ -62,12 +63,7 @@ export default function DashboardPage() {
   }, [router]);
 
   const handleLogout = async () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("enrollment");
-      localStorage.removeItem("dob");
-      localStorage.removeItem("password");
-      localStorage.removeItem("role");
-    }
+    await performLogout();
     router.push("/login");
   };
 

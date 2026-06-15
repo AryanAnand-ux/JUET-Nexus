@@ -224,30 +224,56 @@ describe("getValidSession", () => {
     });
   });
 
-  it("should clear cookie and throw SESSION_EXPIRED when silent re-login fails", async () => {
+  it("should NOT clear cookie and throw RELOGIN_FAILED when silent re-login fails after retries", async () => {
     // 1. First GET to verify (expired)
     (axios.get as jest.Mock).mockResolvedValueOnce({
       status: 200,
       data: "Session timeout!",
     });
 
-    // 2. Second GET to login page for captcha
+    // Attempt 1: login page + captcha OK + POST OK + verify fails
     (axios.get as jest.Mock).mockResolvedValueOnce({
       status: 200,
-      headers: {
-        "set-cookie": ["JSESSIONID=NEW_INITIAL_JSESSIONID; Path=/"],
-      },
+      headers: { "set-cookie": ["JSESSIONID=RETRY1_JSESSIONID; Path=/"] },
       data: `<html><body><div class="noselect">12345</div></body></html>`,
     });
-
-    // 3. POST to auth endpoint (credentials invalid/captcha mismatch)
     (axios.post as jest.Mock).mockResolvedValueOnce({
       status: 200,
       headers: {},
       data: "Invalid captcha",
     });
+    (axios.get as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      data: "Session timeout!",
+    });
 
-    // 4. Verify step fails (returns timeout or throws)
+    // Attempt 2: login page + captcha OK + POST OK + verify fails
+    (axios.get as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      headers: { "set-cookie": ["JSESSIONID=RETRY2_JSESSIONID; Path=/"] },
+      data: `<html><body><div class="noselect">67890</div></body></html>`,
+    });
+    (axios.post as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      headers: {},
+      data: "Invalid captcha",
+    });
+    (axios.get as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      data: "Session timeout!",
+    });
+
+    // Attempt 3: login page + captcha OK + POST OK + verify fails
+    (axios.get as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      headers: { "set-cookie": ["JSESSIONID=RETRY3_JSESSIONID; Path=/"] },
+      data: `<html><body><div class="noselect">11111</div></body></html>`,
+    });
+    (axios.post as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      headers: {},
+      data: "Invalid captcha",
+    });
     (axios.get as jest.Mock).mockResolvedValueOnce({
       status: 200,
       data: "Session timeout!",
@@ -274,16 +300,19 @@ describe("getValidSession", () => {
       },
     });
 
-    expect(response.statusCode).toBe(401);
+    // Should return 503 (transient) instead of 401 (fatal)
+    expect(response.statusCode).toBe(503);
     expect(error).toEqual({
-      statusCode: 401,
-      message: "Session expired. Please log in again.",
-      code: "SESSION_EXPIRED",
+      statusCode: 503,
+      message: "Unable to refresh session. Please try again in a moment.",
+      code: "RELOGIN_FAILED",
     });
 
-    // Cookie should be cleared in response (maxAge <= 0 or empty value or expires in past)
+    // Cookie should NOT be cleared — credentials are still needed for future attempts
     const authCookie = response.cookies.find((c: any) => c.name === "auth");
-    expect(authCookie).toBeDefined();
-    expect(authCookie.value).toBe("");
+    // Either the cookie is absent from the response (not set), or if present it should NOT be empty
+    if (authCookie) {
+      expect(authCookie.value).not.toBe("");
+    }
   });
 });
