@@ -1,0 +1,165 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "studentAttdsummarylist": [
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "30/09/2026 (02:00:PM - 03:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "29/09/2026 (03:00:PM - 04:00 PM)",
+        "present": "Absent"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "25/09/2026 (12:00:PM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "23/09/2026 (03:00:PM - 04:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "23/09/2026 (02:00:PM - 03:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "22/09/2026 (03:00:PM - 04:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "18/09/2026 (12:00:PM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "16/09/2026 (02:00:PM - 03:00 PM)",
+        "present": "Absent"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "15/09/2026 (03:00:PM - 04:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "04/09/2026 (12:00:PM - 12:50 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "02/09/2026 (02:00:PM - 03:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "01/09/2026 (03:00:PM - 04:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "21/08/2026 (12:00:PM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "07/08/2026 (12:00:PM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "05/08/2026 (02:00:PM - 03:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "04/08/2026 (03:00:PM - 04:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "31/07/2026 (12:00:PM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "29/07/2026 (02:00:PM - 03:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "28/07/2026 (03:00:PM - 04:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "24/07/2026 (12:00:PM - 01:00 PM)",
+        "present": "Absent"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "22/07/2026 (02:00:PM - 03:00 PM)",
+        "present": "Absent"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "21/07/2026 (03:00:PM - 04:00 PM)",
+        "present": "Absent"
+      }
+    ]
+  }
+}

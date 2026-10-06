@@ -1,0 +1,18 @@
+{
+  "minimal": {
+    "status": {
+      "responseStatus": "ERROR"
+    },
+    "response": {
+      "error": "The portal returned an empty response for /studentsgpacgpa/getallsemesterdatadetail."
+    }
+  },
+  "full": {
+    "status": {
+      "responseStatus": "ERROR"
+    },
+    "response": {
+      "error": "The portal returned an empty response for /studentsgpacgpa/getallsemesterdatadetail."
+    }
+  }
+}

@@ -7,7 +7,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
 import type { DashboardResponse } from "@/types";
 
 export interface DashboardState {
@@ -26,7 +25,6 @@ export interface UseDashboardReturn extends DashboardState {
 }
 
 export function useDashboard(enrollment: string | null): UseDashboardReturn {
-  const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
   const [state, setState] = useState<DashboardState>({
@@ -85,12 +83,11 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         setState((prev) => ({
           ...prev,
           error: {
-            message: "Session expired. Please login again.",
-            code: "UNAUTHORIZED",
+            message: "Portal session renewing in background. Showing cached records.",
+            code: "SESSION_RENEWING",
           },
           isLoading: false,
         }));
-        setTimeout(() => router.push("/login"), 2000);
         return;
       }
 
@@ -119,7 +116,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         isLoading: false,
       }));
     }
-  }, [enrollment, API_URL, router]);
+  }, [enrollment, API_URL]);
 
   /**
    * Manually invalidate cache
@@ -143,7 +140,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         ...prev,
         isLoading: false,
         error: {
-          message: error.response?.data?.error || error.message || "Failed to sync WebKiosk data",
+          message: error.response?.data?.error || error.message || "Failed to sync portal data",
           code: error.response?.data?.code
         }
       }));

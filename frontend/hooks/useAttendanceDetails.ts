@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
 import type { AttendanceDetailsResponse } from "@/types";
 
 export interface AttendanceDetailsState {
@@ -15,7 +14,6 @@ export function useAttendanceDetails(
   subject: string,
   link: string | null
 ) {
-  const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
   const [state, setState] = useState<AttendanceDetailsState>({
@@ -57,12 +55,11 @@ export function useAttendanceDetails(
         setState((prev) => ({
           ...prev,
           error: {
-            message: "Session expired. Please login again.",
-            code: "UNAUTHORIZED",
+            message: "Attendance logs temporarily unavailable from portal.",
+            code: "SESSION_RENEWING",
           },
           isLoading: false,
         }));
-        setTimeout(() => router.push("/login"), 2000);
         return;
       }
 
@@ -77,7 +74,7 @@ export function useAttendanceDetails(
         isLoading: false,
       }));
     }
-  }, [subject, link, API_URL, router]);
+  }, [subject, link, API_URL]);
 
   return {
     ...state,

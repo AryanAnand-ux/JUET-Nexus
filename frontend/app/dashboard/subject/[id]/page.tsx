@@ -284,7 +284,7 @@ function SubjectDetailContent() {
             {!hasDetailData && isLoading && (
               <div className="mb-6 py-3 text-center">
                 <p className="text-xs font-medium text-gray-400 animate-pulse font-nunito">
-                  Loading class counts from WebKiosk…
+                  Loading class counts from portal…
                 </p>
               </div>
             )}
@@ -594,7 +594,7 @@ function SubjectDetailContent() {
             <div className="border border-gray-200 rounded-2xl bg-white p-8 text-center shadow-sm">
               <p className="text-sm font-medium text-slate-500 font-nunito">
                 {detailLink
-                  ? "No daily records were found on WebKiosk for this subject."
+                  ? "No daily records were found on the portal for this subject."
                   : "Daily attendance log is not available for this subject."}
               </p>
             </div>

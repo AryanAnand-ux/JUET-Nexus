@@ -1,0 +1,12 @@
+{
+  "status": {
+    "responseStatus": "Failure",
+    "errors": [
+      "NO Attendance Found"
+    ],
+    "identifier": "studentinforegistrationforattendenceservice."
+  },
+  "response": {
+    "status": "Failed"
+  }
+}

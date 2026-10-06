@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { publicKey } from '../utils/vapid';
 import { CacheService } from '../utils/cache';
 import { decryptSessionData } from '../utils/encryption';

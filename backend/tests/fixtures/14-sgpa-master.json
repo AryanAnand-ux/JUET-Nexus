@@ -1,0 +1,17 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "studentlov": {
+      "studentid": "JUET2400386",
+      "labelString": "Semester",
+      "currentsemester": "5",
+      "name": "ARYAN ANAND",
+      "instituteid": "INID2603J000001",
+      "enrollmentno": "241B610"
+    }
+  }
+}

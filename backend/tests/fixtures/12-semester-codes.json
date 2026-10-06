@@ -1,0 +1,19 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "semestercode": [
+      {
+        "registrationdatefrom": 1780252200000,
+        "registrationdesc": "2026 ODD SEMESTER",
+        "registrationid": "JERUM26030000034",
+        "registrationdateto": 1798655400000,
+        "registrationcode": "2026ODDSEM"
+      }
+    ],
+    "examevent": []
+  }
+}

@@ -1,14 +1,8 @@
 import { FastifyInstance } from 'fastify';
-import axios from '../utils/axios';
-import { parseAttendanceDetails } from '../parsers/attendanceDetails';
-import { getValidSession } from './session';
-import { getRandomUserAgent } from '../utils/userAgent';
-import type { AttendanceDetailsResponse } from '../../../shared/types';
-
-const WEBKIOSK_URL =
-  process.env.WEBKIOSK_URL ||
-  process.env.WEBKIOSK_BASE_URL ||
-  'https://webkiosk.juet.ac.in';
+import { getOrRenewCampusLynxIdentity } from './session';
+import { createPortalClient } from '../portal/client';
+import { fetchAttendanceDetail, parseDetailLink } from '../portal/attendance';
+import { PortalError } from '../portal/types';
 
 export async function registerAttendanceRoutes(fastify: FastifyInstance) {
   fastify.get<{ Querystring: { link: string; subject: string } }>(
@@ -27,17 +21,6 @@ export async function registerAttendanceRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        let jsessionid: string;
-        try {
-          jsessionid = await getValidSession(request, reply);
-        } catch (err: any) {
-          return reply.status(err.statusCode || 401).send({
-            success: false,
-            error: err.message || 'Unauthorized',
-            code: err.code || 'UNAUTHORIZED',
-          });
-        }
-
         const { link, subject } = request.query;
 
         if (!link || !subject) {
@@ -48,106 +31,69 @@ export async function registerAttendanceRoutes(fastify: FastifyInstance) {
           });
         }
 
-        if (link.startsWith('http') || link.startsWith('//')) {
-          try {
-            const parsedUrl = new URL(link, WEBKIOSK_URL);
-            const parsedBase = new URL(WEBKIOSK_URL);
-            if (parsedUrl.origin !== parsedBase.origin) {
-              return reply.status(400).send({
-                success: false,
-                error: 'Cross-origin URLs are not allowed',
-                code: 'BAD_REQUEST',
-              });
-            }
-          } catch (e) {
-            return reply.status(400).send({
-              success: false,
-              error: 'Invalid URL format',
-              code: 'BAD_REQUEST',
-            });
-          }
-        }
-
-        // Validate that the link is actually a WebKiosk attendance page
-        if (
-          !link.includes('ViewDatewiseLecAttendance.jsp') &&
-          !link.includes('StudentAttendanceDetails.jsp') &&
-          !link.includes('StudentFiles/Academic')
-        ) {
+        const ref = parseDetailLink(link);
+        if (!ref) {
           return reply.status(400).send({
             success: false,
-            error: 'Invalid link',
-            code: 'BAD_REQUEST',
+            error: 'Invalid attendance detail reference',
+            code: 'INVALID_REF',
           });
         }
 
-        // Construct full URL. The link is relative to StudentFiles/Academic/
-        let url: string;
-        if (link.startsWith('http')) {
-          url = link;
-        } else if (link.startsWith('/')) {
-          url = `${WEBKIOSK_URL}${link}`;
-        } else {
-          url = `${WEBKIOSK_URL}/StudentFiles/Academic/${link}`;
-        }
-
-        fastify.log.info(`[AttendanceDetails] Fetching details for ${subject} at ${url}`);
-
-        const resp = await axios.get(url, {
-          timeout: 20000,
-          maxRedirects: 5,
-          validateStatus: () => true,
-          headers: {
-            Cookie: `JSESSIONID=${jsessionid}`,
-            'User-Agent': getRandomUserAgent(),
-            Referer: `${WEBKIOSK_URL}/StudentFiles/Academic/StudentAttendanceList.jsp`,
-          },
-        });
-
-        const html = typeof resp.data === 'string' ? resp.data : '';
-
-        fastify.log.info(`[AttendanceDetails] Response status=${resp.status}, HTML length=${html.length}`);
-
-        // Check for session timeout
-        if (
-          html.includes('Session timeout') ||
-          (html.includes('Please') && html.includes('Login')) ||
-          html.length < 100
-        ) {
-          fastify.log.warn('[AttendanceDetails] Session expired');
-          return reply.status(401).send({
+        let identity;
+        try {
+          identity = await getOrRenewCampusLynxIdentity(request, reply);
+        } catch (err: any) {
+          return reply.status(err.statusCode || 401).send({
             success: false,
-            error: 'Session expired. Please log in again.',
-            code: 'SESSION_EXPIRED',
+            error: err.message || 'Unauthorized',
+            code: err.code || 'UNAUTHORIZED',
           });
         }
 
-        // Parse HTML
-        const logs = parseAttendanceDetails(html);
-        fastify.log.info(`[AttendanceDetails] Parsed ${logs.length} log entries`);
-
-        // Calculate counts
-        const classesHeld = logs.length;
-        const classesAttended = logs.filter((l) => l.status === 'Present').length;
-        const percentage = classesHeld > 0 ? (classesAttended / classesHeld) * 100 : 0;
-
-        const responseData: AttendanceDetailsResponse = {
-          subject,
-          classesHeld,
-          classesAttended,
-          percentage: Math.round(percentage * 10) / 10,
-          logs,
+        const client = createPortalClient();
+        const transport = {
+          postEncrypted: (path: string, payload: Record<string, unknown>) =>
+            client.postEncrypted(path, payload, identity),
         };
 
-        return reply.send({
-          success: true,
-          data: responseData,
-        });
+        try {
+          const detail = await fetchAttendanceDetail(
+            transport,
+            {
+              instituteid: identity.instituteid,
+              stynumber: ref.stynumber,
+              registrationid: ref.registrationid,
+              registrationcode: ref.registrationcode,
+            },
+            {
+              subject,
+              subjectid: ref.subjectid,
+              individualsubjectcode: ref.individualsubjectcode,
+              components: ref.components,
+            }
+          );
+          return reply.send({ success: true, data: detail });
+        } catch (error: any) {
+          const status = error instanceof PortalError && error.status === 401 ? 401 : 502;
+          request.log.error(error, '[AttendanceDetails] CampusLynx fetch failed');
+          return reply.status(status).send({
+            success: false,
+            error:
+              status === 401
+                ? 'Session expired. Please log in again.'
+                : 'Failed to fetch attendance details',
+            code: status === 401 ? 'SESSION_EXPIRED' : 'ATTENDANCE_FETCH_FAILED',
+          });
+        } finally {
+          client.destroy();
+        }
       } catch (error: any) {
-        fastify.log.error(error, '[AttendanceDetails] Failed to fetch details');
+        request.log.error(error, '[AttendanceDetails] Unexpected error');
         return reply.status(500).send({
           success: false,
-          error: 'Failed to fetch attendance details',
+          error: error.message || 'Internal server error',
+          code: 'INTERNAL_ERROR',
         });
       }
     }

@@ -1,0 +1,8 @@
+{
+  "timestamp": 1790841852609,
+  "status": 500,
+  "error": "Internal Server Error",
+  "exception": "org.springframework.dao.InvalidDataAccessResourceUsageException",
+  "message": "could not extract ResultSet; SQL [n/a]; nested exception is org.hibernate.exception.SQLGrammarException: could not extract ResultSet",
+  "path": "/StudentPortalAPI/studentsgpacgpa/getallsemesterdatadetail"
+}

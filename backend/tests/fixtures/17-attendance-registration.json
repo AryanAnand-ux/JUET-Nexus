@@ -1,0 +1,8 @@
+{
+  "timestamp": 1790841857737,
+  "status": 400,
+  "error": "Bad Request",
+  "exception": "org.springframework.http.converter.HttpMessageNotReadableException",
+  "message": "JSON parse error: Unrecognized token 'sPQuf0n3jFQBPg7IBcHg1e6cLET4hJpJ5ggy2FsFOcV4xLyTcJ2IciwukhFKZV8X': was expecting ('true', 'false' or 'null'); nested exception is com.fasterxml.jackson.core.JsonParseException: Unrecognized token 'sPQuf0n3jFQBPg7IBcHg1e6cLET4hJpJ5ggy2FsFOcV4xLyTcJ2IciwukhFKZV8X': was expecting ('true', 'false' or 'null')\n at [Source: java.io.PushbackInputStream@709121a4; line: 1, column: 129]",
+  "path": "/StudentPortalAPI/StudentClassAttendance/getstudentInforegistrationforattendence"
+}

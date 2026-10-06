@@ -48,10 +48,11 @@ export function FigmaLoginGraphic() {
         {/* Text */}
         <div className="text-center mt-12 px-8">
           <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-6 font-nunito leading-tight text-center">
-            WebKiosk Sucks??
+            Campus Portal Slow??
           </h2>
           <p className="text-figma-lavender-light opacity-90 text-lg lg:text-xl font-medium font-nunito leading-relaxed text-center">
-            I got U          </p>
+            JUET Nexus is here
+          </p>
         </div>
       </div>
     </div>

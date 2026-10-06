@@ -1,0 +1,81 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "fullMarksFlag": "Ys",
+    "passingMarksFlag": "3",
+    "weightageMarksFlag": "456",
+    "viewmarksbystudent": [
+      {
+        "subjectcode": "CS109",
+        "subjectdesc": "COMPUTER NETWORKS",
+        "eventcode": "TEST-1",
+        "exameventid": "JEEXV2608A0000001",
+        "fullmarks": 15,
+        "passingmarks": 0,
+        "obtainedmarks": 10,
+        "weightage": 15,
+        "obtainedWeightage": 9.9
+      },
+      {
+        "subjectcode": "CS120",
+        "subjectdesc": "DEEP LEARNING",
+        "eventcode": "TEST-1",
+        "exameventid": "JEEXV2608A0000001",
+        "fullmarks": 15,
+        "passingmarks": 0,
+        "obtainedmarks": 13,
+        "weightage": 15,
+        "obtainedWeightage": 12.9
+      },
+      {
+        "subjectcode": "CS301",
+        "subjectdesc": "PROMPT ENGINEERING AND GENERATIVE AI SYSTEMS",
+        "eventcode": "TEST-1",
+        "exameventid": "JEEXV2608A0000001",
+        "fullmarks": 15,
+        "passingmarks": 0,
+        "obtainedmarks": 12,
+        "weightage": 15,
+        "obtainedWeightage": 12
+      },
+      {
+        "subjectcode": "HS301",
+        "subjectdesc": "CONCEPTS OF ECONOMICS",
+        "eventcode": "TEST-1",
+        "exameventid": "JEEXV2608A0000001",
+        "fullmarks": 15,
+        "passingmarks": 0,
+        "obtainedmarks": 7,
+        "weightage": 15,
+        "obtainedWeightage": 6.9
+      },
+      {
+        "subjectcode": "MA106",
+        "subjectdesc": "PROBABILITY THEORY AND RANDOM PROCESSES",
+        "eventcode": "TEST-1",
+        "exameventid": "JEEXV2608A0000001",
+        "fullmarks": 15,
+        "passingmarks": 0,
+        "obtainedmarks": 15,
+        "weightage": 15,
+        "obtainedWeightage": 15
+      },
+      {
+        "subjectcode": "PH303",
+        "subjectdesc": "NANO SCIENCE",
+        "eventcode": "TEST-1",
+        "exameventid": "JEEXV2608A0000001",
+        "fullmarks": 15,
+        "passingmarks": 0,
+        "obtainedmarks": 8.5,
+        "weightage": 15,
+        "obtainedWeightage": 8.4
+      }
+    ],
+    "obtainedweightagemarksflag": "6654"
+  }
+}

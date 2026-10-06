@@ -1,0 +1,153 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "studentattendancelist": [
+      {
+        "studentid": "JUET2400386",
+        "LTpercantage": 88.5,
+        "Lpercentage": 88.5,
+        "individualsubjectcode": "PH303",
+        "registrationid": "JERUM26030000034",
+        "instituteid": "INID2603J000001",
+        "subjectcode": "NANO SCIENCE(PH303)",
+        "subjectid": "250011",
+        "Lprepercentage": 0,
+        "Lsubjectcomponentid": "JESCP06030000001"
+      },
+      {
+        "LTpercantage": 86.5,
+        "individualsubjectcode": "MA106",
+        "Tsubjectcomponentid": "JESCP26030000002",
+        "subjectcode": "PROBABILITY THEORY AND RANDOM PROCESSES(MA106)",
+        "subjectid": "250027",
+        "Lsubjectcomponentid": "JESCP06030000001",
+        "studentid": "JUET2400386",
+        "Tprepercentage": 0,
+        "Lpercentage": 89.7,
+        "Tpercentage": 75,
+        "registrationid": "JERUM26030000034",
+        "instituteid": "INID2603J000001",
+        "Lprepercentage": 0
+      },
+      {
+        "studentid": "JUET2400386",
+        "LTpercantage": 73.9,
+        "Lpercentage": 73.9,
+        "individualsubjectcode": "CS109",
+        "registrationid": "JERUM26030000034",
+        "instituteid": "INID2603J000001",
+        "subjectcode": "COMPUTER NETWORKS(CS109)",
+        "subjectid": "250030",
+        "Lprepercentage": 0,
+        "Lsubjectcomponentid": "JESCP06030000001"
+      },
+      {
+        "LTpercantage": 83.3,
+        "individualsubjectcode": "HS301",
+        "Tsubjectcomponentid": "JESCP26030000002",
+        "subjectcode": "CONCEPTS OF ECONOMICS(HS301)",
+        "subjectid": "250032",
+        "Lsubjectcomponentid": "JESCP06030000001",
+        "studentid": "JUET2400386",
+        "Tprepercentage": 0,
+        "Lpercentage": 87.5,
+        "Tpercentage": 75,
+        "registrationid": "JERUM26030000034",
+        "instituteid": "INID2603J000001",
+        "Lprepercentage": 0
+      },
+      {
+        "studentid": "JUET2400386",
+        "LTpercantage": 0,
+        "individualsubjectcode": "CS211",
+        "registrationid": "JERUM26030000034",
+        "Pprepercentage": 0,
+        "instituteid": "INID2603J000001",
+        "subjectcode": "MINOR PROJECT-1(CS211)",
+        "Psubjectcomponentid": "JESCP26030000003",
+        "subjectid": "250034",
+        "Ppercentage": 0
+      },
+      {
+        "studentid": "JUET2400386",
+        "LTpercantage": 75,
+        "individualsubjectcode": "CS212",
+        "registrationid": "JERUM26030000034",
+        "Pprepercentage": 0,
+        "instituteid": "INID2603J000001",
+        "subjectcode": "COMPUTER NETWORKS LAB(CS212)",
+        "Psubjectcomponentid": "JESCP26030000003",
+        "subjectid": "250035",
+        "Ppercentage": 75
+      },
+      {
+        "studentid": "JUET2400386",
+        "LTpercantage": 100,
+        "individualsubjectcode": "CS215",
+        "registrationid": "JERUM26030000034",
+        "Pprepercentage": 0,
+        "instituteid": "INID2603J000001",
+        "subjectcode": "ADVANCED PROGRAMMING LAB-2(CS215)",
+        "Psubjectcomponentid": "JESCP26030000003",
+        "subjectid": "250037",
+        "Ppercentage": 100
+      },
+      {
+        "studentid": "JUET2400386",
+        "LTpercantage": 0,
+        "individualsubjectcode": "CS003",
+        "registrationid": "JERUM26030000034",
+        "Pprepercentage": 0,
+        "instituteid": "INID2603J000001",
+        "subjectcode": "SUMMER INTERNSHIP(CS003)",
+        "Psubjectcomponentid": "JESCP26030000003",
+        "subjectid": "260041",
+        "Ppercentage": 0
+      },
+      {
+        "studentid": "JUET2400386",
+        "LTpercantage": 88.9,
+        "individualsubjectcode": "CS224",
+        "registrationid": "JERUM26030000034",
+        "Pprepercentage": 0,
+        "instituteid": "INID2603J000001",
+        "subjectcode": "DEEP LEARNING LAB(CS224)",
+        "Psubjectcomponentid": "JESCP26030000003",
+        "subjectid": "260047",
+        "Ppercentage": 88.9
+      },
+      {
+        "LTpercantage": 80.6,
+        "individualsubjectcode": "CS120",
+        "Tsubjectcomponentid": "JESCP26030000002",
+        "subjectcode": "DEEP LEARNING(CS120)",
+        "subjectid": "260048",
+        "Lsubjectcomponentid": "JESCP06030000001",
+        "studentid": "JUET2400386",
+        "Tprepercentage": 0,
+        "Lpercentage": 73.1,
+        "Tpercentage": 100,
+        "registrationid": "JERUM26030000034",
+        "instituteid": "INID2603J000001",
+        "Lprepercentage": 0
+      },
+      {
+        "studentid": "JUET2400386",
+        "LTpercantage": 79.2,
+        "Lpercentage": 79.2,
+        "individualsubjectcode": "CS301",
+        "registrationid": "JERUM26030000034",
+        "instituteid": "INID2603J000001",
+        "subjectcode": "PROMPT ENGINEERING AND GENERATIVE AI SYSTEMS(CS301)",
+        "subjectid": "260049",
+        "Lprepercentage": 0,
+        "Lsubjectcomponentid": "JESCP06030000001"
+      }
+    ],
+    "currentSem": "5"
+  }
+}

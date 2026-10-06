@@ -35,7 +35,7 @@ const LoadingSkeleton: React.FC = () => (
     {[1, 2, 3].map((i) => (
       <div
         key={i}
-        className="border border-gray-100 bg-gray-50 rounded-2xl h-[280px] animate-pulse shadow-sm"
+        className="border border-gray-100 dark:border-slate-800 bg-gray-100 dark:bg-slate-800/60 rounded-2xl h-[280px] animate-pulse shadow-sm"
       />
     ))}
   </div>
@@ -122,7 +122,7 @@ export default function DashboardPage() {
               className="flex items-center gap-2 border border-slate-700 bg-slate-800/80 hover:bg-slate-800 hover:border-indigo-500 text-white rounded-xl px-5 py-3 text-sm font-bold disabled:opacity-50 transition-all shadow-lg hover:shadow-indigo-950/20 active:scale-95"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> 
-              <span>Sync WebKiosk</span>
+              <span>Sync Portal</span>
             </button>
           </div>
         </div>
@@ -140,24 +140,24 @@ export default function DashboardPage() {
           <BunkMeter attendanceRecords={data.attendance} />
 
           {/* Footer Info */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 pt-6">
-            <p className="text-xs font-bold text-gray-400 font-nunito">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 dark:border-slate-800 pt-6">
+            <p className="text-xs font-bold text-gray-400 dark:text-slate-500 font-nunito">
               Last synced: {cachedAt ? new Date(cachedAt).toLocaleString() : new Date().toLocaleString()}
             </p>
-            <p className="text-xs font-medium text-gray-400 font-nunito">
-              Secure WebKiosk session is active and verified.
+            <p className="text-xs font-medium text-gray-400 dark:text-slate-500 font-nunito">
+              Secure portal session is active and verified.
             </p>
           </div>
         </div>
       ) : (
-        <div className="border border-gray-200 rounded-[24px] bg-white p-12 text-center shadow-sm">
-          <p className="text-sm font-medium text-gray-500 font-nunito mb-4">
-            No data available. Let&apos;s sync your WebKiosk credentials.
+        <div className="border border-gray-200 dark:border-slate-800 rounded-[24px] bg-white dark:bg-slate-900 p-12 text-center shadow-sm">
+          <p className="text-sm font-medium text-gray-500 dark:text-slate-400 font-nunito mb-4">
+            No data available. Let&apos;s sync your portal data.
           </p>
           <button
             onClick={invalidateCache}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all"
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-md shadow-indigo-600/20"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> Sync Now
           </button>
