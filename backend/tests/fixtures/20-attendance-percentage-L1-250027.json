@@ -1,0 +1,214 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "studentAttdsummarylist": [
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "30/09/2026 (10:00:PM - 10:55 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "29/09/2026 (09:00:AM - 09:55 AM)",
+        "present": "Absent"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "28/09/2026 (02:00:PM - 02:55 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "23/09/2026 (10:00:AM - 10:55 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "22/09/2026 (09:00:PM - 09:55 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "21/09/2026 (02:00:PM - 02:55 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "17/09/2026 (02:00:PM - 02:50 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "16/09/2026 (10:00:AM - 10:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "15/09/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "14/09/2026 (02:00:PM - 02:50 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "09/09/2026 (10:00:AM - 10:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "08/09/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "07/09/2026 (02:00:PM - 02:50 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "02/09/2026 (10:00:AM - 10:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "01/09/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "19/08/2026 (10:00:AM - 10:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "18/08/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "17/08/2026 (02:00:PM - 02:50 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "12/08/2026 (10:00:AM - 10:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "11/08/2026 (09:00:PM - 09:50 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "10/08/2026 (02:00:PM - 02:50 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "05/08/2026 (10:00:AM - 11:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "04/08/2026 (09:00:AM - 10:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "03/08/2026 (02:00:PM - 03:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "29/07/2026 (10:00:AM - 11:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "28/07/2026 (09:00:AM - 10:00 AM)",
+        "present": "Absent"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "27/07/2026 (02:00:PM - 03:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "22/07/2026 (10:00:AM - 11:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "VAIBHAV BISHT",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "21/07/2026 (09:00:AM - 10:00 AM)",
+        "present": "Absent"
+      }
+    ]
+  }
+}

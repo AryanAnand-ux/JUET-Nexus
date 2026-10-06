@@ -5,7 +5,6 @@
  */
 
 import crypto from "crypto";
-import type { AuthPayload } from "../routes/auth";
 
 // 256-bit (32 bytes) for AES-256
 const ALGORITHM = "aes-256-gcm";
@@ -98,7 +97,12 @@ export interface SessionData {
   enrollment: string;
   password: string;
   dob: string;
-  role: AuthPayload["role"];
+  role: "Student" | "Employee" | "Guest" | string;
+  /**
+   * CampusLynx identity, present only after a CampusLynx login. Optional so
+   * pre-migration cookies keep decrypting unchanged; never holds a password.
+   */
+  campusLynx?: import("../portal/types").PortalSessionIdentity;
 }
 
 /**

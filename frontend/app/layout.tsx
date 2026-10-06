@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     template: "%s | JUET Nexus",
   },
   description:
-    "JUET Nexus is a modern, secure proxy dashboard for JUET WebKiosk. View attendance, SGPA/CGPA, and notices in one place.",
+    "JUET Nexus is a modern, secure proxy dashboard for JUET student portal. View attendance, SGPA/CGPA, and exam schedule in one place.",
   applicationName: "JUET Nexus",
   manifest: "/manifest.json",
   icons: {
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "JUET Nexus Dashboard",
-    description: "Modern, secure proxy dashboard for JUET WebKiosk.",
+    description: "Modern, secure proxy dashboard for JUET student portal.",
     type: "website",
   },
   robots: { index: false, follow: false }, // Private student tool — keep out of search engines

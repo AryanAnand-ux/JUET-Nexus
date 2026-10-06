@@ -1,0 +1,81 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "studentAttdsummarylist": [
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "30/09/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "23/09/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "16/09/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "09/09/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "02/09/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "19/08/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "12/08/2026 (09:00:AM - 09:50 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "05/08/2026 (09:00:AM - 10:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "29/07/2026 (09:00:AM - 10:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "22/07/2026 (09:00:AM - 10:00 AM)",
+        "present": "Present"
+      }
+    ]
+  }
+}

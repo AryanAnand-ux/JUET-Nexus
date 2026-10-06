@@ -1,0 +1,67 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "studentAttdsummarylist": [
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "16/09/2026 (11:00:AM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "09/09/2026 (11:00:AM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "02/09/2026 (11:00:AM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "19/08/2026 (11:00:AM - 01:00 PM)",
+        "present": "Absent"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "12/08/2026 (11:00:AM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "05/08/2026 (11:00:AM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "GAURAV SAXENA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "29/07/2026 (11:00:AM - 01:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "MAHAKANT SHARMA",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "22/07/2026 (11:00:AM - 01:00 PM)",
+        "present": "Absent"
+      }
+    ]
+  }
+}

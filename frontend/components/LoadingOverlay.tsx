@@ -14,7 +14,7 @@ export interface LoadingOverlayProps {
 
 export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   isVisible,
-  message = "Connecting to WebKiosk...",
+  message = "Connecting to your student portal...",
 }) => {
   if (!isVisible) return null;
 

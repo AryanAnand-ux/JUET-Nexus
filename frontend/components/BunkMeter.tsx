@@ -69,7 +69,7 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
       {attendanceRecords.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-sm font-medium text-slate-400 font-nunito">
-            No attendance data available. Connect to your WebKiosk to view.
+            No attendance data available. Connect to your student portal to view.
           </p>
         </div>
       ) : (
@@ -144,13 +144,14 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
                 >
                   <div className="flex flex-col md:flex-row items-center md:items-stretch gap-6">
                     {/* Circular Progress Indicator */}
-                    <div className="relative w-24 h-24 flex items-center justify-center shrink-0 bg-slate-50 border border-slate-100 rounded-full shadow-inner">
+                    <div className="relative w-24 h-24 flex items-center justify-center shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full shadow-inner">
                       <svg className="transform -rotate-90 w-24 h-24">
                         <circle
                           cx="48"
                           cy="48"
                           r="34"
                           stroke="#F1F5F9"
+                          className="dark:stroke-slate-800"
                           strokeWidth="8"
                           fill="transparent"
                         />
@@ -168,10 +169,10 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
                         />
                       </svg>
                       <div className="absolute flex flex-col items-center">
-                        <span className="text-2xl font-extrabold text-slate-800 leading-none font-nunito">
+                        <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 leading-none font-nunito">
                           {record.percentage.toFixed(0)}
                         </span>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Lec %</span>
+                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Lec %</span>
                       </div>
                     </div>
 

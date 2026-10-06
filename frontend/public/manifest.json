@@ -1,7 +1,7 @@
 {
   "name": "JUET Nexus",
   "short_name": "Nexus",
-  "description": "Modern proxy dashboard for JUET WebKiosk",
+  "description": "Modern proxy dashboard for JUET student portal",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#FAF9F6",

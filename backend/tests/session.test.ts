@@ -1,25 +1,15 @@
 import Fastify from "fastify";
 import fastifyCookie from "@fastify/cookie";
-import { getValidSession } from "../src/routes/session";
+import { getCampusLynxIdentity, getOrRenewCampusLynxIdentity, getValidSession } from "../src/routes/session";
 import { encryptSessionData, SessionData } from "../src/utils/encryption";
-import axios from "../src/utils/axios";
 
-// Mock environment for testing
 const TEST_ENCRYPTION_KEY = "0".repeat(64);
 process.env.ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
 
-jest.mock("../src/utils/axios", () => {
-  return {
-    post: jest.fn(),
-    get: jest.fn(),
-  };
-});
-
-describe("getValidSession", () => {
+describe("CampusLynx Session", () => {
   let fastify: any;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
     fastify = Fastify({ logger: false });
     await fastify.register(fastifyCookie);
   });
@@ -28,22 +18,31 @@ describe("getValidSession", () => {
     await fastify.close();
   });
 
-  const sampleSession: SessionData = {
-    jsessionid: "VALID_JSESSIONID_123",
+  const validSession: SessionData = {
+    jsessionid: "",
     enrollment: "24BCS100",
-    password: "password123",
-    dob: "01-01-2002",
+    password: "",
+    dob: "",
     role: "Student",
+    campusLynx: {
+      clientid: "JUET",
+      instituteid: "INST1",
+      companyid: "CO1",
+      memberid: "MEM1",
+      enrollmentno: "24BCS100",
+      membertype: "S",
+      token: "jwt.token.here",
+      username: "24BCS100",
+      otppwd: "PWD",
+    },
   };
 
   it("should throw NO_SESSION when auth cookie is missing", async () => {
-    let error: any;
     fastify.get("/test", async (request: any, reply: any) => {
       try {
-        await getValidSession(request, reply);
+        getCampusLynxIdentity(request);
         return { success: true };
-      } catch (err) {
-        error = err;
+      } catch (err: any) {
         reply.status(err.statusCode || 500).send(err);
       }
     });
@@ -54,21 +53,15 @@ describe("getValidSession", () => {
     });
 
     expect(response.statusCode).toBe(401);
-    expect(error).toEqual({
-      statusCode: 401,
-      message: "Not authenticated",
-      code: "NO_SESSION",
-    });
+    expect(response.json().code).toBe("NO_SESSION");
   });
 
-  it("should throw INVALID_SESSION when auth cookie decryption fails", async () => {
-    let error: any;
+  it("should throw INVALID_SESSION when auth cookie is corrupted", async () => {
     fastify.get("/test", async (request: any, reply: any) => {
       try {
-        await getValidSession(request, reply);
+        getCampusLynxIdentity(request);
         return { success: true };
-      } catch (err) {
-        error = err;
+      } catch (err: any) {
         reply.status(err.statusCode || 500).send(err);
       }
     });
@@ -76,243 +69,92 @@ describe("getValidSession", () => {
     const response = await fastify.inject({
       method: "GET",
       url: "/test",
-      cookies: {
-        auth: "invalid-encrypted-cookie-data",
-      },
+      cookies: { auth: "corrupted_hex_cookie_string" },
     });
 
     expect(response.statusCode).toBe(401);
-    expect(error).toEqual({
-      statusCode: 401,
-      message: "Unauthorized: Invalid session",
-      code: "INVALID_SESSION",
-    });
+    expect(response.json().code).toBe("INVALID_SESSION");
   });
 
-  it("should return the current JSESSIONID if session is active/valid", async () => {
-    // Mock verifyWebKioskSession to return success (a long HTML body)
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      data: "<html><body>Welcome student! " + "A".repeat(250) + "</body></html>",
-    });
-
-    const encrypted = encryptSessionData(sampleSession);
-
-    let result: string | undefined;
-    fastify.get("/test", async (request: any, reply: any) => {
-      result = await getValidSession(request, reply);
-      return { success: true };
-    });
-
-    const response = await fastify.inject({
-      method: "GET",
-      url: "/test",
-      cookies: {
-        auth: encrypted,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(result).toBe("VALID_JSESSIONID_123");
-    // Should verify the session using the correct endpoint
-    expect(axios.get).toHaveBeenCalledWith(
-      "https://webkiosk.juet.ac.in/StudentFiles/PersonalFiles/ShowAlertMessageSTUD.jsp",
-      expect.any(Object)
-    );
-  });
-
-  it("should perform silent re-login when session has expired and credentials are saved", async () => {
-    // 1. First GET to verify endpoint (session is expired) -> returns small page (timeout)
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      data: "Session timeout! Please Login again.",
-    });
-
-    // 2. Second GET to login page for captcha -> returns HTML with captcha in .noselect
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      headers: {
-        "set-cookie": ["JSESSIONID=NEW_INITIAL_JSESSIONID; Path=/"],
-      },
-      data: `<html><body><div class="noselect">12345</div><img src="captcha.jsp"></body></html>`,
-    });
-
-    // 3. POST to UserLoginAction.jsp -> returns 200 with new session ID
-    (axios.post as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      headers: {
-        "set-cookie": ["JSESSIONID=NEW_VALID_JSESSIONID; Path=/"],
-      },
-      data: "Redirecting...",
-    });
-
-    // 4. Third GET to verify newly logged in session -> returns valid page
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      data: "<html><body>Welcome! " + "A".repeat(300) + "</body></html>",
-    });
-
-    const encrypted = encryptSessionData(sampleSession);
-
-    let result: string | undefined;
-    fastify.get("/test", async (request: any, reply: any) => {
-      result = await getValidSession(request, reply);
-      return { success: true };
-    });
-
-    const response = await fastify.inject({
-      method: "GET",
-      url: "/test",
-      cookies: {
-        auth: encrypted,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(result).toBe("NEW_VALID_JSESSIONID");
-
-    // Cookie should be updated in response
-    const authCookie = response.cookies.find((c: any) => c.name === "auth");
-    expect(authCookie).toBeDefined();
-
-    // Verify background requests were made
-    expect(axios.get).toHaveBeenCalledTimes(3);
-    expect(axios.post).toHaveBeenCalledTimes(1);
-  });
-
-  it("should throw SESSION_EXPIRED when session is expired and NO credentials are saved (legacy)", async () => {
-    // 1. Verify returns timeout
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      data: "Session timeout! Please Login again.",
-    });
-
-    // Legacy session only contains jsessionid
-    const legacySession: SessionData = {
-      jsessionid: "LEGACY_ID",
-      enrollment: "",
+  it("should throw NO_CAMPUSLYNX_SESSION when session lacks token", async () => {
+    const sessionWithoutToken: SessionData = {
+      jsessionid: "",
+      enrollment: "24BCS100",
       password: "",
       dob: "",
       role: "Student",
     };
-    const encrypted = encryptSessionData(legacySession);
 
-    let error: any;
     fastify.get("/test", async (request: any, reply: any) => {
       try {
-        await getValidSession(request, reply);
+        getCampusLynxIdentity(request);
         return { success: true };
-      } catch (err) {
-        error = err;
+      } catch (err: any) {
         reply.status(err.statusCode || 500).send(err);
       }
     });
 
+    const cookie = encryptSessionData(sessionWithoutToken);
     const response = await fastify.inject({
       method: "GET",
       url: "/test",
-      cookies: {
-        auth: encrypted,
-      },
+      cookies: { auth: cookie },
     });
 
     expect(response.statusCode).toBe(401);
-    expect(error).toEqual({
-      statusCode: 401,
-      message: "Session expired. Please log in again.",
-      code: "SESSION_EXPIRED",
-    });
+    expect(response.json().code).toBe("NO_CAMPUSLYNX_SESSION");
   });
 
-  it("should NOT clear cookie and throw RELOGIN_FAILED when silent re-login fails after retries", async () => {
-    // 1. First GET to verify (expired)
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      data: "Session timeout!",
+  it("should return valid identity and enrollment when session is valid", async () => {
+    fastify.get("/test", async (request: any) => {
+      const identity = getCampusLynxIdentity(request);
+      const enrollment = await getValidSession(request);
+      return { success: true, identity, enrollment };
     });
 
-    // Attempt 1: login page + captcha OK + POST OK + verify fails
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      headers: { "set-cookie": ["JSESSIONID=RETRY1_JSESSIONID; Path=/"] },
-      data: `<html><body><div class="noselect">12345</div></body></html>`,
-    });
-    (axios.post as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      headers: {},
-      data: "Invalid captcha",
-    });
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      data: "Session timeout!",
-    });
-
-    // Attempt 2: login page + captcha OK + POST OK + verify fails
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      headers: { "set-cookie": ["JSESSIONID=RETRY2_JSESSIONID; Path=/"] },
-      data: `<html><body><div class="noselect">67890</div></body></html>`,
-    });
-    (axios.post as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      headers: {},
-      data: "Invalid captcha",
-    });
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      data: "Session timeout!",
-    });
-
-    // Attempt 3: login page + captcha OK + POST OK + verify fails
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      headers: { "set-cookie": ["JSESSIONID=RETRY3_JSESSIONID; Path=/"] },
-      data: `<html><body><div class="noselect">11111</div></body></html>`,
-    });
-    (axios.post as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      headers: {},
-      data: "Invalid captcha",
-    });
-    (axios.get as jest.Mock).mockResolvedValueOnce({
-      status: 200,
-      data: "Session timeout!",
-    });
-
-    const encrypted = encryptSessionData(sampleSession);
-
-    let error: any;
-    fastify.get("/test", async (request: any, reply: any) => {
-      try {
-        await getValidSession(request, reply);
-        return { success: true };
-      } catch (err) {
-        error = err;
-        reply.status(err.statusCode || 500).send(err);
-      }
-    });
-
+    const cookie = encryptSessionData(validSession);
     const response = await fastify.inject({
       method: "GET",
       url: "/test",
-      cookies: {
-        auth: encrypted,
+      cookies: { auth: cookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.success).toBe(true);
+    expect(body.identity.username).toBe("24BCS100");
+    expect(body.identity.token).toBe("jwt.token.here");
+    expect(body.enrollment).toBe("24BCS100");
+  });
+
+  it("should extend sliding cookie on active request with getOrRenewCampusLynxIdentity", async () => {
+    const futureExp = Math.floor(Date.now() / 1000) + 3600;
+    const futureToken = "header." + Buffer.from(JSON.stringify({ exp: futureExp })).toString("base64url") + ".sig";
+    const sessionWithFutureToken: SessionData = {
+      ...validSession,
+      campusLynx: {
+        ...validSession.campusLynx!,
+        token: futureToken,
       },
+    };
+
+    fastify.get("/test-renew", async (request: any, reply: any) => {
+      const identity = await getOrRenewCampusLynxIdentity(request, reply);
+      return { success: true, identity };
     });
 
-    // Should return 503 (transient) instead of 401 (fatal)
-    expect(response.statusCode).toBe(503);
-    expect(error).toEqual({
-      statusCode: 503,
-      message: "Unable to refresh session. Please try again in a moment.",
-      code: "RELOGIN_FAILED",
+    const cookie = encryptSessionData(sessionWithFutureToken);
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/test-renew",
+      cookies: { auth: cookie },
     });
 
-    // Cookie should NOT be cleared — credentials are still needed for future attempts
-    const authCookie = response.cookies.find((c: any) => c.name === "auth");
-    // Either the cookie is absent from the response (not set), or if present it should NOT be empty
-    if (authCookie) {
-      expect(authCookie.value).not.toBe("");
-    }
+    expect(response.statusCode).toBe(200);
+    expect(response.json().success).toBe(true);
+    // Verify Set-Cookie header is sent to slide the 30-day window forward
+    const setCookie = response.headers["set-cookie"];
+    expect(setCookie).toBeDefined();
+    expect(String(setCookie)).toContain("auth=");
   });
 });

@@ -1,288 +1,218 @@
 /**
- * Authentication Routes for JUET//SYNC
- * GET /api/init - Fetch initial captcha from WebKiosk
- * POST /api/auth - Validate credentials against real WebKiosk and create encrypted session
+ * Authentication Routes for JUET//SYNC (CampusLynx Portal)
  *
- * WebKiosk auth flow:
- *   1. GET /  → login page with captcha + JSESSIONID cookie
- *   2. POST /CommonFiles/UserAction.jsp → always returns 200 with JS redirect
- *      (does NOT return 302/401 on failure — both success and failure look identical)
- *   3. The JSESSIONID is bound to a user on success. On failure it's unbound.
- *   4. We VERIFY by hitting /StudentFiles/StudentPage.jsp — an unbound session
- *      returns "Session timeout!" while a valid session returns the student page.
+ * Flow:
+ *   1. GET  /api/init              -> captcha image + session handle
+ *   2. POST /api/auth/verify-user  -> enrollment + captcha => loginToken
+ *   3. POST /api/auth              -> loginToken + password => encrypted auth cookie
+ *   4. POST /api/logout            -> clear session cookie
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { AxiosError } from "axios";
-import axios from "../utils/axios";
 import crypto from "crypto";
 import { encryptSessionData, decryptSessionData, SessionData } from "../utils/encryption";
-import { parseCaptchaImage, extractJSessionId } from "../parsers/auth";
 import { CacheService } from "../utils/cache";
-import { getRandomUserAgent } from "../utils/userAgent";
+import { createPortalClient } from "../portal/client";
+import { verifyUser, issueSession } from "../portal/auth";
+import { PortalError, type PortalCaptcha } from "../portal/types";
+import { getOrRenewCampusLynxIdentity } from "./session";
+import { jwtExpiry } from "../portal/crypto";
 
-// Types
-export interface AuthPayload {
-  enrollment: string;
-  dob: string;
-  password: string;
-  captcha: string;
-  role: "Student" | "Employee" | "Guest";
-  sessionToken: string;
-}
-
-// Configuration from environment
-const WEBKIOSK_BASE_URL =
-  process.env.WEBKIOSK_BASE_URL || "https://webkiosk.juet.ac.in";
-const WEBKIOSK_LOGIN_PAGE = process.env.WEBKIOSK_LOGIN_PAGE || "/";
-const WEBKIOSK_AUTH_ACTION =
-  process.env.WEBKIOSK_AUTH_ACTION || "/CommonFiles/UserAction.jsp";
-const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT || "60000", 10);
 const CAPTCHA_SESSION_TTL_MS = 5 * 60 * 1000;
+const PORTAL_CAPTCHA_PREFIX = "portal_captcha";
+const PORTAL_LOGIN_PREFIX = "portal_login";
 
-// Post-auth verification URLs (per role)
-const VERIFY_URLS: Record<string, string> = {
-  S: "/StudentFiles/StudentPage.jsp",
-  E: "/EmployeeFiles/EmployeePage.jsp",
-  G: "/StudentFiles/StudentPage.jsp", // Guest uses student page
-};
-
-interface CaptchaSession {
-  cookieHeader: string;
+interface PendingLogin {
+  random: string;
+  otppwd: string;
+  username: string;
+  usertype: "S" | "P";
 }
 
 function createSessionToken(): string {
   return crypto.randomBytes(32).toString("base64url");
 }
 
-function roleToWebKioskCode(role: AuthPayload["role"]): string {
-  if (role === "Student") return "S";
-  if (role === "Employee") return "E";
-  return "G";
+function toDataUri(image: string): string {
+  if (!image) return "";
+  return image.startsWith("data:") ? image : `data:image/png;base64,${image}`;
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/init — Fetch captcha
-// ---------------------------------------------------------------------------
+/**
+ * GET /api/init — Fetch CampusLynx captcha
+ */
+export async function campusLynxInitHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  const cache = (request as any).globalCache as CacheService;
+  const client = createPortalClient();
 
-export async function initHandler(
+  try {
+    const captcha = await client.getCaptcha();
+    const sessionToken = createSessionToken();
+    await cache.set(
+      PORTAL_CAPTCHA_PREFIX,
+      sessionToken,
+      captcha,
+      CAPTCHA_SESSION_TTL_MS / 1000
+    );
+
+    request.server.log.info("[Auth] CampusLynx captcha issued");
+    return reply.status(200).send({
+      captchaImage: toDataUri(captcha.image),
+      sessionToken,
+      captchaValue: null,
+      loginFlow: "campuslynx",
+    });
+  } catch (error: any) {
+    request.server.log.error(`[Auth] CampusLynx captcha failed: ${error?.message}`);
+    return reply.status(502).send({
+      error: "Failed to reach the CampusLynx portal. Please try again later.",
+    });
+  } finally {
+    client.destroy();
+  }
+}
+
+/**
+ * POST /api/auth/verify-user — Step 1: submit enrollment + captcha
+ */
+export async function campusLynxVerifyUserHandler(
   request: FastifyRequest,
   reply: FastifyReply
 ): Promise<void> {
   const logger = request.server.log;
-  // We extract the CacheService from the registered route context or closure.
-  // We'll pass cache into the handler factory or bind it.
+  const cache = (request as any).globalCache as CacheService;
+  const body = request.body as {
+    enrollment?: string;
+    captcha?: string;
+    sessionToken?: string;
+    usertype?: "S" | "P";
+  };
 
+  const enrollment = (body.enrollment || "").trim();
+  const captchaAnswer = (body.captcha || "").trim();
+  const sessionToken = body.sessionToken || "";
+  const usertype = body.usertype || "S";
 
+  if (!enrollment || !captchaAnswer || !sessionToken) {
+    return reply.status(400).send({
+      error: "Enrollment, captcha, and session token are all required.",
+    });
+  }
+
+  const storedCaptcha = await cache.get<PortalCaptcha>(PORTAL_CAPTCHA_PREFIX, sessionToken);
+  if (!storedCaptcha) {
+    return reply.status(400).send({
+      error: "Captcha expired. Please refresh the captcha and try again.",
+    });
+  }
+
+  // Captchas are single-use: consume before portal call
+  await cache.invalidate(PORTAL_CAPTCHA_PREFIX, sessionToken);
+
+  const client = createPortalClient();
   try {
-    logger.info("Fetching WebKiosk login page for captcha...");
-
-    const response = await axios.get(
-      `${WEBKIOSK_BASE_URL}${WEBKIOSK_LOGIN_PAGE}`,
-      { timeout: REQUEST_TIMEOUT, withCredentials: true }
+    const preToken = await verifyUser(
+      client,
+      enrollment.toUpperCase(),
+      { ...storedCaptcha, captcha: captchaAnswer },
+      usertype
     );
 
-    // Extract cookies for session tracking
-    const cookies = response.headers["set-cookie"] || [];
-    const cookieHeader = cookies
-      .map((cookie) => cookie.split(";")[0])
-      .join("; ");
-    logger.debug(`Session cookies received: ${cookies.length}`);
-
-    // Parse HTML to extract captcha
-    let captchaImageBase64: string;
-    let captchaText: string | null;
-
-    try {
-      const parsed = await parseCaptchaImage(
-        typeof response.data === 'string' ? response.data : '',
-        WEBKIOSK_BASE_URL,
-        cookieHeader,
-        REQUEST_TIMEOUT
-      );
-      captchaImageBase64 = parsed.captchaImageBase64;
-      captchaText = parsed.captchaValue;
-    } catch (parseErr: any) {
-      logger.error(`Captcha parse error: ${parseErr.message}`);
-      return reply.status(400).send({
-        error: "Unable to load captcha from server. Please try again.",
+    if (preToken.otppwd !== "PWD") {
+      logger.warn(`[Auth] Portal requested login mode "${preToken.otppwd}"`);
+      return reply.status(409).send({
+        error: "This account requires an emailed one-time password, which is not supported yet.",
+        code: "OTP_REQUIRED",
       });
     }
 
-    // Store session for later auth request
-    const sessionToken = createSessionToken();
-    const cache = (request as any).globalCache as CacheService;
-    await cache.set('captcha', sessionToken, { cookieHeader }, CAPTCHA_SESSION_TTL_MS / 1000);
+    const loginToken = createSessionToken();
+    await cache.set<PendingLogin>(
+      PORTAL_LOGIN_PREFIX,
+      loginToken,
+      {
+        random: preToken.random,
+        otppwd: preToken.otppwd,
+        username: enrollment.toUpperCase(),
+        usertype,
+      },
+      CAPTCHA_SESSION_TTL_MS / 1000
+    );
 
-    logger.info("Captcha fetched successfully");
-
-    reply.status(200).send({
-      captchaImage: captchaImageBase64,
-      sessionToken,
-      captchaValue: captchaText ?? null,
+    logger.info(`[Auth] User verified: ${enrollment.toUpperCase()}`);
+    return reply.status(200).send({
+      success: true,
+      loginToken,
+      loginMode: preToken.otppwd,
     });
-  } catch (error) {
-    const err = error as AxiosError | Error;
-    request.server.log.error(`Failed to fetch captcha: ${err.message}`);
-    reply.status(500).send({
-      error: "Failed to connect to WebKiosk. Please try again later.",
+  } catch (error: any) {
+    if (error instanceof PortalError && error.status === 401) {
+      logger.warn(`[Auth] Verification failed for ${enrollment}: wrong captcha or user not found`);
+      return reply.status(401).send({
+        error: "Invalid enrollment number or captcha. Please try again.",
+      });
+    }
+    logger.error(`[Auth] Portal verification error: ${error?.message}`);
+    return reply.status(502).send({
+      error: "Failed to connect to the portal. Please try again.",
     });
+  } finally {
+    client.destroy();
   }
 }
 
-// ---------------------------------------------------------------------------
-// POST /api/auth — Validate credentials
-// ---------------------------------------------------------------------------
-
-export async function authHandler(
-  request: FastifyRequest<{ Body: AuthPayload }>,
+/**
+ * POST /api/auth — Step 2: submit loginToken + password
+ */
+export async function campusLynxAuthHandler(
+  request: FastifyRequest,
   reply: FastifyReply
 ): Promise<void> {
   const logger = request.server.log;
   const cache = (request as any).globalCache as CacheService;
-  const { enrollment, dob, password, captcha, role, sessionToken } =
-    request.body;
+  const body = (request.body || {}) as {
+    loginToken?: string;
+    password?: string;
+  };
 
+  const loginToken = body.loginToken || "";
+  const password = body.password || "";
+
+  if (!loginToken || !password) {
+    return reply.status(400).send({ error: "Login token and password are required." });
+  }
+
+  const pending = await cache.get<PendingLogin>(PORTAL_LOGIN_PREFIX, loginToken);
+  if (!pending) {
+    return reply.status(400).send({
+      error: "Your login session expired. Please start again.",
+      code: "LOGIN_SESSION_EXPIRED",
+    });
+  }
+
+  const client = createPortalClient();
   try {
-    // Basic format validation
-    if (!/^\d{2}-\d{2}-\d{4}$/.test(dob)) {
-      return reply.status(400).send({
-        error: "Invalid date format. Use DD-MM-YYYY",
-      });
-    }
-
-    const captchaSession = await cache.get<CaptchaSession>('captcha', sessionToken);
-    if (!captchaSession) {
-      return reply.status(400).send({
-        error: "Captcha session expired. Please refresh captcha and try again.",
-      });
-    }
-
-    logger.info(`Attempting authentication for enrollment: ${enrollment}`);
-
-    // ---------- Step 1: POST credentials to WebKiosk ----------
-    const roleCode = roleToWebKioskCode(role);
-    const form = new URLSearchParams({
-      InstCode: "JUET",
-      UserType: roleCode,
-      MemberCode: enrollment.toUpperCase(),
-      DATE1: dob,
-      Password: password,
-      txtcap: captcha,
-      BTNSubmit: "Submit",
+    const identity = await issueSession(client, {
+      enrollment: pending.username,
+      password,
+      preToken: { random: pending.random, otppwd: pending.otppwd },
     });
 
-    const authResponse = await axios.post(
-      new URL(WEBKIOSK_AUTH_ACTION, WEBKIOSK_BASE_URL).toString(),
-      form.toString(),
-      {
-        timeout: REQUEST_TIMEOUT,
-        maxRedirects: 5,
-        validateStatus: () => true,
-        headers: {
-          Cookie: captchaSession.cookieHeader,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
-    );
-
-    // Consume the captcha token (one-time use)
-    await cache.invalidate('captcha', sessionToken);
-
-    // Get the JSESSIONID — prefer new Set-Cookie from auth response,
-    // fall back to the one from the captcha session.
-    const setCookieHeaders = authResponse.headers["set-cookie"] || [];
-    const newCookieStr = (
-      Array.isArray(setCookieHeaders)
-        ? setCookieHeaders
-        : [setCookieHeaders]
-    )
-      .map((c: string) => c.split(";")[0])
-      .join("; ");
-
-    const jsessionid =
-      extractJSessionId(newCookieStr) ||
-      extractJSessionId(captchaSession.cookieHeader);
-
-    if (!jsessionid) {
-      logger.error("No JSESSIONID found in any cookie after auth POST");
-      return reply.status(500).send({
-        error: "Could not establish session with WebKiosk. Try again.",
-      });
-    }
-
-    logger.debug(`JSESSIONID: ${jsessionid.substring(0, 12)}...`);
-
-    // ---------- Step 2: VERIFY the session is actually authenticated ----------
-    // WebKiosk always returns 200 with a JS redirect regardless of success/failure.
-    // The ONLY way to know if auth succeeded is to hit the student/employee page
-    // and check if it returns real content or "Session timeout!".
-    const verifyPath = VERIFY_URLS[roleCode] || VERIFY_URLS["S"];
-    const verifyUrl = new URL(verifyPath, WEBKIOSK_BASE_URL).toString();
-
-    logger.debug(`Verifying session at: ${verifyUrl}`);
-
-    const verifyResponse = await axios.get(verifyUrl, {
-      timeout: REQUEST_TIMEOUT,
-      maxRedirects: 5,
-      validateStatus: () => true,
-      headers: {
-        Cookie: `JSESSIONID=${jsessionid}`,
-        "User-Agent": getRandomUserAgent(),
-      },
-    });
-
-    const verifyBody =
-      typeof verifyResponse.data === "string" ? verifyResponse.data : "";
-    const verifyLower = verifyBody.toLowerCase();
-
-    // An unbound session returns a tiny page: "Session timeout! Please Login..."
-    const isSessionInvalid =
-      verifyLower.includes("session timeout") ||
-      verifyLower.includes("please login") ||
-      verifyLower.includes("please <a") ||
-      verifyBody.length < 200; // Valid student pages are always > 1KB
-
-    if (isSessionInvalid) {
-      // ---------- AUTH FAILED ----------
-      // Try to figure out WHY from the auth response body
-      const authBody =
-        typeof authResponse.data === "string"
-          ? authResponse.data.toLowerCase()
-          : "";
-
-      let errorMessage = "Invalid credentials or captcha. Please try again.";
-      if (authBody.includes("captcha") && authBody.includes("mismatch")) {
-        errorMessage = "Captcha mismatch. Please refresh and try again.";
-      } else if (authBody.includes("password should not be blank")) {
-        errorMessage = "Password cannot be blank.";
-      } else if (
-        authBody.includes("not valid") ||
-        authBody.includes("wrong password")
-      ) {
-        errorMessage = "Invalid enrollment number, DOB, or password.";
-      } else if (authBody.includes("member code does not exist")) {
-        errorMessage = "Enrollment number not found.";
-      }
-
-      logger.warn(
-        `Authentication failed for ${enrollment}: session verification returned "${verifyBody.trim().substring(0, 80)}"`
-      );
-      return reply.status(401).send({ error: errorMessage });
-    }
-
-    // ---------- AUTH SUCCEEDED ----------
-    logger.info(`Session verified for ${enrollment} (${verifyBody.length} bytes)`);
+    await cache.invalidate(PORTAL_LOGIN_PREFIX, loginToken);
 
     const sessionData: SessionData = {
-      jsessionid,
-      enrollment: enrollment.toUpperCase(),
-      password,
-      dob,
-      role,
+      jsessionid: "",
+      enrollment: pending.username,
+      password: "",
+      dob: "",
+      role: "Student",
+      campusLynx: identity,
     };
-    const encryptedSession = encryptSessionData(sessionData);
 
+    const encryptedSession = encryptSessionData(sessionData);
     const isProduction = process.env.NODE_ENV === "production";
     reply.setCookie("auth", encryptedSession, {
       httpOnly: true,
@@ -292,66 +222,102 @@ export async function authHandler(
       path: "/",
     });
 
-    logger.info(`Authentication successful for enrollment: ${enrollment}`);
-
-    return reply.status(200).send({
-      success: true,
-      message: "Authentication successful",
-    });
-  } catch (error) {
-    const err = error as AxiosError | Error;
-    request.server.log.error(`Authentication error: ${err.message}`);
-    reply.status(500).send({
-      error: "Authentication failed. Please try again.",
-    });
+    logger.info(`[Auth] CampusLynx login successful for ${pending.username}`);
+    return reply.status(200).send({ success: true, message: "Authentication successful" });
+  } catch (error: any) {
+    if (error instanceof PortalError && error.status === 401) {
+      logger.warn(`[Auth] CampusLynx password rejected for ${pending.username}`);
+      return reply.status(401).send({ error: "Invalid password. Please try again." });
+    }
+    logger.error(`[Auth] CampusLynx step 2 failed: ${error?.message}`);
+    return reply.status(502).send({ error: "Failed to complete login. Please try again." });
+  } finally {
+    client.destroy();
   }
 }
 
-// ---------------------------------------------------------------------------
-// Register routes
-// ---------------------------------------------------------------------------
-
+/**
+ * Register all authentication routes on Fastify instance
+ */
 export function registerAuthRoutes(fastify: FastifyInstance, cache: CacheService): void {
-  // Pass cache via a preHandler or request decorator for ease
   fastify.decorateRequest('globalCache', null);
   fastify.addHook('onRequest', async (req) => {
     (req as any).globalCache = cache;
   });
 
-  fastify.get("/api/init", initHandler);
-  fastify.post<{ Body: AuthPayload }>("/api/auth", {
-    schema: {
-      body: {
-        type: 'object',
-        required: ['enrollment', 'dob', 'password', 'captcha', 'role', 'sessionToken'],
-        properties: {
-          enrollment: { type: 'string', minLength: 1 },
-          dob: { type: 'string', minLength: 10, maxLength: 10 },
-          password: { type: 'string', minLength: 1 },
-          captcha: { type: 'string', minLength: 1 },
-          role: { type: 'string', enum: ['Student', 'Employee', 'Guest'] },
-          sessionToken: { type: 'string', minLength: 1 }
-        }
-      }
-    },
-    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
-    handler: authHandler,
+  // GET /api/init — Captcha initialization
+  fastify.get("/api/init", {
+    config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
+    handler: campusLynxInitHandler,
   });
 
-  // POST /api/logout — clears the httpOnly auth cookie and any push subscriptions
+  // POST /api/auth/verify-user — Step 1: verify enrollment + captcha
+  fastify.post("/api/auth/verify-user", {
+    schema: {
+      body: {
+        type: "object",
+        required: ["enrollment", "captcha", "sessionToken"],
+        properties: {
+          enrollment: { type: "string", minLength: 1 },
+          captcha: { type: "string", minLength: 1 },
+          sessionToken: { type: "string", minLength: 1 },
+          usertype: { type: "string", enum: ["S", "P"] },
+        },
+      },
+    },
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+    handler: campusLynxVerifyUserHandler,
+  });
+
+  // POST /api/auth — Step 2: exchange loginToken + password for session
+  fastify.post("/api/auth", {
+    schema: {
+      body: {
+        type: "object",
+        required: ["loginToken", "password"],
+        properties: {
+          loginToken: { type: "string", minLength: 1 },
+          password: { type: "string", minLength: 1 },
+        },
+      },
+    },
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+    handler: campusLynxAuthHandler,
+  });
+
+  // POST /api/auth/refresh — sliding renewal for session keepalive
+  fastify.post("/api/auth/refresh", {
+    config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
+    handler: async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const identity = await getOrRenewCampusLynxIdentity(request, reply);
+        const expiresAt = identity.token ? jwtExpiry(identity.token) : null;
+        return reply.status(200).send({
+          success: true,
+          enrollment: identity.enrollmentno,
+          expiresAt,
+        });
+      } catch (err: any) {
+        return reply.status(err.statusCode || 401).send({
+          success: false,
+          error: err.message || "Failed to refresh session",
+          code: err.code || "UNAUTHORIZED",
+        });
+      }
+    },
+  });
+
+  // POST /api/logout — clear cookie & session
   fastify.post("/api/logout", async (request, reply) => {
     try {
       const encryptedSession = request.cookies.auth;
       if (encryptedSession) {
         try {
           const session = decryptSessionData(encryptedSession);
-          // Clean up push notification subscriptions for this user
           await cache.invalidate('push_subscriptions', session.enrollment);
-          // Clean up cached dashboard data
           await cache.invalidate('dashboard', session.enrollment);
           request.log.info(`[Auth] Logout for enrollment: ${session.enrollment}`);
         } catch {
-          // Cookie decryption failed — still proceed with clearing it
           request.log.warn('[Auth] Logout: could not decrypt session cookie');
         }
       }
@@ -367,11 +333,8 @@ export function registerAuthRoutes(fastify: FastifyInstance, cache: CacheService
       return reply.send({ success: true, message: "Logged out successfully" });
     } catch (error: any) {
       request.log.error(error, '[Auth] Logout error');
-      // Even if cleanup fails, still clear the cookie
       reply.clearCookie("auth", { path: "/" });
       return reply.send({ success: true, message: "Logged out" });
     }
   });
-
-  fastify.log.info("Auth routes registered: GET /api/init, POST /api/auth, POST /api/logout");
 }

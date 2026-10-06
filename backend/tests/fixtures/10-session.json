@@ -1,0 +1,30 @@
+{
+  "identity": {
+    "clientid": "JAYPEE",
+    "instituteid": "INID2603J000001",
+    "companyid": "",
+    "memberid": "JUET2400386",
+    "enrollmentno": "241B610",
+    "membertype": "S",
+    "token": "<redacted>"
+  },
+  "regdata": {
+    "bypass": "N",
+    "clientid": "JAYPEE",
+    "userDOB": "2006-06-18",
+    "name": "ARYAN ANAND",
+    "lastvisitdate": null,
+    "membertype": "S",
+    "enrollmentno": "241B610",
+    "userid": "USID2609A0001184",
+    "expiredpassword": "Y",
+    "institutelist": [
+      {
+        "label": "JAYPEE UNIVERSITY OF ENGINEERING AND TECHNOLOGY",
+        "value": "INID2603J000001"
+      }
+    ],
+    "memberid": "JUET2400386",
+    "token": "<redacted>"
+  }
+}

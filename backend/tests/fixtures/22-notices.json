@@ -1,0 +1,15 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "text": [
+      "After LOGIN You must submit Bank Account details, which will be used while refund of fee (if any)",
+      "Please clear your browser history to get latest UI. If any issue coming while Login.",
+      "Please use your Enrollment Number as Login ID",
+      "Welcome to JUET Guna"
+    ]
+  }
+}

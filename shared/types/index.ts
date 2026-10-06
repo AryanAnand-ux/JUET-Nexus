@@ -102,20 +102,46 @@ export interface DashboardResponse {
   detailedMarks: DetailedCourseMarks[]; // Added
 }
 
-// Auth Request Payload
-export interface AuthPayload {
-  enrollment: string;
-  dob: string; // Format: DD-MM-YYYY
-  password: string;
-  captcha: string;
-  role: 'Student' | 'Employee' | 'Guest';
-  sessionToken: string;
-}
+/**
+ * CampusLynx login flow type
+ */
+export type LoginFlow = 'campuslynx';
 
 // Captcha Init Response
 export interface CaptchaResponse {
   captchaImage: string; // base64 data URI
   sessionToken: string;
+  captchaValue?: string | null;
+  loginFlow?: LoginFlow;
+}
+
+// --- CampusLynx two-step login -------------------------------------------
+
+/** Step 1: identify the user. Served by `POST /api/auth/verify-user`. */
+export interface LoginIdentifyPayload {
+  enrollment: string;
+  captcha: string;
+  sessionToken: string;
+  /** Portal user type: `S` student (default) or `P` parent. */
+  usertype?: 'S' | 'P';
+}
+
+/**
+ * Step 1 result. `loginToken` is an opaque, short-lived handle the server keeps
+ * mapped to the portal pre-token -- the pre-token itself is never sent to the
+ * browser, so it cannot be tampered with.
+ */
+export interface LoginIdentifyResponse {
+  success: boolean;
+  loginToken: string;
+  /** Login mode the portal wants next: `"PWD"` (password) or `"otp"`. */
+  loginMode: string;
+}
+
+/** Step 2: exchange the handle plus password for a session. */
+export interface LoginPasswordPayload {
+  loginToken: string;
+  password: string;
 }
 
 // API Error Response
@@ -146,3 +172,51 @@ export interface DashboardStateBase {
 
 /** @deprecated Use DashboardStateBase */
 export type DashboardState = DashboardStateBase;
+
+// Exam Schedule
+export interface ExamEvent {
+  exameventid: string;
+  exameventdesc: string;
+}
+
+export interface ExamSemester {
+  registrationid: string;
+  registrationdesc: string;
+}
+
+export interface ExamScheduleItem {
+  subject: string;
+  datetime: string;       // e.g. "2026-11-10T09:30:00"
+  datetimeupto: string;
+  roomcode: string;
+  seatno: string;
+}
+
+export interface ExamScheduleResponse {
+  semester: string;
+  event: string;
+  items: ExamScheduleItem[];
+}
+
+// Grade Card
+export interface GradeSemester {
+  stynumber: string;
+  semesterdesc: string;
+}
+
+export interface GradeSubject {
+  subjectdesc: string;
+  subjectcode: string;
+  grade: string;
+  gradepoint: number;
+  credits: number;
+  status: string;
+}
+
+export interface GradeCardResponse {
+  semester: string;
+  sgpa: number;
+  cgpa: number;
+  subjects: GradeSubject[];
+}
+

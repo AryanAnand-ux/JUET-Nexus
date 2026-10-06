@@ -11,7 +11,9 @@ import clsx from "clsx";
 import Link from "next/link";
 import { FigmaButton } from "./base";
 import { usePathname } from "next/navigation";
-import { ThemeSelector } from "./ThemeSelector";
+import { ThemeToggle } from "./ThemeToggle";
+import { MobileBottomNav } from "./MobileBottomNav";
+import { useSessionHeartbeat } from "@/hooks/useSessionHeartbeat";
 
 export interface DashboardLayoutProps {
   children: ReactNode;
@@ -26,6 +28,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   enrollment,
   onLogout,
 }) => {
+  useSessionHeartbeat();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
@@ -89,6 +92,24 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       icon: (
         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      ),
+    },
+    {
+      href: "/dashboard/exam",
+      label: "Exam Schedule",
+      icon: (
+        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+    },
+    {
+      href: "/dashboard/grades",
+      label: "Grade Card",
+      icon: (
+        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
     },
@@ -238,12 +259,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 ? "Academic Performance"
                 : pathname === "/dashboard/courses"
                 ? "Registered Courses"
+                : pathname === "/dashboard/exam"
+                ? "Exam Schedule"
+                : pathname === "/dashboard/grades"
+                ? "Grade Card"
                 : "Bunk Meter & Attendance"}
             </h1>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <ThemeSelector />
+            <ThemeToggle />
             <FigmaButton size="sm" variant="ghost" onClick={onLogout} className="px-2 sm:px-3">
               <span className="hidden sm:inline">Logout</span>
               <svg className="w-5 h-5 sm:hidden text-figma-gray dark:text-slate-400 hover:text-figma-dark dark:hover:text-slate-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,10 +279,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </header>
 
         {/* Content body */}
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900 p-4 md:p-6 transition-colors duration-200">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900 p-4 md:p-6 pb-24 lg:pb-6 transition-colors duration-200">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
+
+      {/* Fixed bottom navigation for mobile */}
+      <MobileBottomNav />
     </div>
   );
 };

@@ -1,0 +1,18 @@
+{
+  "minimal": {
+    "timestamp": 1790840487098,
+    "status": 500,
+    "error": "Internal Server Error",
+    "exception": "com.jilit.campuslynxportal.exceptions.BadRequestException",
+    "message": "Inavlid Input Supplied (@BODY)",
+    "path": "/StudentPortalAPI/studentsexamview/getstudent-exammarks"
+  },
+  "full": {
+    "timestamp": 1790840488216,
+    "status": 500,
+    "error": "Internal Server Error",
+    "exception": "com.jilit.campuslynxportal.exceptions.BadRequestException",
+    "message": "Inavlid Input Supplied (@BODY)",
+    "path": "/StudentPortalAPI/studentsexamview/getstudent-exammarks"
+  }
+}

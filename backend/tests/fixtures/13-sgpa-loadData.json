@@ -1,0 +1,28 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "studentInfo": [
+      {
+        "branchid": "JEBRN26030000012",
+        "branchcode": "CSAIML",
+        "academicyear": "2425",
+        "quotaid": "JEQOT26030000018",
+        "admissionyear": "2425",
+        "quotacode": "P2",
+        "stynumber": 5,
+        "studentid": "JUET2400386",
+        "programcode": "B.T.",
+        "programdesc": "B. TECH.",
+        "name": "ARYAN ANAND",
+        "instituteid": "INID2603J000001",
+        "enrollmentno": "241B610",
+        "branchdesc": "COMPUTER SCIENCE AND ENGINEERING (AI & ML)",
+        "programid": "JEPRO26030000002"
+      }
+    ]
+  }
+}

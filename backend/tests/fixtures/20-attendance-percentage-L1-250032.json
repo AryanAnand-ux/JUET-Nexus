@@ -1,0 +1,123 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "studentAttdsummarylist": [
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "25/09/2026 (02:00:PM - 02:55 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "24/09/2026 (09:00:AM - 09:55 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "18/09/2026 (02:00:PM - 02:55 PM)",
+        "present": "Absent"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "17/09/2026 (09:00:AM - 09:55 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "11/09/2026 (02:00:PM - 02:55 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "10/09/2026 (09:00:AM - 09:55 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "03/09/2026 (03:00:AM - 03:55 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "21/08/2026 (02:00:PM - 02:55 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "20/08/2026 (02:00:PM - 02:55 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "13/08/2026 (09:00:AM - 09:55 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "12/08/2026 (02:00:PM - 02:55 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "07/08/2026 (02:00:PM - 03:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "06/08/2026 (09:00:AM - 10:00 AM)",
+        "present": "Absent"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "31/07/2026 (02:00:PM - 03:00 PM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "30/07/2026 (09:00:AM - 10:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "SHEKHAR SINGH",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "23/07/2026 (09:00:AM - 10:00 AM)",
+        "present": "Present"
+      }
+    ]
+  }
+}

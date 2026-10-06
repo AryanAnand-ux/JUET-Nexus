@@ -131,6 +131,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
         </div>
       )}
       {/* SGPA and CGPA Cards */}
+      {performance.semesters && performance.semesters.length > 0 ? (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Current SGPA */}
         <div
@@ -162,6 +163,16 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
           </span>
         </div>
       </div>
+      ) : (
+        <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-[22px] text-center">
+          <p className="text-sm font-bold text-slate-600 dark:text-slate-300 font-nunito">
+            SGPA &amp; CGPA not available yet
+          </p>
+          <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500 font-nunito">
+            The student portal has not published result data for your semesters. Your marks and attendance below are unaffected.
+          </p>
+        </div>
+      )}
 
       {/* Recent Marks */}
       {performance.recentMarks && performance.recentMarks.length > 0 && (

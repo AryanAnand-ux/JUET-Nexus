@@ -11,9 +11,12 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import { registerAuthRoutes } from './routes/auth';
 import { registerDashboardRoutes } from './routes/dashboard';
 import { registerAttendanceRoutes } from './routes/attendance';
+import { registerExamRoutes } from './routes/exam';
+import { registerGradesRoutes } from './routes/grades';
 import { registerNotificationRoutes } from './routes/notifications';
 import { CacheService } from './utils/cache';
 import { validateKey } from './utils/encryption';
+import { assertKnownProvider } from './utils/provider';
 import { checkAcademicUpdates } from './utils/pushWorker';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -26,6 +29,7 @@ const CORS_ORIGIN =
 // Validate critical env vars at startup
 try {
   validateKey(process.env.ENCRYPTION_KEY);
+  assertKnownProvider();
 } catch (error: any) {
   console.error(`[Server] Boot failed: ${error.message}`);
   process.exit(1);
@@ -81,6 +85,8 @@ export async function createServer() {
   await registerAuthRoutes(fastify, globalCache);
   await registerDashboardRoutes(fastify, globalCache);
   await registerAttendanceRoutes(fastify);
+  await registerExamRoutes(fastify);
+  await registerGradesRoutes(fastify, globalCache);
   await registerNotificationRoutes(fastify, globalCache);
 
   fastify.get('/health', async () => ({

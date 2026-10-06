@@ -1,0 +1,53 @@
+{
+  "status": {
+    "responseStatus": "Success",
+    "errors": null,
+    "identifier": null
+  },
+  "response": {
+    "studentAttdsummarylist": [
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "19/09/2026 (09:00:AM - 11:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "12/09/2026 (09:00:AM - 11:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "05/09/2026 (09:00:AM - 11:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "22/08/2026 (09:00:AM - 11:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "08/08/2026 (09:00:AM - 11:00 AM)",
+        "present": "Present"
+      },
+      {
+        "attendanceby": "PRATEEK PANDEY",
+        "attendancestatus": "Current",
+        "classtype": "Regular",
+        "datetime": "01/08/2026 (09:00:AM - 11:00 AM)",
+        "present": "Present"
+      }
+    ]
+  }
+}
