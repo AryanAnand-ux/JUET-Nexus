@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AttendanceTracker } from "@/components/AttendanceTracker";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { performLogout } from "@/utils/logout";
 import { AlertTriangle, MapPin, RefreshCw, Copy, Check } from "lucide-react";
 import { NotificationToggle } from "@/components/NotificationToggle";
@@ -53,6 +54,10 @@ export default function DashboardPage() {
     invalidateCache,
     cachedAt,
   } = useDashboard(enrollment);
+
+  // Proactively refresh the portal token every 10 min + on app foreground
+  // Prevents the 15-min CampusLynx token from expiring between sessions
+  useSessionKeepAlive(!!enrollment);
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;

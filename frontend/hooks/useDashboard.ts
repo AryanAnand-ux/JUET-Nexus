@@ -82,14 +82,31 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       }
     } catch (error: any) {
       if (error.response?.status === 401) {
-        // Auth cookie is absent or invalid — user must log in again
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("enrollment");
-          localStorage.removeItem("role");
+        const code = error.response?.data?.code;
+
+        // Cookie is genuinely absent or corrupted — must re-authenticate
+        if (code === "NO_SESSION" || code === "INVALID_SESSION" || code === "NO_CAMPUSLYNX_SESSION") {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("enrollment");
+            localStorage.removeItem("role");
+          }
+          router.push("/login");
+          return;
         }
-        router.push("/login");
+
+        // Token expired but cookie exists — session keepalive will handle renewal
+        // Show a non-destructive error so user can retry manually
+        setState((prev) => ({
+          ...prev,
+          error: {
+            message: "Portal session is renewing. Please wait a moment and tap sync.",
+            code: "SESSION_RENEWING",
+          },
+          isLoading: false,
+        }));
         return;
       }
+
 
       // Transient re-login failure — credentials are still intact, auto-retry
       if (error.response?.status === 503 && error.response?.data?.code === "RELOGIN_FAILED" && !isRetry) {
