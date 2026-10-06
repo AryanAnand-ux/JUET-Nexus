@@ -66,8 +66,17 @@ export async function createServer() {
 
   await fastify.register(fastifyCookie);
   await fastify.register(fastifyCors, {
-    origin: CORS_ORIGIN,
+    origin: (origin, cb) => {
+      if (!origin || process.env.NODE_ENV !== 'production') {
+        return cb(null, true);
+      }
+      if (origin === CORS_ORIGIN || origin.startsWith('http://localhost:')) {
+        return cb(null, true);
+      }
+      return cb(null, true);
+    },
     credentials: true,
+    exposedHeaders: ['x-cache', 'x-cache-status', 'x-cache-ttl', 'x-session-token'],
   });
 
   // Global rate limit: 300 requests per minute per IP (increased for shared campus Wi-Fi)

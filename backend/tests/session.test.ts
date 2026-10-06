@@ -156,5 +156,25 @@ describe("CampusLynx Session", () => {
     const setCookie = response.headers["set-cookie"];
     expect(setCookie).toBeDefined();
     expect(String(setCookie)).toContain("auth=");
+    expect(String(setCookie)).toContain("Expires=");
+    expect(response.headers["x-session-token"]).toBeDefined();
+  });
+
+  it("should extract session from x-session-token header when cookie is absent", async () => {
+    fastify.get("/test-header", async (request: any) => {
+      const identity = getCampusLynxIdentity(request);
+      return { success: true, identity };
+    });
+
+    const encryptedToken = encryptSessionData(validSession);
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/test-header",
+      headers: { "x-session-token": encryptedToken },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().success).toBe(true);
+    expect(response.json().identity.username).toBe("24BCS100");
   });
 });

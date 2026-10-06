@@ -155,6 +155,9 @@ export function useAuthFlow(): UseAuthFlowReturn {
         );
 
         if (authRes.data.success) {
+          if (authRes.data.sessionToken && typeof window !== "undefined") {
+            localStorage.setItem("sessionToken", authRes.data.sessionToken);
+          }
           persistSession(credentials.enrollment.toUpperCase(), "Student");
           return true;
         } else {
@@ -256,6 +259,9 @@ export function useAuthFlow(): UseAuthFlowReturn {
         );
 
         if (response.data.success) {
+          if (response.data.sessionToken && typeof window !== "undefined") {
+            localStorage.setItem("sessionToken", response.data.sessionToken);
+          }
           persistSession(pendingEnrollment, "Student");
         } else {
           setError({ message: response.data.error || "Authentication failed" });

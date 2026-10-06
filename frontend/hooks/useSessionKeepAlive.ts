@@ -21,8 +21,8 @@ import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-// Refresh every 10 minutes — well within the 15-minute portal token window
-const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+// Refresh every 5 minutes — well within the 15-minute portal token window
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 export function useSessionKeepAlive(enabled: boolean) {
   const router = useRouter();
@@ -33,31 +33,29 @@ export function useSessionKeepAlive(enabled: boolean) {
     if (!enabled || !isMounted.current) return;
 
     try {
-      await axios.post(
+      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
+      const headers: Record<string, string> = {};
+      if (sessionToken) {
+        headers["x-session-token"] = sessionToken;
+      }
+
+      const res = await axios.post(
         `${API_URL}/api/auth/refresh`,
         {},
-        { withCredentials: true, timeout: 15000 }
+        { withCredentials: true, headers, timeout: 15000 }
       );
-    } catch (err) {
-      if (!axios.isAxiosError(err)) return;
 
-      const status = err.response?.status;
-      const code = err.response?.data?.code;
-
-      // Only force logout if the cookie is genuinely absent/invalid
-      if (
-        status === 401 &&
-        (code === "NO_SESSION" || code === "INVALID_SESSION")
-      ) {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("enrollment");
-          localStorage.removeItem("role");
-        }
-        router.push("/login");
+      const renewed = res.data?.sessionToken || res.headers?.["x-session-token"];
+      if (renewed && typeof window !== "undefined") {
+        localStorage.setItem("sessionToken", renewed);
       }
-      // SESSION_EXPIRED / network errors → stay silent, let useDashboard handle it
+    } catch (err) {
+      // Zero spontaneous logouts: keep quiet on background refresh failures
+      if (process.env.NODE_ENV === "development") {
+        console.debug("[KeepAlive] Background refresh check:", err);
+      }
     }
-  }, [enabled, router]);
+  }, [enabled]);
 
   // Periodic refresh while visible
   useEffect(() => {
@@ -73,19 +71,27 @@ export function useSessionKeepAlive(enabled: boolean) {
     };
   }, [enabled, refresh]);
 
-  // Refresh on tab / app foreground
+  // Refresh on tab / app foreground and window focus
   useEffect(() => {
     if (!enabled) return;
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
+    const handleForeground = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
         refresh();
       }
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    const handleFocus = () => {
+      refresh();
+    };
+
+    document.addEventListener("visibilitychange", handleForeground);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleForeground);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [enabled, refresh]);
 
   // Track unmount to avoid state updates after cleanup

@@ -21,6 +21,7 @@ export function clearStoredSession(): void {
   localStorage.removeItem("dob");
   localStorage.removeItem("password");
   localStorage.removeItem("role");
+  localStorage.removeItem("sessionToken");
 }
 
 export async function performLogout(): Promise<void> {

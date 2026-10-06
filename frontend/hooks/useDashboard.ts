@@ -54,16 +54,27 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
+      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
+      const headers: Record<string, string> = {};
+      if (sessionToken) {
+        headers["x-session-token"] = sessionToken;
+      }
+
       const response = await axios.get(
         `${API_URL}/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
         {
           withCredentials: true,
+          headers,
           timeout: 60000,
         }
       );
 
       const { data, cached, ttl } = response.data;
       const cacheHeader = response.headers["x-cache"];
+      const renewedToken = response.headers["x-session-token"];
+      if (renewedToken && typeof window !== "undefined") {
+        localStorage.setItem("sessionToken", renewedToken);
+      }
 
       setState((prev) => ({
         ...prev,
@@ -82,25 +93,12 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       }
     } catch (error: any) {
       if (error.response?.status === 401) {
-        const code = error.response?.data?.code;
-
-        // Cookie is genuinely absent or corrupted — must re-authenticate
-        if (code === "NO_SESSION" || code === "INVALID_SESSION" || code === "NO_CAMPUSLYNX_SESSION") {
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("enrollment");
-            localStorage.removeItem("role");
-          }
-          router.push("/login");
-          return;
-        }
-
-        // Token expired but cookie exists — session keepalive will handle renewal
-        // Show a non-destructive error so user can retry manually
+        // Zero spontaneous logouts: never wipe localStorage or force redirect to login on background 401
         setState((prev) => ({
           ...prev,
           error: {
-            message: "Portal session is renewing. Please wait a moment and tap sync.",
-            code: "SESSION_RENEWING",
+            message: "Portal session is syncing in background. Your records remain safe.",
+            code: error.response?.data?.code || "SESSION_RENEWING",
           },
           isLoading: false,
         }));
@@ -143,11 +141,16 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
 
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
+      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
+      const headers: Record<string, string> = {};
+      if (sessionToken) {
+        headers["x-session-token"] = sessionToken;
+      }
       await axios.get(
         `${API_URL}/api/dashboard/invalidate?enrollment=${encodeURIComponent(
           enrollment
         )}`,
-        { withCredentials: true }
+        { withCredentials: true, headers }
       );
       // Fetch fresh data
       await fetchDashboard();

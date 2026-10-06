@@ -23,8 +23,15 @@ export function useGrades() {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
+      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
+      const headers: Record<string, string> = {};
+      if (sessionToken) {
+        headers["x-session-token"] = sessionToken;
+      }
+
       const response = await axios.get(`${API_URL}/api/grades`, {
         withCredentials: true,
+        headers,
         timeout: 60000,
       });
 

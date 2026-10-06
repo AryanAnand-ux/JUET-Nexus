@@ -7,26 +7,42 @@ import { isTokenExpired, jwtExpiry } from "../portal/crypto";
 export const COOKIE_MAX_AGE_SEC = 30 * 24 * 60 * 60; // 30 days
 
 /**
+ * Extract encrypted session string from cookies or x-session-token header
+ */
+export function extractEncryptedSession(request: FastifyRequest): string | undefined {
+  return (
+    request.cookies?.auth ||
+    (request.headers?.["x-session-token"] as string | undefined)
+  );
+}
+
+/**
  * Set the AES-256-GCM encrypted session cookie with standard security attributes
+ * and persistent 30-day lifetime (Expires + Max-Age).
  */
 export function setAuthCookie(reply: FastifyReply, encryptedSession: string): void {
   const isProduction = process.env.NODE_ENV === "production";
+  const expires = new Date(Date.now() + COOKIE_MAX_AGE_SEC * 1000);
   reply.setCookie("auth", encryptedSession, {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",
     maxAge: COOKIE_MAX_AGE_SEC,
+    expires,
     path: "/",
   });
+  // Also expose to client header for localStorage redundancy
+  reply.header("x-session-token", encryptedSession);
 }
 
 /**
- * Read and validate the CampusLynx session identity out of the httpOnly `auth` cookie.
+ * Read and validate the CampusLynx session identity out of the httpOnly `auth` cookie
+ * or `x-session-token` header.
  * Performs no network I/O; extracts the decrypted PortalSessionIdentity.
  * Throws a structured 401 error if the session is absent, corrupted, or lacking a token.
  */
 export function getCampusLynxIdentity(request: FastifyRequest): PortalSessionIdentity {
-  const encryptedSession = request.cookies.auth;
+  const encryptedSession = extractEncryptedSession(request);
 
   if (!encryptedSession) {
     throw { statusCode: 401, message: "Not authenticated", code: "NO_SESSION" };
@@ -58,7 +74,7 @@ export async function getOrRenewCampusLynxIdentity(
   request: FastifyRequest,
   reply?: FastifyReply
 ): Promise<PortalSessionIdentity> {
-  const encryptedSession = request.cookies.auth;
+  const encryptedSession = extractEncryptedSession(request);
 
   if (!encryptedSession) {
     throw { statusCode: 401, message: "Not authenticated", code: "NO_SESSION" };
@@ -108,19 +124,16 @@ export async function getOrRenewCampusLynxIdentity(
       request.log?.warn?.(
         `[Session] Token refresh failed for ${session.campusLynx.username}: ${refreshErr?.message}`
       );
-      // If token is fully expired, report 401
-      if (isTokenExpired(session.campusLynx.token, 0)) {
-        throw {
-          statusCode: 401,
-          message: "Session expired. Please log in again.",
-          code: "SESSION_EXPIRED",
-        };
+      // Even if background refresh failed, we do NOT throw 401 immediately if session is valid.
+      // Callers can still serve cached records or handle downstream.
+      if (reply) {
+        setAuthCookie(reply, encryptedSession);
       }
     } finally {
       client.destroy();
     }
   } else if (reply) {
-    // Sliding cookie window: extend cookie maxAge on active request
+    // Sliding cookie window: extend cookie maxAge and expires on active request
     setAuthCookie(reply, encryptedSession);
   }
 

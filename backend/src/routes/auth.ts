@@ -15,7 +15,7 @@ import { CacheService } from "../utils/cache";
 import { createPortalClient } from "../portal/client";
 import { verifyUser, issueSession } from "../portal/auth";
 import { PortalError, type PortalCaptcha } from "../portal/types";
-import { getOrRenewCampusLynxIdentity } from "./session";
+import { getOrRenewCampusLynxIdentity, setAuthCookie } from "./session";
 import { jwtExpiry } from "../portal/crypto";
 
 const CAPTCHA_SESSION_TTL_MS = 5 * 60 * 1000;
@@ -213,17 +213,15 @@ export async function campusLynxAuthHandler(
     };
 
     const encryptedSession = encryptSessionData(sessionData);
-    const isProduction = process.env.NODE_ENV === "production";
-    reply.setCookie("auth", encryptedSession, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: 30 * 24 * 60 * 60,
-      path: "/",
-    });
+    setAuthCookie(reply, encryptedSession);
 
     logger.info(`[Auth] CampusLynx login successful for ${pending.username}`);
-    return reply.status(200).send({ success: true, message: "Authentication successful" });
+    return reply.status(200).send({
+      success: true,
+      message: "Authentication successful",
+      sessionToken: encryptedSession,
+      enrollment: pending.username,
+    });
   } catch (error: any) {
     if (error instanceof PortalError && error.status === 401) {
       logger.warn(`[Auth] CampusLynx password rejected for ${pending.username}`);
@@ -292,10 +290,12 @@ export function registerAuthRoutes(fastify: FastifyInstance, cache: CacheService
       try {
         const identity = await getOrRenewCampusLynxIdentity(request, reply);
         const expiresAt = identity.token ? jwtExpiry(identity.token) : null;
+        const sessionToken = reply.getHeader("x-session-token");
         return reply.status(200).send({
           success: true,
           enrollment: identity.enrollmentno,
           expiresAt,
+          sessionToken,
         });
       } catch (err: any) {
         return reply.status(err.statusCode || 401).send({
