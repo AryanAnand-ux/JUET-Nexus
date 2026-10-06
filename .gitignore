@@ -34,11 +34,10 @@ yarn-error.log*
 *.swp
 *.swo
 *~
-.DS_Store
 
 # OS
-Thumbs.db
 .DS_Store
+Thumbs.db
 .AppleDouble
 .LSOverride
 
@@ -46,9 +45,13 @@ Thumbs.db
 .cache/
 .turbo/
 *.pem
+scratch/
 
 # Redis
 dump.rdb
+
+# Workspace lockfiles (root package-lock.json is canonical)
+backend/package-lock.json
 
 # AI & Agent local configs
 .agent/
@@ -56,4 +59,3 @@ dump.rdb
 docs/superpowers/
 mcp.json
 figma_design.json
-

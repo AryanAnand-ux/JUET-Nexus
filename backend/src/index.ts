@@ -74,7 +74,7 @@ export async function createServer() {
       if (origin === CORS_ORIGIN || origin.startsWith('http://localhost:')) {
         return cb(null, true);
       }
-      return cb(null, true);
+      return cb(new Error(`Origin ${origin} not allowed by CORS`), false);
     },
     credentials: true,
     exposedHeaders: ['x-cache', 'x-cache-status', 'x-cache-ttl', 'x-session-token'],

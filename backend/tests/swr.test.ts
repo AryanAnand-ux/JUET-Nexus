@@ -1,5 +1,18 @@
 import { getRandomUserAgent } from '../src/utils/userAgent';
-import { sleep, withJitter } from '../src/utils/delay';
+
+// Inlined from deleted src/utils/delay.ts (not used in production code)
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+async function withJitter<T>(
+  fn: () => Promise<T>,
+  minMs = 100,
+  maxMs = 500
+): Promise<T> {
+  const delayTime = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+  await sleep(delayTime);
+  return fn();
+}
 
 describe('Anti-Scraping Utilities', () => {
   describe('User-Agent Rotation', () => {

@@ -117,6 +117,7 @@ npm run build          # Production Next.js build + Fastify build
 
 | Method | Endpoint | Description |
 |---|---|---|
+| `GET` | `/health` | Server health check |
 | `GET` | `/api/init` | Initialize login session & fetch captcha image |
 | `POST` | `/api/auth/verify-user` | Step 1: verify enrollment number & captcha |
 | `POST` | `/api/auth` | Step 2: authenticate password & issue encrypted cookie |
@@ -126,3 +127,6 @@ npm run build          # Production Next.js build + Fastify build
 | `GET` | `/api/attendance/details` | Day-by-day attendance history for a subject |
 | `GET` | `/api/exam/schedule` | Registered exam schedule and timings |
 | `GET` | `/api/grades` | SGPA/CGPA semester transcript |
+| `POST` | `/api/feedback` | Submit feedback email to juetnexus@gmail.com |
+| `POST` | `/api/notifications/subscribe` | Subscribe to push notifications |
+
