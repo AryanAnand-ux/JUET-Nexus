@@ -14,12 +14,15 @@ import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { useSessionHeartbeat } from "@/hooks/useSessionHeartbeat";
+import { RotateCw } from "lucide-react";
 
 export interface DashboardLayoutProps {
   children: ReactNode;
   studentName: string;
   enrollment: string;
   onLogout: () => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -27,6 +30,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   studentName,
   enrollment,
   onLogout,
+  onRefresh,
+  isRefreshing = false,
 }) => {
   useSessionHeartbeat();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -267,7 +272,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {onRefresh && (
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                title="Refresh academic data"
+                aria-label="Refresh academic data"
+                className="p-2 text-gray-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <RotateCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              </button>
+            )}
             <ThemeToggle />
             <FigmaButton size="sm" variant="ghost" onClick={onLogout} className="px-2 sm:px-3">
               <span className="hidden sm:inline">Logout</span>

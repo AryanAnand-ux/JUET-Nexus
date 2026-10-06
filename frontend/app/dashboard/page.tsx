@@ -96,6 +96,8 @@ export default function DashboardPage() {
       studentName={data?.student.name || "Student"}
       enrollment={data?.student.enrollment || enrollment}
       onLogout={handleLogout}
+      onRefresh={invalidateCache}
+      isRefreshing={isLoading}
     >
       {/* Header Section — Premium Gradient Card */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-[24px] p-6 md:p-8 mb-8 border border-slate-800 shadow-xl">
