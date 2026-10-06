@@ -53,6 +53,7 @@ dump.rdb
 # AI & Agent local configs
 .agent/
 .superpowers/
+docs/superpowers/
 mcp.json
 figma_design.json
 
