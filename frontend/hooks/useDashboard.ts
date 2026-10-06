@@ -6,6 +6,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import type { DashboardResponse } from "@/types";
 
@@ -26,6 +27,7 @@ export interface UseDashboardReturn extends DashboardState {
 
 export function useDashboard(enrollment: string | null): UseDashboardReturn {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const router = useRouter();
 
   const [state, setState] = useState<DashboardState>({
     data: null,
@@ -80,14 +82,12 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       }
     } catch (error: any) {
       if (error.response?.status === 401) {
-        setState((prev) => ({
-          ...prev,
-          error: {
-            message: "Portal session renewing in background. Showing cached records.",
-            code: "SESSION_RENEWING",
-          },
-          isLoading: false,
-        }));
+        // Auth cookie is absent or invalid — user must log in again
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("enrollment");
+          localStorage.removeItem("role");
+        }
+        router.push("/login");
         return;
       }
 
