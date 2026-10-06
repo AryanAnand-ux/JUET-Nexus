@@ -327,7 +327,7 @@ function SubjectDetailContent() {
                 <div className="flex gap-3">
                   <button
                     onClick={handleAttend}
-                    className="flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white border-2 border-green-600 font-bold transition-all hover:-translate-y-1 shadow-sm font-nunito"
+                    className="flex-1 flex flex-col items-center gap-1 py-3.5 px-4 rounded-xl bg-green-500 hover:bg-green-600 active:scale-95 text-white border-2 border-green-600 font-bold transition-all shadow-sm font-nunito touch-manipulation"
                   >
                     <span className="text-sm font-black">+ Attend Class</span>
                     {extraAttends > 0 && (
@@ -336,7 +336,7 @@ function SubjectDetailContent() {
                   </button>
                   <button
                     onClick={handleBunk}
-                    className="flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-xl bg-red-500 hover:bg-red-600 text-white border-2 border-red-600 font-bold transition-all hover:-translate-y-1 shadow-sm font-nunito"
+                    className="flex-1 flex flex-col items-center gap-1 py-3.5 px-4 rounded-xl bg-red-500 hover:bg-red-600 active:scale-95 text-white border-2 border-red-600 font-bold transition-all shadow-sm font-nunito touch-manipulation"
                   >
                     <span className="text-sm font-black">− Skip Class</span>
                     {extraBunks > 0 && (
@@ -436,70 +436,109 @@ function SubjectDetailContent() {
               </div>
             </div>
           ) : data && data.logs && data.logs.length > 0 ? (
-            <div className="bg-white dark:bg-slate-950/20 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-x-auto shadow-sm">
-              <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-0">
-                <thead>
-                  <tr className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800">
-                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
-                      Date
-                    </th>
-                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
-                      Type
-                    </th>
-                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const filteredLogs = data.logs.filter((log) => {
-                      if (logFilter === "all") return true;
-                      if (logFilter === "present") return log.status === "Present";
-                      if (logFilter === "absent") return log.status === "Absent";
-                      return true;
-                    });
-                    
-                    if (filteredLogs.length === 0) {
-                      return (
-                        <tr>
-                          <td colSpan={3} className="p-8 text-center text-sm font-medium text-slate-400 font-nunito">
-                            No logs match the selected filter.
-                          </td>
-                        </tr>
-                      );
-                    }
-                    
-                    return [...filteredLogs].reverse().map((log, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-gray-100 dark:border-slate-900/60 hover:bg-gray-50 dark:hover:bg-slate-900/30 transition-colors last:border-0 dark:border-slate-800/50"
-                      >
-                        <td className="p-4 text-sm font-semibold text-figma-dark dark:text-slate-200 whitespace-nowrap font-nunito">
-                          {log.date}
-                        </td>
-                        <td className="p-4 text-sm font-medium text-gray-500 dark:text-slate-400 font-nunito">
-                          {log.type}
-                        </td>
-                        <td className="p-4">
+            <div className="bg-white dark:bg-slate-950/20 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+              {(() => {
+                const filteredLogs = data.logs.filter((log) => {
+                  if (logFilter === "all") return true;
+                  if (logFilter === "present") return log.status === "Present";
+                  if (logFilter === "absent") return log.status === "Absent";
+                  return true;
+                });
+
+                if (filteredLogs.length === 0) {
+                  return (
+                    <div className="p-8 text-center text-sm font-medium text-slate-400 font-nunito">
+                      No logs match the selected filter.
+                    </div>
+                  );
+                }
+
+                const reversedLogs = [...filteredLogs].reverse();
+
+                return (
+                  <>
+                    {/* Mobile-first card list (<sm) */}
+                    <div className="sm:hidden divide-y divide-gray-100 dark:divide-slate-800/80">
+                      {reversedLogs.map((log, i) => (
+                        <div key={i} className="p-3.5 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-gray-900 dark:text-slate-100 font-nunito">
+                              {log.date}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 font-medium">
+                              {log.type}
+                            </p>
+                          </div>
                           <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 ${
                               log.status === "Present"
-                                ? "bg-green-500/10 text-green-700 border-green-500/20"
-                                : "bg-red-500/10 text-red-700 border-red-500/20"
+                                ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+                                : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
                             }`}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              log.status === "Present" ? "bg-green-500 animate-pulse" : "bg-red-500"
-                            }`} />
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                log.status === "Present" ? "bg-green-500 animate-pulse" : "bg-red-500"
+                              }`}
+                            />
                             {log.status}
                           </span>
-                        </td>
-                      </tr>
-                    ));
-                  })()}
-                </tbody>
-              </table>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Desktop table (>=sm) */}
+                    <div className="hidden sm:block overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-0">
+                        <thead>
+                          <tr className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800">
+                            <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
+                              Date
+                            </th>
+                            <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
+                              Type
+                            </th>
+                            <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reversedLogs.map((log, i) => (
+                            <tr
+                              key={i}
+                              className="border-b border-gray-100 dark:border-slate-900/60 hover:bg-gray-50 dark:hover:bg-slate-900/30 transition-colors last:border-0 dark:border-slate-800/50"
+                            >
+                              <td className="p-4 text-sm font-semibold text-figma-dark dark:text-slate-200 whitespace-nowrap font-nunito">
+                                {log.date}
+                              </td>
+                              <td className="p-4 text-sm font-medium text-gray-500 dark:text-slate-400 font-nunito">
+                                {log.type}
+                              </td>
+                              <td className="p-4">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border backdrop-blur-sm ${
+                                    log.status === "Present"
+                                      ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+                                      : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      log.status === "Present" ? "bg-green-500 animate-pulse" : "bg-red-500"
+                                    }`}
+                                  />
+                                  {log.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <div className="border border-gray-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/50 p-8 text-center shadow-sm">

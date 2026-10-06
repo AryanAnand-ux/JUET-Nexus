@@ -141,7 +141,11 @@ export function CampusLynxLoginForm({
             disabled={isLoading}
             autoFocus
             autoComplete="username"
-            className={`w-full px-4 py-3.5 rounded-2xl border text-sm font-bold font-mono tracking-wider transition-colors duration-200 outline-none ${
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="next"
+            className={`w-full px-4 py-3.5 rounded-2xl border text-base sm:text-sm font-bold font-mono tracking-wider transition-colors duration-200 outline-none touch-manipulation ${
               touched.enrollment && !isValidEnrollment(enrollment)
                 ? "border-rose-300 dark:border-rose-800 bg-rose-50/30 dark:bg-rose-950/10 text-rose-900 dark:text-rose-200 focus:border-rose-500"
                 : "border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 text-gray-900 dark:text-slate-100 focus:border-indigo-600 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-800"
@@ -172,7 +176,11 @@ export function CampusLynxLoginForm({
               placeholder="Enter your portal password"
               disabled={isLoading}
               autoComplete="current-password"
-              className={`w-full px-4 py-3.5 pr-12 rounded-2xl border text-sm font-bold transition-colors duration-200 outline-none ${
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="next"
+              className={`w-full px-4 py-3.5 pr-12 rounded-2xl border text-base sm:text-sm font-bold transition-colors duration-200 outline-none touch-manipulation ${
                 error?.field === "password"
                   ? "border-rose-300 dark:border-rose-800 bg-rose-50/30 dark:bg-rose-950/10 text-rose-900 dark:text-rose-200 focus:border-rose-500"
                   : "border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 text-gray-900 dark:text-slate-100 focus:border-indigo-600 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-800"
@@ -182,7 +190,7 @@ export function CampusLynxLoginForm({
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer touch-manipulation active:scale-95"
             >
               {showPassword ? (
                 <EyeOff className="w-5 h-5" />
@@ -219,11 +227,15 @@ export function CampusLynxLoginForm({
               value={captchaInput}
               onChange={handleCaptchaChange}
               onBlur={() => setTouched((prev) => ({ ...prev, captcha: true }))}
-              placeholder="Captcha code"
+              placeholder="Code"
               disabled={isLoading}
               maxLength={8}
               autoComplete="off"
-              className={`w-32 sm:w-36 px-4 py-3.5 rounded-2xl border text-sm font-bold font-mono tracking-wider transition-colors duration-200 outline-none text-center ${
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="go"
+              className={`w-32 sm:w-36 px-4 py-3.5 rounded-2xl border text-base sm:text-sm font-bold font-mono tracking-wider transition-colors duration-200 outline-none text-center touch-manipulation ${
                 error?.field === "captcha"
                   ? "border-rose-300 dark:border-rose-800 bg-rose-50/30 dark:bg-rose-950/10 text-rose-900 dark:text-rose-200 focus:border-rose-500"
                   : "border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 text-gray-900 dark:text-slate-100 focus:border-indigo-600 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-800"
@@ -252,7 +264,7 @@ export function CampusLynxLoginForm({
                 disabled={isLoading}
                 title="Refresh Captcha"
                 aria-label="Refresh Captcha"
-                className="p-2 text-gray-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 rounded-xl transition-all cursor-pointer"
+                className="p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center text-gray-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 rounded-xl transition-all cursor-pointer touch-manipulation active:scale-95"
               >
                 <RotateCw className="w-4 h-4" />
               </button>
@@ -269,7 +281,7 @@ export function CampusLynxLoginForm({
         <button
           type="submit"
           disabled={!isFormValid || isLoading}
-          className="w-full mt-2 py-4 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-white font-bold text-sm tracking-wide font-nunito shadow-lg shadow-indigo-600/20 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full mt-2 min-h-[50px] py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 text-white font-bold text-sm tracking-wide font-nunito shadow-lg shadow-indigo-600/20 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer touch-manipulation"
         >
           {isLoading ? (
             <>

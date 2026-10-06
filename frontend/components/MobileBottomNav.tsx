@@ -41,6 +41,18 @@ export function MobileBottomNav() {
     setBranch(localStorage.getItem("branch") || "—");
   }, [profileOpen]);
 
+  // Prevent background scroll when profile sheet is open
+  useEffect(() => {
+    if (profileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [profileOpen]);
+
   // Close on outside tap
   useEffect(() => {
     if (!profileOpen) return;
@@ -106,7 +118,7 @@ export function MobileBottomNav() {
       {/* Bottom Nav Bar */}
       <nav
         aria-label="Mobile Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200 dark:border-slate-800 shadow-xl px-1.5 py-1.5 transition-colors duration-200"
+        className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200/80 dark:border-slate-800 shadow-xl px-2 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] transition-colors duration-200"
       >
         <div className="grid grid-cols-5 items-center max-w-md mx-auto">
           {navItems.map((item) => {
@@ -118,12 +130,12 @@ export function MobileBottomNav() {
                   key={item.label}
                   type="button"
                   onClick={item.onPress}
-                  className={`flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-150 relative text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 font-medium`}
+                  className="flex flex-col items-center justify-center min-h-[48px] py-1 px-1 rounded-xl transition-transform duration-100 active:scale-95 relative text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 font-medium touch-manipulation"
                 >
                   <div className="p-1 rounded-lg transition-transform">
                     {item.icon}
                   </div>
-                  <span className="text-[10px] tracking-tight mt-0.5">{item.label}</span>
+                  <span className="text-[10px] font-semibold tracking-tight mt-0.5">{item.label}</span>
                 </button>
               );
             }
@@ -132,14 +144,14 @@ export function MobileBottomNav() {
               <Link
                 key={item.href}
                 href={item.href!}
-                className={`flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-150 relative ${
+                className={`flex flex-col items-center justify-center min-h-[48px] py-1 px-1 rounded-xl transition-transform duration-100 active:scale-95 relative touch-manipulation ${
                   isActive
                     ? "text-indigo-600 dark:text-indigo-400 font-bold"
                     : "text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 font-medium"
                 }`}
               >
                 <div
-                  className={`p-1 rounded-lg transition-transform ${
+                  className={`p-1 rounded-lg transition-all ${
                     isActive ? "bg-indigo-50 dark:bg-indigo-950/70 scale-105" : ""
                   }`}
                 >
@@ -147,7 +159,7 @@ export function MobileBottomNav() {
                 </div>
                 <span className="text-[10px] tracking-tight mt-0.5">{item.label}</span>
                 {isActive && (
-                  <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+                  <span className="absolute bottom-0 w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
                 )}
               </Link>
             );
@@ -157,34 +169,37 @@ export function MobileBottomNav() {
 
       {/* Profile Bottom Sheet Backdrop */}
       {profileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden bg-black/50 backdrop-blur-sm transition-opacity" />
+        <div
+          className="fixed inset-0 z-50 lg:hidden bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={() => setProfileOpen(false)}
+        />
       )}
 
       {/* Profile Bottom Sheet */}
       <div
         ref={sheetRef}
-        className={`fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out pb-[max(2rem,calc(1.5rem+env(safe-area-inset-bottom)))] ${
           profileOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
         {/* Handle bar */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-slate-700" />
+        <div className="flex justify-center pt-3 pb-1 cursor-grab">
+          <div className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-slate-700" />
         </div>
 
         {/* Close button */}
         <button
           type="button"
           onClick={() => setProfileOpen(false)}
-          className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors touch-manipulation active:scale-95"
           aria-label="Close profile"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <div className="px-6 pb-8 pt-2">
+        <div className="px-6 pt-2">
           {/* Avatar + Name */}
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-5">
             <div className="w-14 h-14 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-black flex items-center justify-center text-xl shadow-sm border border-indigo-200 dark:border-indigo-800/50">
               {getInitials(studentName)}
             </div>
@@ -196,7 +211,7 @@ export function MobileBottomNav() {
           </div>
 
           {/* Info rows */}
-          <div className="space-y-3 mb-6">
+          <div className="space-y-3 mb-5">
             {/* Enrollment */}
             <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-800/60 rounded-2xl px-4 py-3">
               <div>
@@ -210,7 +225,7 @@ export function MobileBottomNav() {
               <button
                 type="button"
                 onClick={handleCopyEnrollment}
-                className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all"
+                className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all touch-manipulation active:scale-95"
                 aria-label="Copy enrollment number"
               >
                 {copied ? (
@@ -235,7 +250,7 @@ export function MobileBottomNav() {
             <Link
               href="/dashboard/feedback"
               onClick={() => setProfileOpen(false)}
-              className="flex items-center justify-between bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/50 rounded-2xl px-4 py-3 text-indigo-700 dark:text-indigo-300 font-bold text-sm transition-colors hover:bg-indigo-100/70 dark:hover:bg-indigo-900/60 font-nunito"
+              className="flex items-center justify-between bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/50 rounded-2xl px-4 py-3 text-indigo-700 dark:text-indigo-300 font-bold text-sm transition-colors hover:bg-indigo-100/70 dark:hover:bg-indigo-900/60 font-nunito touch-manipulation active:scale-98"
             >
               <div className="flex items-center gap-2.5">
                 <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -254,7 +269,7 @@ export function MobileBottomNav() {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-3 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-sm rounded-2xl border border-rose-200 dark:border-rose-800/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-all font-nunito"
+              className="flex items-center gap-2 px-5 py-3 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-sm rounded-2xl border border-rose-200 dark:border-rose-800/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-all font-nunito touch-manipulation active:scale-95"
             >
               <LogOut className="w-4 h-4" />
               Logout

@@ -64,7 +64,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
           <CheckCircle2 className="w-5 h-5 mr-2 text-accent-primary" /> Attendance Tracker
         </span>
       } 
-      className="border border-slate-200/80 dark:border-slate-800 shadow-md rounded-[24px] p-6 md:p-8"
+      className="border border-slate-200/80 dark:border-slate-800 shadow-md rounded-[24px] p-4 sm:p-6 md:p-8"
     >
       {attendanceRecords.length === 0 ? (
         <div className="text-center py-12">
@@ -75,27 +75,27 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
       ) : (
         <>
           {/* Overall Stats Cards */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-3.5 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-0.5 sm:mb-1">
                 Enrolled Courses
               </p>
-              <p className="text-4xl font-extrabold text-slate-850 dark:text-slate-100 font-nunito tracking-tight">
+              <p className="text-3xl sm:text-4xl font-extrabold text-slate-850 dark:text-slate-100 font-nunito tracking-tight">
                 {stats.subjectCount}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
+            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-3.5 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-0.5 sm:mb-1">
                 Attention Required (&lt;75%)
               </p>
-              <p className={`text-4xl font-extrabold font-nunito tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600' : 'text-green-600'}`}>
+              <p className={`text-3xl sm:text-4xl font-extrabold font-nunito tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600' : 'text-green-600'}`}>
                 {stats.belowThreshold}
               </p>
             </div>
           </div>
 
           {/* Subject-wise Attendance */}
-          <div className="space-y-4">
+          <div className="space-y-3.5 sm:space-y-4">
             {attendanceRecords.map((record) => {
               const radius = 34;
               const circumference = 2 * Math.PI * radius;
@@ -132,48 +132,70 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                 <Link
                   href={`/dashboard/subject/${encodeURIComponent(record.subject)}?pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
                   key={record.subject}
-                  className="group relative block bg-white dark:bg-slate-950/20 hover:bg-slate-50/30 dark:hover:bg-slate-900/25 border border-slate-200/80 dark:border-slate-800/60 rounded-[20px] p-4 sm:p-5 transition-all duration-300 hover:shadow-md hover:scale-[1.005] hover:border-slate-350 dark:hover:border-slate-700 cursor-pointer"
+                  className="group relative block bg-white dark:bg-slate-950/20 hover:bg-slate-50/30 dark:hover:bg-slate-900/25 border border-slate-200/80 dark:border-slate-800/60 rounded-[20px] p-3.5 sm:p-5 transition-all duration-200 hover:shadow-md hover:border-slate-350 dark:hover:border-slate-700 cursor-pointer touch-manipulation active:scale-[0.99]"
                 >
-                  <div className="flex flex-col md:flex-row items-center md:items-stretch gap-6">
-                    {/* Circular Progress Indicator */}
-                    <div className="relative w-24 h-24 flex items-center justify-center shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full shadow-inner">
-                      <svg className="transform -rotate-90 w-24 h-24">
-                        <circle
-                          cx="48"
-                          cy="48"
-                          r="34"
-                          stroke="#F1F5F9"
-                          className="dark:stroke-slate-800"
-                          strokeWidth="8"
-                          fill="transparent"
-                        />
-                        <circle
-                          cx="48"
-                          cy="48"
-                          r="34"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          strokeDasharray={circumference}
-                          strokeDashoffset={strokeDashoffset}
-                          strokeLinecap="round"
-                          className={`transition-all duration-1000 ${status.ringColor}`}
-                        />
-                      </svg>
-                      <div className="absolute flex flex-col items-center">
-                        <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 leading-none font-nunito">
-                          {record.percentage % 1 === 0
-                            ? record.percentage.toFixed(0)
-                            : record.percentage.toFixed(1)}
-                        </span>
-                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Total %</span>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-6">
+                    {/* Top Row on Mobile: Circular meter + Title */}
+                    <div className="flex items-center gap-3.5 sm:gap-6">
+                      {/* Circular Progress Indicator */}
+                      <div className="relative w-18 h-18 sm:w-24 sm:h-24 flex items-center justify-center shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full shadow-inner">
+                        <svg className="transform -rotate-90 w-18 h-18 sm:w-24 sm:h-24" viewBox="0 0 96 96">
+                          <circle
+                            cx="48"
+                            cy="48"
+                            r="34"
+                            stroke="#F1F5F9"
+                            className="dark:stroke-slate-800"
+                            strokeWidth="8"
+                            fill="transparent"
+                          />
+                          <circle
+                            cx="48"
+                            cy="48"
+                            r="34"
+                            stroke="currentColor"
+                            strokeWidth="8"
+                            fill="transparent"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={strokeDashoffset}
+                            strokeLinecap="round"
+                            className={`transition-all duration-1000 ${status.ringColor}`}
+                          />
+                        </svg>
+                        <div className="absolute flex flex-col items-center">
+                          <span className="text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-slate-100 leading-none font-nunito">
+                            {record.percentage % 1 === 0
+                              ? record.percentage.toFixed(0)
+                              : record.percentage.toFixed(1)}
+                            <span className="text-xs sm:text-sm font-bold">%</span>
+                          </span>
+                          <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Total</span>
+                        </div>
+                      </div>
+
+                      {/* Title & Status on Mobile Header */}
+                      <div className="flex-1 sm:hidden">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-sm font-extrabold text-slate-850 dark:text-slate-200 leading-snug font-nunito group-hover:text-accent-primary transition-colors line-clamp-2">
+                            {record.subject}
+                          </h4>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-nunito flex items-center shadow-sm shrink-0 ${status.badgeClass}`}>
+                            {status.icon}
+                            {status.text}
+                          </span>
+                        </div>
+                        <div className="mt-1.5">
+                          <span className={`inline-block px-2 py-0.5 rounded-lg text-[11px] font-bold font-nunito border shadow-sm ${skipInfo.className}`}>
+                            {skipInfo.text}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Details Panel */}
+                    {/* Details Panel for Desktop / Expanded View */}
                     <div className="flex-1 flex flex-col justify-between w-full">
-                      {/* Header Title */}
-                      <div className="flex justify-between items-start gap-4 mb-3">
+                      {/* Desktop Header Title */}
+                      <div className="hidden sm:flex justify-between items-start gap-4 mb-2">
                         <div>
                           <h4 className="text-base font-extrabold text-slate-850 dark:text-slate-200 leading-snug font-nunito group-hover:text-accent-primary transition-colors">
                             {record.subject}
@@ -188,24 +210,24 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                         </span>
                       </div>
 
-                      {/* Quick-Info Skip Indicator */}
-                      <div className="mb-3 flex items-center">
+                      {/* Desktop Quick-Info Skip Indicator */}
+                      <div className="hidden sm:flex mb-3 items-center">
                         <span className={`px-2.5 py-1 rounded-xl text-xs font-bold font-nunito border shadow-sm ${skipInfo.className}`}>
                           {skipInfo.text}
                         </span>
                       </div>
 
-                      {/* Stats Breakdowns */}
-                      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
+                      {/* Stats Breakdowns (Responsive 3 cols) */}
+                      <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
                           <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Lectures</p>
                           <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">{record.lecturePercent.toFixed(0)}%</p>
                         </div>
-                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
                           <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Tutorials</p>
                           <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">{record.tutorialPercent.toFixed(0)}%</p>
                         </div>
-                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
                           <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Practicals</p>
                           <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">{record.practicalPercent.toFixed(0)}%</p>
                         </div>

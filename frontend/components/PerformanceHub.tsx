@@ -25,6 +25,17 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulatedMarks, setSimulatedMarks] = useState<Record<string, number>>({});
 
+  React.useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
+
   const handleMarkClick = (subjectName: string) => {
     if (!detailedMarks) return;
     const match = detailedMarks.find(
@@ -272,20 +283,21 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
 
       {/* Detailed Marks Modal */}
       {isModalOpen && selectedCourseMarks && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity"
             onClick={() => setIsModalOpen(false)}
-          />          {/* Modal Container */}
-          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+          />
+          {/* Modal Container */}
+          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-[28px] sm:rounded-[28px] shadow-2xl w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-0">
             {/* Header */}
             <div className="bg-slate-900 px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-800 relative shrink-0">
               <div className="absolute top-0 right-0 w-32 h-32 bg-accent-primary/10 rounded-full blur-2xl pointer-events-none" />
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="absolute top-4 right-4 p-1.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 transition-all active:scale-95"
+                className="absolute top-4 right-4 p-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 transition-all active:scale-95 touch-manipulation"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -305,7 +317,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsSimulating(!isSimulating)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-slate-900 touch-manipulation ${
                       isSimulating ? "bg-accent-primary" : "bg-slate-800"
                     }`}
                     aria-pressed={isSimulating}
@@ -346,7 +358,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                                 step="0.5"
                                 value={obtained}
                                 onChange={(e) => handleSimulatedMarkChange(comp.name, Math.min(comp.max, Math.max(0, parseFloat(e.target.value) || 0)))}
-                                className="w-14 px-1.5 py-0.5 text-center text-xs font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md focus:ring-1 focus:ring-accent-primary focus:outline-none dark:text-slate-200"
+                                className="w-14 px-1.5 py-0.5 text-center text-base sm:text-xs font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md focus:ring-1 focus:ring-accent-primary focus:outline-none dark:text-slate-200 touch-manipulation"
                               />
                             ) : (
                               <span className="text-slate-850 dark:text-slate-100 font-extrabold">{obtained}</span>

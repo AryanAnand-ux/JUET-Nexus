@@ -37,11 +37,23 @@
 @layer base {
   html {
     @apply scroll-smooth;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     @apply bg-brutal-cream text-brutal-black antialiased transition-colors duration-200 dark:bg-slate-900 dark:text-slate-100;
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
   }
 
   h1 {
@@ -114,6 +126,19 @@
   /* Press effect on active */
   .brutal-press-effect {
     @apply transition-all duration-brutal-fast active:translate-x-[2px] active:translate-y-[2px] active:shadow-brutal-none;
+  }
+
+  /* Mobile Safe Area & Touch Utilities */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .touch-scroll-momentum {
+    -webkit-overflow-scrolling: touch;
   }
 }
 

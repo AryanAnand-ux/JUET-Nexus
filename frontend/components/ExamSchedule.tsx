@@ -272,7 +272,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
               <button
                 key={ev.exameventid}
                 onClick={() => onSelectEvent(ev.exameventid)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all touch-manipulation active:scale-95 ${
                   isSelected
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
                     : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50"
@@ -295,7 +295,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
               placeholder="Search exam by subject or room..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-shadow shadow-sm placeholder:text-gray-400 dark:placeholder:text-slate-500"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-shadow shadow-sm placeholder:text-gray-400 dark:placeholder:text-slate-500 touch-manipulation"
             />
           </div>
           <span className="text-xs text-gray-500 dark:text-slate-400 font-medium self-center sm:self-auto">
