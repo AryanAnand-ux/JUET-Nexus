@@ -32,9 +32,45 @@ const GET_EVENTS_PATH =
 const GET_SCHEDULE_PATH =
   "/studentsttattview/getstudent-examschedule";
 
+export interface ExamOptions {
+  exameventid?: string;
+}
+
+function parseExamDateTime(str: string): Date | null {
+  if (!str) return null;
+  const s = str.trim();
+  const isoMatch = s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (isoMatch) {
+    const [, y, m, d, hr, min, sec] = isoMatch;
+    if (hr !== undefined) {
+      return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), parseInt(hr, 10), parseInt(min, 10), sec ? parseInt(sec, 10) : 0);
+    }
+    return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+  }
+
+  const dmyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(.*)$/);
+  if (dmyMatch) {
+    const [, d, m, y, rest] = dmyMatch;
+    const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+    if (timeMatch) {
+      let hr = parseInt(timeMatch[1], 10);
+      const min = parseInt(timeMatch[2], 10);
+      const sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+      const mer = timeMatch[4] ? timeMatch[4].toUpperCase() : null;
+      if (mer === "PM" && hr < 12) hr += 12;
+      if (mer === "AM" && hr === 12) hr = 0;
+      return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), hr, min, sec);
+    }
+    return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+  }
+  const parsed = new Date(s);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export async function fetchExamSchedule(
   transport: ExamTransport,
-  identity: PortalIdentity
+  identity: PortalIdentity,
+  options?: ExamOptions
 ): Promise<ExamScheduleResponse> {
   // Step 1: get semesters with student exam events
   const semRes = (await transport.postEncrypted(GET_SEMESTERS_PATH, {
@@ -47,7 +83,16 @@ export async function fetchExamSchedule(
     return { semester: "", event: "", items: [] };
   }
 
-  const latestSemester = semesters[0];
+  // Pick the active / latest semester (highest registrationdateto or last entry)
+  const latestSemester = semesters.reduce((best, cur) => {
+    const curTo = Number(cur?.registrationdateto) || Number(cur?.registrationdatefrom) || 0;
+    const bestTo = Number(best?.registrationdateto) || Number(best?.registrationdatefrom) || 0;
+    if (curTo > 0 && bestTo > 0) {
+      return curTo >= bestTo ? cur : best;
+    }
+    return cur;
+  }, semesters[semesters.length - 1]);
+
   const registrationid = latestSemester?.registrationid;
   const semesterDesc = String(latestSemester?.registrationdesc ?? "").trim();
 
@@ -67,12 +112,23 @@ export async function fetchExamSchedule(
     return { semester: semesterDesc, event: "", items: [] };
   }
 
-  const latestEvent = events[0];
-  const exameventid = latestEvent?.exameventid;
-  const eventDesc = String(latestEvent?.exameventdesc ?? "").trim();
+  const availableEvents = events
+    .map((ev: any) => ({
+      exameventid: String(ev.exameventid ?? ""),
+      exameventdesc: String(ev.exameventdesc ?? "").trim(),
+    }))
+    .filter((ev) => ev.exameventid.length > 0);
+
+  // If specific event requested, find it; otherwise default to the last one (most recent)
+  const targetEvent = options?.exameventid
+    ? events.find((ev: any) => String(ev.exameventid) === options.exameventid) ?? events[events.length - 1]
+    : events[events.length - 1];
+
+  const exameventid = targetEvent?.exameventid;
+  const eventDesc = String(targetEvent?.exameventdesc ?? "").trim();
 
   if (!exameventid) {
-    return { semester: semesterDesc, event: eventDesc, items: [] };
+    return { semester: semesterDesc, event: eventDesc, items: [], availableEvents };
   }
 
   // Step 3: get student exam schedule
@@ -85,22 +141,90 @@ export async function fetchExamSchedule(
   const rawItems = scheduleRes?.response?.subjectinfo;
   const items: ExamScheduleItem[] = [];
 
+  // Case-insensitive field lookup helper (portal uses mixed PascalCase/camelCase)
+  function getFieldCI(obj: Record<string, unknown>, ...keys: string[]): string | undefined {
+    const lowerKeys = keys.map((k) => k.toLowerCase());
+    for (const [k, v] of Object.entries(obj)) {
+      if (lowerKeys.includes(k.toLowerCase()) && v !== null && v !== undefined) {
+        const s = String(v).trim();
+        if (s.length > 0) return s;
+      }
+    }
+    return undefined;
+  }
+
+  // Regex scan: find any value that looks like a human time or time range.
+  // Requires am/pm marker OR a range separator to avoid matching bare HH:MM tokens
+  // embedded in ISO date strings like "2026-12-10T00:00:00".
+  const DATE_FIELD_KEYS_LC = new Set(["datetime", "examdate", "date", "datetimeupto"]);
+  const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}/;
+  function findTimeValue(obj: Record<string, unknown>): string | undefined {
+    const humanTimePattern =
+      /\d{1,2}:\d{2}\s*(?:am|pm)(?:\s*(?:to|-|–)\s*\d{1,2}:\d{2}\s*(?:am|pm)?)?|\d{1,2}:\d{2}\s+(?:to|-|–)\s+\d{1,2}:\d{2}/i;
+    for (const [k, v] of Object.entries(obj)) {
+      if (DATE_FIELD_KEYS_LC.has(k.toLowerCase())) continue;
+      if (typeof v !== "string") continue;
+      if (ISO_DATE_RE.test(v)) continue;
+      if (humanTimePattern.test(v)) {
+        const m = v.match(humanTimePattern);
+        if (m) return m[0].trim();
+      }
+    }
+    return undefined;
+  }
+
   if (Array.isArray(rawItems)) {
     for (const raw of rawItems) {
       if (!raw) continue;
+      const subject = String(
+        getFieldCI(raw, "subjectdesc", "subjectname", "subject", "subjectcode") ?? ""
+      ).trim();
+
+      const rawDate = String(
+        getFieldCI(raw, "examdate", "date", "datetime") ?? ""
+      ).trim();
+
+      // Try explicit time fields first (case-insensitive), then combine from/to, then regex scan
+      const fromTime = getFieldCI(raw, "fromtime", "starttime");
+      const toTime = getFieldCI(raw, "totime", "endtime");
+      const rawTime = (
+        getFieldCI(raw, "examtime", "time", "timings", "timing", "slot", "timeslot") ??
+        (fromTime && toTime ? `${fromTime} to ${toTime}` : undefined) ??
+        getFieldCI(raw, "datetimeupto") ??
+        findTimeValue(raw) ??
+        ""
+      ).trim();
+
+      const roomcode = String(
+        getFieldCI(raw, "roomcode", "roomno", "roomnumber", "room") ?? ""
+      ).trim();
+
+      const seatno = String(
+        getFieldCI(raw, "seatno", "seatnumber", "seat") ?? ""
+      ).trim();
+
+      // Normalize date: if rawDate is DD/MM/YYYY, convert to ISO YYYY-MM-DD
+      let normalizedDate = rawDate;
+      const dmyMatch = rawDate.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(.*)$/);
+      if (dmyMatch) {
+        const [, d, m, y, rest] = dmyMatch;
+        const pad = (n: string) => n.padStart(2, "0");
+        normalizedDate = `${y}-${pad(m)}-${pad(d)}${rest ? rest.trim() : ""}`;
+      }
+
       items.push({
-        subject: String(raw.subjectdesc ?? "").trim(),
-        datetime: String(raw.datetime ?? "").trim(),
-        datetimeupto: String(raw.datetimeupto ?? "").trim(),
-        roomcode: String(raw.roomcode ?? "").trim(),
-        seatno: String(raw.seatno ?? "").trim(),
+        subject,
+        datetime: normalizedDate,
+        datetimeupto: rawTime,
+        roomcode,
+        seatno,
       });
     }
   }
 
   items.sort((a, b) => {
-    const timeA = a.datetime ? new Date(a.datetime).getTime() : 0;
-    const timeB = b.datetime ? new Date(b.datetime).getTime() : 0;
+    const timeA = parseExamDateTime(a.datetime)?.getTime() ?? 0;
+    const timeB = parseExamDateTime(b.datetime)?.getTime() ?? 0;
     return timeA - timeB;
   });
 
@@ -108,5 +232,6 @@ export async function fetchExamSchedule(
     semester: semesterDesc,
     event: eventDesc,
     items,
+    availableEvents,
   };
 }

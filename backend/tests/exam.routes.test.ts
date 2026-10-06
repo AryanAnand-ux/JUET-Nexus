@@ -170,6 +170,125 @@ describe("GET /api/exam", () => {
     expect(body.data.items).toEqual([]);
   });
 
+  it("selects specific exam event when eventId query param is provided", async () => {
+    mockPostEncrypted
+      .mockResolvedValueOnce({
+        response: {
+          semesterCodeinfo: {
+            semestercode: [
+              { registrationid: "REG1", registrationdesc: "Odd Semester 2026" },
+            ],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        response: {
+          eventcode: {
+            examevent: [
+              { exameventid: "EV1", exameventdesc: "T1 Exam" },
+              { exameventid: "EV2", exameventdesc: "T2 Exam" },
+            ],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        response: {
+          subjectinfo: [
+            {
+              subjectdesc: "Algorithms",
+              datetime: "2026-11-20T09:30:00",
+              datetimeupto: "2026-11-20T11:00:00",
+              roomcode: "LT-2",
+              seatno: "B-05",
+            },
+          ],
+        },
+      });
+
+    const cookie = encryptSessionData(campusLynxSession);
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/exam?eventId=EV2",
+      cookies: { auth: cookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.event).toBe("T2 Exam");
+    expect(body.data.availableEvents).toHaveLength(2);
+    expect(body.data.items[0].subject).toBe("Algorithms");
+  });
+
+  it("normalizes Indian DD/MM/YYYY dates and captures time from time field", async () => {
+    mockPostEncrypted
+      .mockResolvedValueOnce({
+        response: {
+          semesterCodeinfo: {
+            semestercode: [
+              { registrationid: "REG1", registrationdesc: "2026 ODD SEMESTER" },
+            ],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        response: {
+          eventcode: {
+            examevent: [
+              { exameventid: "EV1", exameventdesc: "TEST-2" },
+            ],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        response: {
+          subjectinfo: [
+            {
+              subjectdesc: "NANO SCIENCE (PH303)",
+              datetime: "13/10/2026",
+              time: "09:30 am to 11:00 am",
+              roomcode: "LT-6",
+              seatno: "A5",
+            },
+            {
+              subjectdesc: "CONCEPTS OF ECONOMICS (HS301)",
+              datetime: "12/10/2026",
+              time: "12:00 pm to 01:30 pm",
+              roomcode: "LT-12",
+              seatno: "D5",
+            },
+          ],
+        },
+      });
+
+    const cookie = encryptSessionData(campusLynxSession);
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/exam",
+      cookies: { auth: cookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.items).toHaveLength(2);
+    // Should be sorted chronologically: 12/10/2026 before 13/10/2026
+    expect(body.data.items[0]).toEqual({
+      subject: "CONCEPTS OF ECONOMICS (HS301)",
+      datetime: "2026-10-12",
+      datetimeupto: "12:00 pm to 01:30 pm",
+      roomcode: "LT-12",
+      seatno: "D5",
+    });
+    expect(body.data.items[1]).toEqual({
+      subject: "NANO SCIENCE (PH303)",
+      datetime: "2026-10-13",
+      datetimeupto: "09:30 am to 11:00 am",
+      roomcode: "LT-6",
+      seatno: "A5",
+    });
+  });
+
   it("returns 502 when portal call throws PortalError", async () => {
     mockPostEncrypted.mockRejectedValueOnce(new PortalError("Network timeout", 500));
 

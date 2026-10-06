@@ -162,18 +162,25 @@ function componentIdsFor(raw: string): string[] {
  * `{ status: { responseStatus: "Success" }, response: {...} }`.
  */
 function extractResponse(payload: unknown, path: string): Record<string, unknown> {
-  const envelope = payload as
-    | { status?: { responseStatus?: string; errors?: unknown }; response?: unknown }
-    | null
-    | undefined;
+  const envelope = payload as any;
   const response = envelope?.response;
-  if (envelope?.status?.responseStatus === "Success" && response && typeof response === "object") {
+  if (
+    envelope?.status?.responseStatus === "Success" &&
+    response &&
+    typeof response === "object"
+  ) {
     return response as Record<string, unknown>;
   }
-  const errors = envelope?.status?.errors;
+
+  const is401 =
+    envelope?.status === 401 ||
+    envelope?.error === "Unauthorized" ||
+    (envelope?.status?.errors && /unauthorized|session expired/i.test(String(envelope.status.errors)));
+
+  const errors = envelope?.status?.errors ?? envelope?.error ?? envelope?.message;
   throw new PortalError(
     `The portal refused ${path}${errors ? `: ${String(errors)}` : "."}`,
-    502,
+    is401 ? 401 : 502,
     payload
   );
 }
@@ -191,10 +198,10 @@ function extractResponse(payload: unknown, path: string): Record<string, unknown
  * status alone, and let anything unrecognised still throw.
  */
 function isNoRecordsFailure(payload: unknown): boolean {
-  const envelope = payload as { status?: { errors?: unknown } } | null | undefined;
-  const errors = envelope?.status?.errors;
+  const envelope = payload as any;
+  const errors = envelope?.status?.errors ?? envelope?.errors ?? envelope?.status?.message ?? envelope?.message;
   const messages = Array.isArray(errors) ? errors : errors ? [errors] : [];
-  return messages.some((message) => /no attendance|no record|not found/i.test(String(message)));
+  return messages.some((message) => /no attendance|no record|not found|records? not available/i.test(String(message)));
 }
 
 // ---------------------------------------------------------------------------
@@ -225,10 +232,13 @@ export function mapAttendanceSummary(
     const lecturePercent = round1(safeFloat(row.Lpercentage));
     const tutorialPercent = round1(safeFloat(row.Tpercentage));
     const practicalPercent = round1(safeFloat(row.Ppercentage));
+    const overallPercentage = safeFloat(row.LTpercantage) > 0
+      ? round1(safeFloat(row.LTpercantage))
+      : (practicalPercent > 0 ? practicalPercent : round1(safeFloat(row.LTpercantage)));
 
     records.push({
       subject,
-      percentage: round1(safeFloat(row.LTpercantage)),
+      percentage: overallPercentage,
       lecturePercent,
       tutorialPercent,
       practicalPercent,
@@ -241,6 +251,7 @@ export function mapAttendanceSummary(
         P: row.Psubjectcomponentid,
         subjectid: row.subjectid,
         individualsubjectcode: row.individualsubjectcode,
+        percentage: overallPercentage,
       }),
     });
   }
@@ -264,6 +275,7 @@ export function buildDetailLink(
     L?: string;
     T?: string;
     P?: string;
+    percentage?: number;
   }
 ): string {
   const params = new URLSearchParams({
@@ -274,6 +286,7 @@ export function buildDetailLink(
     sty: ctx.stynumber,
     inst: ctx.instituteid,
   });
+  if (subject.percentage !== undefined) params.set("pct", String(subject.percentage));
   if (subject.L) params.set("l", subject.L);
   if (subject.T) params.set("t", subject.T);
   if (subject.P) params.set("p", subject.P);
@@ -285,6 +298,7 @@ export interface ParsedDetailRef extends AttendanceContext {
   subjectid: string;
   individualsubjectcode: string;
   components: SubjectComponents;
+  officialPercentage?: number;
 }
 
 export function parseDetailLink(link: string | null | undefined): ParsedDetailRef | null {
@@ -309,6 +323,8 @@ export function parseDetailLink(link: string | null | undefined): ParsedDetailRe
   if (l) components.L = l;
   if (t) components.T = t;
   if (p) components.P = p;
+  const pctStr = q.get("pct");
+  const officialPercentage = pctStr !== null ? safeFloat(pctStr) : undefined;
   return {
     subjectid,
     individualsubjectcode: q.get("code") ?? "",
@@ -317,6 +333,7 @@ export function parseDetailLink(link: string | null | undefined): ParsedDetailRe
     stynumber,
     instituteid,
     components,
+    officialPercentage,
   };
 }
 
@@ -409,7 +426,7 @@ export async function fetchAttendanceSummary(
 export async function fetchAttendanceDetail(
   transport: AttendanceTransport,
   ctx: AttendanceContext,
-  subject: SubjectRef
+  subject: SubjectRef & { officialPercentage?: number }
 ): Promise<AttendanceDetailsResponse> {
   const logs: AttendanceDetailItem[] = [];
 
@@ -438,11 +455,18 @@ export async function fetchAttendanceDetail(
 
   const classesHeld = logs.length;
   const classesAttended = logs.filter((l) => l.status === "Present").length;
+  const percentage =
+    subject.officialPercentage !== undefined && subject.officialPercentage > 0
+      ? subject.officialPercentage
+      : classesHeld > 0
+        ? round1((classesAttended / classesHeld) * 100)
+        : 0;
+
   return {
     subject: subject.subject,
     classesHeld,
     classesAttended,
-    percentage: classesHeld > 0 ? round1((classesAttended / classesHeld) * 100) : 0,
+    percentage,
     logs,
   };
 }

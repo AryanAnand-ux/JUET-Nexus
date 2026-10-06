@@ -109,37 +109,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </svg>
       ),
     },
-    {
-      href: "/dashboard/grades",
-      label: "Grade Card",
-      icon: (
-        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-    },
   ];
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-slate-900 font-nunito overflow-hidden transition-colors duration-200">
-      {/* Mobile Drawer Backdrop */}
-      {sidebarOpen && (
-        <button
-          type="button"
-          aria-label="Close navigation menu"
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden transition-opacity"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
 
       {/* Sidebar Panel */}
       <aside
         ref={sidebarRef}
         onClick={handleSidebarClick}
         className={clsx(
-          "fixed inset-y-0 left-0 z-50 lg:static flex flex-col bg-white dark:bg-slate-950/40 border-r border-gray-200 dark:border-slate-900 transition-all duration-300 ease-in-out",
-          // Mobile state
-          sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0",
+          "hidden lg:flex fixed inset-y-0 left-0 z-50 lg:static flex-col bg-white dark:bg-slate-950/40 border-r border-gray-200 dark:border-slate-900 transition-all duration-300 ease-in-out",
           // Desktop state
           sidebarCollapsed ? "lg:w-20 cursor-pointer" : "lg:w-64 cursor-default"
         )}
@@ -246,19 +226,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {/* Header bar */}
         <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 shadow-sm z-10 transition-colors duration-200">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            {/* Mobile menu trigger */}
-            <button
-              type="button"
-              data-sidebar-toggle="true"
-              aria-expanded={sidebarOpen}
-              aria-label="Toggle navigation menu"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 rounded-lg text-figma-dark dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
             <h1 className="text-base sm:text-xl font-bold text-figma-dark dark:text-slate-100 font-nunito truncate">
               {pathname === "/dashboard/performance"
                 ? "Academic Performance"
@@ -266,8 +233,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 ? "Registered Courses"
                 : pathname === "/dashboard/exam"
                 ? "Exam Schedule"
-                : pathname === "/dashboard/grades"
-                ? "Grade Card"
                 : "Attendance Tracker"}
             </h1>
           </div>

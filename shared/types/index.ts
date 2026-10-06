@@ -196,6 +196,7 @@ export interface ExamScheduleResponse {
   semester: string;
   event: string;
   items: ExamScheduleItem[];
+  availableEvents?: ExamEvent[];
 }
 
 // Grade Card

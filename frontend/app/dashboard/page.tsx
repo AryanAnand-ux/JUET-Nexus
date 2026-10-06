@@ -13,8 +13,7 @@ import { AttendanceTracker } from "@/components/AttendanceTracker";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { performLogout } from "@/utils/logout";
-import { AlertTriangle, MapPin, RefreshCw, Copy, Check } from "lucide-react";
-import { NotificationToggle } from "@/components/NotificationToggle";
+import { AlertTriangle, MapPin, Copy, Check } from "lucide-react";
 
 /**
  * Error Display Component
@@ -67,6 +66,15 @@ export default function DashboardPage() {
       router.push("/login");
     }
   }, [router]);
+
+  // Cache student profile info for MobileBottomNav profile sheet
+  useEffect(() => {
+    if (data?.student) {
+      const { name, branch } = data.student;
+      if (name) localStorage.setItem("studentName", name);
+      if (branch) localStorage.setItem("branch", branch);
+    }
+  }, [data]);
 
   const handleLogout = async () => {
     await performLogout();
@@ -141,18 +149,6 @@ export default function DashboardPage() {
                 </>
               )}
             </div>
-          </div>
-
-          <div className="shrink-0 self-start md:self-center flex flex-wrap items-center gap-3">
-            <NotificationToggle enrollment={enrollment} />
-            <button
-              onClick={invalidateCache}
-              disabled={isLoading}
-              className="flex items-center gap-2 border border-slate-700 bg-slate-800/80 hover:bg-slate-800 hover:border-indigo-500 text-white rounded-xl px-5 py-3 text-sm font-bold disabled:opacity-50 transition-all shadow-lg hover:shadow-indigo-950/20 active:scale-95 cursor-pointer"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> 
-              <span>Sync Portal</span>
-            </button>
           </div>
         </div>
       </div>

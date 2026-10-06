@@ -75,21 +75,13 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
       ) : (
         <>
           {/* Overall Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
                 Enrolled Courses
               </p>
               <p className="text-4xl font-extrabold text-slate-850 dark:text-slate-100 font-nunito tracking-tight">
                 {stats.subjectCount}
-              </p>
-            </div>
-            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
-                Average Attendance
-              </p>
-              <p className="text-4xl font-extrabold text-accent-primary font-nunito tracking-tight">
-                {stats.avgPercentage.toFixed(1)}%
               </p>
             </div>
             <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
@@ -170,9 +162,11 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                       </svg>
                       <div className="absolute flex flex-col items-center">
                         <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 leading-none font-nunito">
-                          {record.percentage.toFixed(0)}
+                          {record.percentage % 1 === 0
+                            ? record.percentage.toFixed(0)
+                            : record.percentage.toFixed(1)}
                         </span>
-                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Lec %</span>
+                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Total %</span>
                       </div>
                     </div>
 

@@ -23,8 +23,12 @@ export async function registerExamRoutes(fastify: FastifyInstance): Promise<void
         client.postEncrypted(path, payload, identity),
     };
 
+    const query = request.query as { eventId?: string };
+
     try {
-      const schedule = await fetchExamSchedule(transport, identity);
+      const schedule = await fetchExamSchedule(transport, identity, {
+        exameventid: query?.eventId,
+      });
       return reply.send({ success: true, data: schedule });
     } catch (error: any) {
       const status = error instanceof PortalError && error.status === 401 ? 401 : 502;

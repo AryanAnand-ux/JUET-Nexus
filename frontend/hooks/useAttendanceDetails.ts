@@ -62,8 +62,8 @@ export function useAttendanceDetails(
         setState((prev) => ({
           ...prev,
           error: {
-            message: "Attendance logs temporarily unavailable from portal.",
-            code: "SESSION_RENEWING",
+            message: "Session expired. Please log in again to view attendance logs.",
+            code: "SESSION_EXPIRED",
           },
           isLoading: false,
         }));

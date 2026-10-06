@@ -71,6 +71,7 @@ export async function registerAttendanceRoutes(fastify: FastifyInstance) {
               subjectid: ref.subjectid,
               individualsubjectcode: ref.individualsubjectcode,
               components: ref.components,
+              officialPercentage: ref.officialPercentage,
             }
           );
           return reply.send({ success: true, data: detail });
@@ -82,7 +83,7 @@ export async function registerAttendanceRoutes(fastify: FastifyInstance) {
             error:
               status === 401
                 ? 'Session expired. Please log in again.'
-                : 'Failed to fetch attendance details',
+                : error.message || 'Failed to fetch attendance details',
             code: status === 401 ? 'SESSION_EXPIRED' : 'ATTENDANCE_FETCH_FAILED',
           });
         } finally {

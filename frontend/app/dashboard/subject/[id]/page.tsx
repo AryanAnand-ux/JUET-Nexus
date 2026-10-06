@@ -5,7 +5,7 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { FigmaCard } from "@/components/base";
 import { useAttendanceDetails } from "@/hooks/useAttendanceDetails";
-import { computeScenarioPercentage, calculateBunkStatus } from "@/utils/bunkHelpers";
+import { calculateBunkStatus } from "@/utils/bunkHelpers";
 import { performLogout } from "@/utils/logout";
 
 function SubjectDetailContent() {
@@ -33,10 +33,6 @@ function SubjectDetailContent() {
   const [extraAttends, setExtraAttends] = useState(0);
   const [extraBunks, setExtraBunks] = useState(0);
 
-  // Advanced Scenario Simulation State
-  const [simulatedBunks, setSimulatedBunks] = useState(0);
-  const [simulatedAttends, setSimulatedAttends] = useState(0);
-
   // Log filter state
   const [logFilter, setLogFilter] = useState<"all" | "present" | "absent">("all");
 
@@ -44,37 +40,6 @@ function SubjectDetailContent() {
     subjectName,
     detailLink
   );
-
-  const actualAttended = data?.classesAttended ?? 0;
-  const actualHeld = data?.classesHeld ?? 0;
-
-  const scenarioPercent = computeScenarioPercentage(
-    actualAttended,
-    actualHeld,
-    simulatedBunks,
-    simulatedAttends
-  );
-
-  const getScenarioStatusTheme = (pct: number, target: number) => {
-    if (pct >= target) {
-      return {
-        colorClass: "bg-green-500/10 border-green-500/20 text-green-700",
-        message: `On Track: You will meet your ${target}% target.`,
-      };
-    }
-    if (pct >= target - 5) {
-      return {
-        colorClass: "bg-amber-500/10 border-amber-500/20 text-amber-700",
-        message: `Warning: Close to boundary. Drop risk.`,
-      };
-    }
-    return {
-      colorClass: "bg-rose-500/10 border-rose-500/20 text-rose-700",
-      message: `Defaulter Risk: Attendance will fall below target.`,
-    };
-  };
-
-  const scenarioStatus = getScenarioStatusTheme(scenarioPercent, targetPercentage);
 
   useEffect(() => {
     const stored = localStorage.getItem("enrollment");
@@ -86,14 +51,27 @@ function SubjectDetailContent() {
     if (enrollment && detailLink) fetchDetails();
   }, [enrollment, detailLink, fetchDetails]);
 
-  // Sync simulator state when detail data loads
+  // Official baseline percentage from portal (via URL or API)
+  const officialPct = urlPct > 0 ? urlPct : (data?.percentage ?? 0);
+
+  // Sync simulator state when detail data loads or officialPct is available
   useEffect(() => {
     if (data && data.classesHeld > 0) {
+      const baseHeld =
+        officialPct > 0
+          ? Math.max(data.classesHeld, Math.round(data.classesAttended / (officialPct / 100)))
+          : data.classesHeld;
       setSimulatedAttended(data.classesAttended);
-      setSimulatedTotal(data.classesHeld);
+      setSimulatedTotal(baseHeld);
       setHasDetailData(true);
+    } else if (officialPct > 0 && !hasDetailData) {
+      // Estimate baseline so calculator functions even before logs load
+      const estHeld = 20;
+      const estAttended = Math.round((officialPct / 100) * estHeld);
+      setSimulatedAttended(estAttended);
+      setSimulatedTotal(estHeld);
     }
-  }, [data]);
+  }, [data, officialPct, hasDetailData]);
 
   const handleLogout = async () => {
     await performLogout();
@@ -115,16 +93,27 @@ function SubjectDetailContent() {
 
   const resetSimulation = () => {
     if (data && data.classesHeld > 0) {
+      const baseHeld =
+        officialPct > 0
+          ? Math.max(data.classesHeld, Math.round(data.classesAttended / (officialPct / 100)))
+          : data.classesHeld;
       setSimulatedAttended(data.classesAttended);
-      setSimulatedTotal(data.classesHeld);
-      setExtraAttends(0);
-      setExtraBunks(0);
+      setSimulatedTotal(baseHeld);
+    } else if (officialPct > 0) {
+      const estHeld = 20;
+      setSimulatedAttended(Math.round((officialPct / 100) * estHeld));
+      setSimulatedTotal(estHeld);
     }
+    setExtraAttends(0);
+    setExtraBunks(0);
   };
 
-  const displayPercent = simulatedTotal > 0
-    ? (simulatedAttended / simulatedTotal) * 100
-    : urlPct;
+  const displayPercent =
+    extraAttends === 0 && extraBunks === 0 && officialPct > 0
+      ? officialPct
+      : simulatedTotal > 0
+        ? (simulatedAttended / simulatedTotal) * 100
+        : officialPct;
 
   const isMeetingTarget = displayPercent >= targetPercentage;
 
@@ -184,12 +173,12 @@ function SubjectDetailContent() {
               {subjectName}
             </h2>
             <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mt-1 font-nunito">
-              Attendance Details & Simulation
+              Attendance Details & Calculator
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${getStatusBadgeColor(urlPct)}`}>
-              {urlPct.toFixed(0)}% Overall
+            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${getStatusBadgeColor(officialPct)}`}>
+              {officialPct % 1 === 0 ? officialPct.toFixed(0) : officialPct.toFixed(1)}% Overall
             </span>
             {urlLp > 0 && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 bg-white text-gray-500 font-nunito">
@@ -251,7 +240,7 @@ function SubjectDetailContent() {
                 </svg>
                 <div className="absolute flex flex-col items-center">
                   <span className="text-5xl font-black tracking-tighter text-figma-dark leading-none font-nunito">
-                    {displayPercent.toFixed(0)}
+                    {displayPercent % 1 === 0 ? displayPercent.toFixed(0) : displayPercent.toFixed(1)}
                   </span>
                   <span className="text-xs font-bold text-gray-400 font-nunito">
                     %
@@ -370,106 +359,6 @@ function SubjectDetailContent() {
             )}
           </FigmaCard>
 
-          {/* Attendance Planner & Simulator */}
-          <FigmaCard heading="Attendance Planner & Simulator">
-            {actualHeld === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-xs font-semibold text-gray-400 font-nunito leading-normal">
-                  Detailed class counts are unavailable for this subject. Sync details or view overall stats above.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-5">
-                {/* Bunk Input */}
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="text-xs uppercase font-bold tracking-wider text-gray-500 font-nunito">
-                      Simulate Missed Classes
-                    </label>
-                    <span className="text-xs font-bold text-gray-400 font-mono">
-                      {simulatedBunks} classes
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="0"
-                      max="20"
-                      value={simulatedBunks}
-                      onChange={(e) => setSimulatedBunks(Number(e.target.value))}
-                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-500"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={simulatedBunks}
-                      onChange={(e) => setSimulatedBunks(Math.max(0, Number(e.target.value) || 0))}
-                      className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-center font-extrabold text-slate-800 text-sm shadow-inner font-mono focus:outline-none focus:border-red-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Attend Input */}
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="text-xs uppercase font-bold tracking-wider text-gray-500 font-nunito">
-                      Attend classes (Attend M)
-                    </label>
-                    <span className="text-xs font-bold text-gray-400 font-mono">
-                      {simulatedAttends} classes
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="0"
-                      max="20"
-                      value={simulatedAttends}
-                      onChange={(e) => setSimulatedAttends(Number(e.target.value))}
-                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={simulatedAttends}
-                      onChange={(e) => setSimulatedAttends(Math.max(0, Number(e.target.value) || 0))}
-                      className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-center font-extrabold text-slate-800 text-sm shadow-inner font-mono focus:outline-none focus:border-green-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Scenario Results Box */}
-                <div className={`p-5 rounded-[20px] border transition-all duration-300 ${scenarioStatus.colorClass}`}>
-                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2">
-                    Simulation Outcome
-                  </p>
-                  <div className="flex items-baseline gap-1.5 mb-2">
-                    <span className="text-4xl font-black tracking-tighter font-mono leading-none">
-                      {scenarioPercent.toFixed(1)}
-                    </span>
-                    <span className="text-sm font-bold opacity-80">%</span>
-                  </div>
-                  <p className="text-sm font-bold leading-snug">
-                    {scenarioStatus.message}
-                  </p>
-                </div>
-
-                {(simulatedBunks > 0 || simulatedAttends > 0) && (
-                  <button
-                    onClick={() => {
-                      setSimulatedBunks(0);
-                      setSimulatedAttends(0);
-                    }}
-                    className="w-full py-2 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-figma-dark transition-colors font-nunito"
-                  >
-                    Clear Scenario
-                  </button>
-                )}
-              </div>
-            )}
-          </FigmaCard>
         </div>
 
         {/* RIGHT: Daily Log */}
@@ -524,7 +413,29 @@ function SubjectDetailContent() {
                 />
               ))}
             </div>
-          ) : data && data.logs.length > 0 ? (
+          ) : error ? (
+            <div className="border border-red-200 dark:border-red-900/40 rounded-2xl bg-red-50/50 dark:bg-red-950/20 p-8 text-center shadow-sm space-y-3">
+              <p className="text-sm font-semibold text-red-600 dark:text-red-400 font-nunito">
+                {error.message || "Failed to load attendance logs"}
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={() => fetchDetails()}
+                  className="px-4 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
+                >
+                  Retry
+                </button>
+                {error.code === "SESSION_EXPIRED" && (
+                  <button
+                    onClick={() => router.push("/login")}
+                    className="px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl shadow-sm hover:bg-indigo-700 transition-colors"
+                  >
+                    Log In Again
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : data && data.logs && data.logs.length > 0 ? (
             <div className="bg-white dark:bg-slate-950/20 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-x-auto shadow-sm">
               <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-0">
                 <thead>
@@ -591,8 +502,8 @@ function SubjectDetailContent() {
               </table>
             </div>
           ) : (
-            <div className="border border-gray-200 rounded-2xl bg-white p-8 text-center shadow-sm">
-              <p className="text-sm font-medium text-slate-500 font-nunito">
+            <div className="border border-gray-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/50 p-8 text-center shadow-sm">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 font-nunito">
                 {detailLink
                   ? "No daily records were found on the portal for this subject."
                   : "Daily attendance log is not available for this subject."}

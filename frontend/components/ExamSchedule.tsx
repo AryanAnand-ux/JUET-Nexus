@@ -15,13 +15,57 @@ import {
 
 interface ExamScheduleProps {
   schedule: ExamScheduleResponse;
+  selectedEventId?: string | null;
+  onSelectEvent?: (eventId: string) => void;
+}
+
+function hasExplicitTime(str: string): boolean {
+  if (!str) return false;
+  // Exclude midnight-placeholder ISO timestamps like T00:00 or T00:00:00 — these are date-only entries
+  const withoutMidnight = str.replace(/T00:00(?::00)?(?:\.\d+)?Z?/gi, "");
+  return /T\d{1,2}:\d{2}|(?:\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?\b)/i.test(withoutMidnight);
+}
+
+function parseExamDateTime(str: string): Date | null {
+  if (!str) return null;
+  const s = str.trim();
+
+  // ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss
+  const isoMatch = s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (isoMatch) {
+    const [, y, m, d, hr, min, sec] = isoMatch;
+    if (hr !== undefined) {
+      return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), parseInt(hr, 10), parseInt(min, 10), sec ? parseInt(sec, 10) : 0);
+    }
+    return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+  }
+
+  // Indian format: DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(.*)$/);
+  if (dmyMatch) {
+    const [, d, m, y, rest] = dmyMatch;
+    const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+    if (timeMatch) {
+      let hr = parseInt(timeMatch[1], 10);
+      const min = parseInt(timeMatch[2], 10);
+      const sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+      const mer = timeMatch[4] ? timeMatch[4].toUpperCase() : null;
+      if (mer === "PM" && hr < 12) hr += 12;
+      if (mer === "AM" && hr === 12) hr = 0;
+      return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), hr, min, sec);
+    }
+    return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+  }
+
+  const parsed = new Date(s);
+  return isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
   try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
+    const d = parseExamDateTime(dateStr);
+    if (!d || isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString("en-IN", {
       weekday: "short",
       day: "numeric",
@@ -34,18 +78,49 @@ function formatDate(dateStr: string): string {
 }
 
 function formatTime(startStr: string, endStr?: string): string {
-  if (!startStr) return "";
+  if (!startStr && !endStr) return "";
+
+  // If endStr already contains a formatted human range like "12:00 pm to 01:30 pm"
+  if (endStr && /\s+(?:to|–|-)\s+/i.test(endStr) && /\d{1,2}:\d{2}/.test(endStr)) {
+    return endStr;
+  }
+
+  // Check if startStr contains parenthesized time like "(11:00 AM - 12:30 PM)"
+  const bracketMatch = startStr && startStr.match(/\(([^)]+)\)/);
+  if (bracketMatch) {
+    return bracketMatch[1];
+  }
+
+  // If startStr is only a date and endStr has the time string
+  if (startStr && !hasExplicitTime(startStr) && endStr && hasExplicitTime(endStr)) {
+    return endStr;
+  }
+
+  // If startStr has no time information at all, don't show midnight
+  if (!startStr || !hasExplicitTime(startStr)) {
+    return "";
+  }
+
   try {
-    const start = new Date(startStr);
-    if (isNaN(start.getTime())) return startStr;
+    const start = parseExamDateTime(startStr);
+    if (!start || isNaN(start.getTime())) return "";
+
     const startTimeStr = start.toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     });
-    if (endStr) {
-      const end = new Date(endStr);
-      if (!isNaN(end.getTime())) {
+
+    // Reject phantom times: midnight local (12:00 am) or IST-offset UTC midnight (05:30 am).
+    // Normalize narrow no-break space (\u202f) that en-IN locale may insert between time and am/pm.
+    const normalizedTime = startTimeStr.replace(/\u202f/g, " ").toLowerCase();
+    if (/^(?:12:00|05:30)\s*am$/.test(normalizedTime)) {
+      return "";
+    }
+
+    if (endStr && hasExplicitTime(endStr)) {
+      const end = parseExamDateTime(endStr);
+      if (end && !isNaN(end.getTime())) {
         const endTimeStr = end.toLocaleTimeString("en-IN", {
           hour: "2-digit",
           minute: "2-digit",
@@ -56,20 +131,23 @@ function formatTime(startStr: string, endStr?: string): string {
     }
     return startTimeStr;
   } catch {
-    return startStr;
+    return "";
   }
 }
 
 function getExamStatus(dateStr: string) {
   if (!dateStr) return null;
   try {
-    const examDate = new Date(dateStr);
-    if (isNaN(examDate.getTime())) return null;
+    const examDate = parseExamDateTime(dateStr);
+    if (!examDate || isNaN(examDate.getTime())) return null;
     const now = new Date();
-    const diffMs = examDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMs < 0) {
+    // Reset hours to midnight for clear calendar day diff
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const targetDay = new Date(examDate.getFullYear(), examDate.getMonth(), examDate.getDate()).getTime();
+    const diffDays = Math.round((targetDay - today) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
       return { label: "Completed", variant: "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700" };
     }
     if (diffDays === 0) {
@@ -84,7 +162,11 @@ function getExamStatus(dateStr: string) {
   }
 }
 
-export const ExamSchedule: React.FC<ExamScheduleProps> = ({ schedule }) => {
+export const ExamSchedule: React.FC<ExamScheduleProps> = ({
+  schedule,
+  selectedEventId,
+  onSelectEvent,
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const items = schedule.items || [];
@@ -93,6 +175,8 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({ schedule }) => {
       item.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.roomcode.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const availableEvents = schedule.availableEvents || [];
 
   return (
     <div className="space-y-6">
@@ -126,6 +210,31 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({ schedule }) => {
           </div>
         </div>
       </div>
+
+      {/* Exam Event Switcher Tabs */}
+      {availableEvents.length > 1 && onSelectEvent && (
+        <div className="flex flex-wrap gap-2 items-center p-1.5 bg-gray-100 dark:bg-slate-800/80 rounded-2xl w-fit border border-gray-200/60 dark:border-slate-700/60">
+          {availableEvents.map((ev) => {
+            const isSelected = selectedEventId
+              ? selectedEventId === ev.exameventid
+              : schedule.event === ev.exameventdesc;
+
+            return (
+              <button
+                key={ev.exameventid}
+                onClick={() => onSelectEvent(ev.exameventid)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  isSelected
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                    : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50"
+                }`}
+              >
+                {ev.exameventdesc}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Search & Filter Toolbar */}
       {items.length > 0 && (

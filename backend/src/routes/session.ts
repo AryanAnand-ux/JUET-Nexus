@@ -98,7 +98,7 @@ export async function getOrRenewCampusLynxIdentity(
   // Check if token has an exp claim and expires within 5 minutes (300 seconds)
   const exp = jwtExpiry(session.campusLynx.token);
   if (exp !== null && isTokenExpired(session.campusLynx.token, 300)) {
-    const client = createPortalClient();
+    const client = createPortalClient({ timeout: 5000 });
     try {
       if (typeof client.refreshToken === "function") {
         const refreshed = await client.refreshToken({
@@ -118,14 +118,25 @@ export async function getOrRenewCampusLynxIdentity(
             setAuthCookie(reply, updatedEncrypted);
           }
           request.log?.info?.(`[Session] Token transparently renewed for ${session.campusLynx.username}`);
+        } else if (isTokenExpired(session.campusLynx.token, 0)) {
+          throw {
+            statusCode: 401,
+            message: "CampusLynx session expired. Please log in again.",
+            code: "SESSION_EXPIRED",
+          };
         }
       }
     } catch (refreshErr: any) {
       request.log?.warn?.(
         `[Session] Token refresh failed for ${session.campusLynx.username}: ${refreshErr?.message}`
       );
-      // Even if background refresh failed, we do NOT throw 401 immediately if session is valid.
-      // Callers can still serve cached records or handle downstream.
+      if (isTokenExpired(session.campusLynx.token, 0)) {
+        throw {
+          statusCode: 401,
+          message: "CampusLynx session expired. Please log in again.",
+          code: "SESSION_EXPIRED",
+        };
+      }
       if (reply) {
         setAuthCookie(reply, encryptedSession);
       }

@@ -288,4 +288,31 @@ export async function registerDashboardRoutes(
       });
     }
   });
+
+  /**
+   * GET /api/dashboard/cache-status
+   * Lightweight endpoint polled by the frontend every 60 s.
+   * Returns whether a fresh cache entry exists and its remaining TTL.
+   */
+  fastify.get<{ Querystring: DashboardQuery }>('/api/dashboard/cache-status', async (request, reply) => {
+    const enrollment = firstString(request.query.enrollment);
+    if (!enrollment) {
+      return reply.status(400).send({ success: false, error: 'Missing enrollment parameter' });
+    }
+
+    try {
+      const cached = await cache.get<{ data: DashboardResponse; fetchedAt: number }>('dashboard', enrollment);
+      if (!cached) {
+        return reply.send({ cached: false, ttl: 0 });
+      }
+
+      const ageMs = Date.now() - (cached.fetchedAt ?? 0);
+      const ttl = Math.max(0, Math.round((FRESH_TTL_SEC * 1000 - ageMs) / 1000));
+      return reply.send({ cached: true, ttl });
+    } catch (error) {
+      // Best-effort; never let polling errors crash the client
+      fastify.log.warn(error, '[Dashboard] cache-status error');
+      return reply.send({ cached: false, ttl: 0 });
+    }
+  });
 }

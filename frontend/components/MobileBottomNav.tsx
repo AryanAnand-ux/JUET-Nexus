@@ -1,87 +1,253 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   CheckCircle2,
   TrendingUp,
   BookOpen,
   CalendarCheck,
-  Award,
+  UserCircle2,
+  X,
+  Copy,
+  Check,
+  LogOut,
 } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
+import { performLogout } from "@/utils/logout";
 
 interface NavItem {
-  href: string;
+  href?: string;
   label: string;
   icon: React.ReactNode;
+  onPress?: () => void;
 }
-
-const navItems: NavItem[] = [
-  {
-    href: "/dashboard",
-    label: "Attendance",
-    icon: <CheckCircle2 className="w-5 h-5" />,
-  },
-  {
-    href: "/dashboard/performance",
-    label: "GPA",
-    icon: <TrendingUp className="w-5 h-5" />,
-  },
-  {
-    href: "/dashboard/courses",
-    label: "Courses",
-    icon: <BookOpen className="w-5 h-5" />,
-  },
-  {
-    href: "/dashboard/exam",
-    label: "Exams",
-    icon: <CalendarCheck className="w-5 h-5" />,
-  },
-  {
-    href: "/dashboard/grades",
-    label: "Grades",
-    icon: <Award className="w-5 h-5" />,
-  },
-];
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [studentName, setStudentName] = useState("");
+  const [enrollment, setEnrollment] = useState("");
+  const [branch, setBranch] = useState("");
+  const [copied, setCopied] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setStudentName(localStorage.getItem("studentName") || "Student");
+    setEnrollment(localStorage.getItem("enrollment") || "—");
+    setBranch(localStorage.getItem("branch") || "—");
+  }, [profileOpen]);
+
+  // Close on outside tap
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [profileOpen]);
+
+  const handleCopyEnrollment = () => {
+    navigator.clipboard.writeText(enrollment).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleLogout = async () => {
+    setProfileOpen(false);
+    await performLogout();
+    router.push("/login");
+  };
+
+  const getInitials = (name: string) => {
+    if (!name) return "JN";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+  };
+
+  const navItems: NavItem[] = [
+    {
+      href: "/dashboard",
+      label: "Attendance",
+      icon: <CheckCircle2 className="w-5 h-5" />,
+    },
+    {
+      href: "/dashboard/performance",
+      label: "GPA",
+      icon: <TrendingUp className="w-5 h-5" />,
+    },
+    {
+      href: "/dashboard/courses",
+      label: "Courses",
+      icon: <BookOpen className="w-5 h-5" />,
+    },
+    {
+      href: "/dashboard/exam",
+      label: "Exams",
+      icon: <CalendarCheck className="w-5 h-5" />,
+    },
+    {
+      label: "Profile",
+      icon: <UserCircle2 className="w-5 h-5" />,
+      onPress: () => setProfileOpen(true),
+    },
+  ];
 
   return (
-    <nav
-      aria-label="Mobile Navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200 dark:border-slate-800 shadow-xl px-1.5 py-1.5 transition-colors duration-200"
-    >
-      <div className="grid grid-cols-5 items-center max-w-md mx-auto">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href;
+    <>
+      {/* Bottom Nav Bar */}
+      <nav
+        aria-label="Mobile Navigation"
+        className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200 dark:border-slate-800 shadow-xl px-1.5 py-1.5 transition-colors duration-200"
+      >
+        <div className="grid grid-cols-5 items-center max-w-md mx-auto">
+          {navItems.map((item) => {
+            const isActive = item.href ? pathname === item.href : false;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-150 relative ${
-                isActive
-                  ? "text-indigo-600 dark:text-indigo-400 font-bold"
-                  : "text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 font-medium"
-              }`}
-            >
-              <div
-                className={`p-1 rounded-lg transition-transform ${
-                  isActive ? "bg-indigo-50 dark:bg-indigo-950/70 scale-105" : ""
+            if (item.onPress) {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.onPress}
+                  className={`flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-150 relative text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 font-medium`}
+                >
+                  <div className="p-1 rounded-lg transition-transform">
+                    {item.icon}
+                  </div>
+                  <span className="text-[10px] tracking-tight mt-0.5">{item.label}</span>
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href!}
+                className={`flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-150 relative ${
+                  isActive
+                    ? "text-indigo-600 dark:text-indigo-400 font-bold"
+                    : "text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 font-medium"
                 }`}
               >
-                {item.icon}
+                <div
+                  className={`p-1 rounded-lg transition-transform ${
+                    isActive ? "bg-indigo-50 dark:bg-indigo-950/70 scale-105" : ""
+                  }`}
+                >
+                  {item.icon}
+                </div>
+                <span className="text-[10px] tracking-tight mt-0.5">{item.label}</span>
+                {isActive && (
+                  <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Profile Bottom Sheet Backdrop */}
+      {profileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden bg-black/50 backdrop-blur-sm transition-opacity" />
+      )}
+
+      {/* Profile Bottom Sheet */}
+      <div
+        ref={sheetRef}
+        className={`fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+          profileOpen ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
+        {/* Handle bar */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-slate-700" />
+        </div>
+
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={() => setProfileOpen(false)}
+          className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+          aria-label="Close profile"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        <div className="px-6 pb-8 pt-2">
+          {/* Avatar + Name */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-14 h-14 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-black flex items-center justify-center text-xl shadow-sm border border-indigo-200 dark:border-indigo-800/50">
+              {getInitials(studentName)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-bold text-gray-900 dark:text-slate-100 truncate font-nunito">
+                {studentName}
+              </p>
+            </div>
+          </div>
+
+          {/* Info rows */}
+          <div className="space-y-3 mb-6">
+            {/* Enrollment */}
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-800/60 rounded-2xl px-4 py-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-0.5">
+                  Enrollment No.
+                </p>
+                <p className="text-sm font-bold text-gray-900 dark:text-slate-100 font-mono">
+                  {enrollment}
+                </p>
               </div>
-              <span className="text-[10px] tracking-tight mt-0.5">{item.label}</span>
-              {isActive && (
-                <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-indigo-600 dark:bg-indigo-400" />
-              )}
-            </Link>
-          );
-        })}
+              <button
+                type="button"
+                onClick={handleCopyEnrollment}
+                className="p-2 rounded-xl text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all"
+                aria-label="Copy enrollment number"
+              >
+                {copied ? (
+                  <Check className="w-4 h-4 text-green-500" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+
+            {/* Branch */}
+            <div className="bg-gray-50 dark:bg-slate-800/60 rounded-2xl px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-0.5">
+                Branch
+              </p>
+              <p className="text-sm font-bold text-gray-900 dark:text-slate-100 font-nunito">
+                {branch}
+              </p>
+            </div>
+          </div>
+
+          {/* Theme + Logout */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 flex items-center gap-3 bg-gray-50 dark:bg-slate-800/60 rounded-2xl px-4 py-3">
+              <span className="text-xs font-bold text-gray-500 dark:text-slate-400 font-nunito">Theme</span>
+              <ThemeToggle />
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-5 py-3 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-sm rounded-2xl border border-rose-200 dark:border-rose-800/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-all font-nunito"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
+        </div>
       </div>
-    </nav>
+    </>
   );
 }

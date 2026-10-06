@@ -47,7 +47,7 @@ export default function ExamPage() {
   }, [router]);
 
   const { data: dashboardData } = useDashboard(enrollment);
-  const { data: examData, isLoading, error, refresh } = useExamSchedule();
+  const { data: examData, isLoading, error, refresh, selectedEventId, selectEvent } = useExamSchedule();
 
   const handleLogout = async () => {
     await performLogout();
@@ -88,7 +88,11 @@ export default function ExamPage() {
         {isLoading ? (
           <LoadingSkeleton />
         ) : examData ? (
-          <ExamSchedule schedule={examData} />
+          <ExamSchedule
+            schedule={examData}
+            selectedEventId={selectedEventId}
+            onSelectEvent={selectEvent}
+          />
         ) : (
           <div className="rounded-3xl border border-dashed border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-12 text-center">
             <Calendar className="w-12 h-12 text-gray-400 dark:text-slate-600 mx-auto mb-3" />

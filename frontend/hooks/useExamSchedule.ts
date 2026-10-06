@@ -13,13 +13,14 @@ export interface ExamScheduleState {
 export function useExamSchedule() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [state, setState] = useState<ExamScheduleState>({
     data: null,
     isLoading: true,
     error: null,
   });
 
-  const fetchSchedule = useCallback(async () => {
+  const fetchSchedule = useCallback(async (eventId?: string | null) => {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -29,7 +30,14 @@ export function useExamSchedule() {
         headers["x-session-token"] = sessionToken;
       }
 
+      const activeEventId = eventId !== undefined ? eventId : selectedEventId;
+      const params: Record<string, string> = {};
+      if (activeEventId) {
+        params.eventId = activeEventId;
+      }
+
       const response = await axios.get(`${API_URL}/api/exam`, {
+        params: Object.keys(params).length > 0 ? params : undefined,
         withCredentials: true,
         headers,
         timeout: 60000,
@@ -64,14 +72,20 @@ export function useExamSchedule() {
         isLoading: false,
       }));
     }
-  }, [API_URL]);
+  }, [API_URL, selectedEventId]);
 
   useEffect(() => {
-    fetchSchedule();
-  }, [fetchSchedule]);
+    fetchSchedule(selectedEventId);
+  }, [fetchSchedule, selectedEventId]);
+
+  const selectEvent = useCallback((eventId: string) => {
+    setSelectedEventId(eventId);
+  }, []);
 
   return {
     ...state,
-    refresh: fetchSchedule,
+    selectedEventId,
+    selectEvent,
+    refresh: () => fetchSchedule(selectedEventId),
   };
 }
