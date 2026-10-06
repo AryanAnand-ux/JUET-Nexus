@@ -1,18 +1,10 @@
 /**
  * useAuthFlow Hook
  *
- * Drives whichever login shape the backend reports from `GET /api/init`:
- *
- *   loginFlow === "webkiosk"   legacy single step
- *     submitLogin({ enrollment, dob, password, captchaInput, role })
- *
- *   loginFlow === "campuslynx" portal two-step
- *     step 1  verifyUser({ enrollment, captchaInput })  -> advances to step 2
- *     step 2  submitPassword({ password })              -> session + redirect
- *
- * The flow is chosen entirely by the backend (`DATA_PROVIDER`), so the UI never
- * hard-codes a provider. `verifyUser` refreshes the captcha on failure because
- * the portal consumes a captcha on every attempt, valid or not.
+ * Drives CampusLynx authentication for JUET Nexus.
+ * Supports unified single-screen login (`submitLogin`) where Enrollment,
+ * Password, and Captcha are entered together, as well as step-by-step
+ * compatibility functions.
  */
 
 "use client";
@@ -27,7 +19,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 interface CaptchaState {
   image: string;
   sessionToken: string;
-  /** Raw text from WebKiosk .noselect — present when captcha is text-based */
   captchaValue: string | null;
 }
 
@@ -43,20 +34,22 @@ export interface UseAuthFlowReturn {
   captcha: CaptchaState | null;
   error: AuthError | null;
   isAuthenticated: boolean;
-  /** Which login form to render. Always campuslynx. */
   loginFlow: LoginFlow;
-  /** CampusLynx step: 1 = identify, 2 = password. */
   step: 1 | 2;
-  /** Enrollment captured at step 1, shown (read-only) at step 2. */
   pendingEnrollment: string;
 
   // Actions
   fetchCaptcha: (options?: { keepError?: boolean }) => Promise<void>;
-  /** CampusLynx step 1. Resolves true when the flow advanced to step 2. */
+  /** Unified single-screen login submitting enrollment, password, and captcha */
+  submitLogin: (credentials: {
+    enrollment: string;
+    password: string;
+    captchaInput: string;
+  }) => Promise<boolean>;
+  /** Step 1 verify */
   verifyUser: (credentials: { enrollment: string; captchaInput: string }) => Promise<boolean>;
-  /** CampusLynx step 2. */
+  /** Step 2 password submit */
   submitPassword: (credentials: { password: string }) => Promise<void>;
-  /** Return to step 1 and fetch a fresh captcha. */
   backToIdentify: () => void;
   clearError: () => void;
   resetForm: () => void;
@@ -71,9 +64,6 @@ export function useAuthFlow(): UseAuthFlowReturn {
   const [captcha, setCaptcha] = useState<CaptchaState | null>(null);
   const [error, setError] = useState<AuthError | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // Matches the backend's default provider (campuslynx); corrected by /api/init
-  // on every load. The loading overlay covers the form until it answers, so a
-  // webkiosk-fallback deployment never flashes the wrong fields.
   const [loginFlow, setLoginFlow] = useState<LoginFlow>("campuslynx");
   const [step, setStep] = useState<1 | 2>(1);
   const [loginToken, setLoginToken] = useState<string | null>(null);
@@ -93,11 +83,6 @@ export function useAuthFlow(): UseAuthFlowReturn {
 
   /**
    * Fetch captcha from backend
-   *
-   * @param options.keepError Suppress the `setError(null)` that normally clears a
-   * stale message. Callers that refresh the captcha *because* something just
-   * failed pass this, otherwise the reason for the refresh is wiped and the user
-   * is left staring at a new captcha with no explanation.
    */
   const fetchCaptcha = useCallback(async (options?: { keepError?: boolean }) => {
     setIsFetchingCaptcha(true);
@@ -130,7 +115,78 @@ export function useAuthFlow(): UseAuthFlowReturn {
   }, []);
 
   /**
-   * CampusLynx step 1: identify the user with the enrollment and captcha answer.
+   * Unified single-screen login action
+   */
+  const submitLogin = useCallback(
+    async (credentials: {
+      enrollment: string;
+      password: string;
+      captchaInput: string;
+    }): Promise<boolean> => {
+      if (!captcha) {
+        setError({ message: "Captcha not loaded. Please refresh." });
+        return false;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Step 1: verify user & captcha
+        const verifyRes = await axios.post(
+          `${API_URL}/api/auth/verify-user`,
+          {
+            enrollment: credentials.enrollment.toUpperCase(),
+            captcha: credentials.captchaInput,
+            sessionToken: captcha.sessionToken,
+          },
+          { timeout: 60000, withCredentials: true }
+        );
+
+        const token = verifyRes.data.loginToken;
+        setLoginToken(token);
+        setPendingEnrollment(credentials.enrollment.toUpperCase());
+
+        // Step 2: authenticate password
+        const authRes = await axios.post(
+          `${API_URL}/api/auth`,
+          { loginToken: token, password: credentials.password },
+          { timeout: 60000, withCredentials: true }
+        );
+
+        if (authRes.data.success) {
+          persistSession(credentials.enrollment.toUpperCase(), "Student");
+          return true;
+        } else {
+          setError({ message: authRes.data.error || "Authentication failed" });
+          await fetchCaptcha({ keepError: true });
+          return false;
+        }
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          const status = err.response?.status;
+          const msg = err.response?.data?.error;
+          if (status === 401 && msg && msg.toLowerCase().includes("password")) {
+            setError({ field: "password", message: msg || "Invalid password." });
+          } else if (status === 401) {
+            setError({ field: "captcha", message: msg || "Invalid captcha or enrollment number." });
+          } else {
+            setError({ message: msg || "Unable to sign in. Please verify your details." });
+          }
+        } else {
+          setError({ message: "An unexpected error occurred. Please try again." });
+        }
+        await fetchCaptcha({ keepError: true });
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [captcha, fetchCaptcha, persistSession]
+  );
+
+  /**
+   * Step 1: verify enrollment and captcha
    */
   const verifyUser = useCallback(
     async (credentials: { enrollment: string; captchaInput: string }): Promise<boolean> => {
@@ -169,9 +225,6 @@ export function useAuthFlow(): UseAuthFlowReturn {
         } else {
           setError({ message: "An unexpected error occurred" });
         }
-        // The portal consumes the captcha on every attempt; refresh it so the
-        // user is not stuck retrying against a dead one, but keep the error so
-        // they learn why it failed.
         await fetchCaptcha({ keepError: true });
         return false;
       } finally {
@@ -182,7 +235,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
   );
 
   /**
-   * CampusLynx step 2: exchange the login handle plus password for a session.
+   * Step 2: submit password
    */
   const submitPassword = useCallback(
     async (credentials: { password: string }): Promise<void> => {
@@ -212,7 +265,6 @@ export function useAuthFlow(): UseAuthFlowReturn {
           const status = err.response?.status;
           const code = err.response?.data?.code;
           if (code === "LOGIN_SESSION_EXPIRED") {
-            // The handle is gone; there is nothing to retry against.
             setLoginToken(null);
             setStep(1);
             setError({
@@ -220,8 +272,6 @@ export function useAuthFlow(): UseAuthFlowReturn {
             });
             await fetchCaptcha({ keepError: true });
           } else if (status === 401) {
-            // Wrong password: keep the handle so the user can retry without a
-            // new captcha (the backend deliberately does not consume it).
             setError({ message: err.response?.data?.error || "Invalid password." });
           } else {
             setError({
@@ -232,7 +282,6 @@ export function useAuthFlow(): UseAuthFlowReturn {
         } else {
           setError({ message: "An unexpected error occurred" });
         }
-        console.error("Authentication error:", err);
       } finally {
         setIsLoading(false);
       }
@@ -240,36 +289,24 @@ export function useAuthFlow(): UseAuthFlowReturn {
     [loginToken, pendingEnrollment, fetchCaptcha, persistSession]
   );
 
-  /**
-   * CampusLynx: abandon step 2 and return to identify with a fresh captcha.
-   */
   const backToIdentify = useCallback(() => {
-    setLoginToken(null);
-    setPendingEnrollment("");
     setStep(1);
-    setError(null);
+    setLoginToken(null);
     fetchCaptcha();
   }, [fetchCaptcha]);
 
-  /**
-   * Clear error message
-   */
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  /**
-   * Reset form and refresh captcha
-   */
   const resetForm = useCallback(() => {
-    setError(null);
+    setStep(1);
     setLoginToken(null);
     setPendingEnrollment("");
-    setStep(1);
+    setError(null);
     fetchCaptcha();
   }, [fetchCaptcha]);
 
-  // Fetch captcha on mount
   useEffect(() => {
     fetchCaptcha();
   }, [fetchCaptcha]);
@@ -284,6 +321,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
     step,
     pendingEnrollment,
     fetchCaptcha,
+    submitLogin,
     verifyUser,
     submitPassword,
     backToIdentify,

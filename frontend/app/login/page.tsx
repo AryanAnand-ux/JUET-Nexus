@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { CampusLynxLoginForm } from "@/components/CampusLynxLoginForm";
@@ -21,12 +21,8 @@ export default function LoginPage() {
     isFetchingCaptcha,
     captcha,
     error,
-    step,
-    pendingEnrollment,
     fetchCaptcha,
-    verifyUser,
-    submitPassword,
-    backToIdentify,
+    submitLogin,
     clearError,
   } = useAuthFlow();
 
@@ -52,21 +48,17 @@ export default function LoginPage() {
           <ThemeToggle />
         </div>
         <CampusLynxLoginForm
-          step={step}
-          pendingEnrollment={pendingEnrollment}
           captchaImage={captcha?.image || null}
-          onVerifyUser={verifyUser}
-          onSubmitPassword={submitPassword}
-          onBack={backToIdentify}
+          onSubmitLogin={submitLogin}
           onRefreshCaptcha={fetchCaptcha}
           isLoading={isLoading}
           error={error}
           onErrorDismiss={clearError}
         />
         
-        <div className="mt-8 text-center text-xs font-medium text-gray-400 max-w-sm">
+        <div className="mt-8 text-center text-xs font-medium text-gray-400 dark:text-slate-500 max-w-sm">
           <p>🔒 Secure. Encrypted. Persistent.</p>
-          <p className="mt-2">JUET Nexus securely connects you to your student portal.</p>
+          <p className="mt-2">JUET Nexus connects directly to your CampusLynx portal session.</p>
         </div>
       </div>
     </div>
