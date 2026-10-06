@@ -34,6 +34,63 @@ const GET_SCHEDULE_PATH =
 
 export interface ExamOptions {
   exameventid?: string;
+  codeToNameMap?: Record<string, string>;
+}
+
+/**
+ * Clean a subject string so only the course title/name is displayed.
+ *
+ * Handles:
+ * - Trailing parenthesized codes: "CONCEPTS OF ECONOMICS (HS301)" -> "CONCEPTS OF ECONOMICS"
+ * - Trailing bracketed codes: "COMPUTER NETWORKS [18B11CI514]" -> "COMPUTER NETWORKS"
+ * - Leading code prefixes: "HS301 - CONCEPTS OF ECONOMICS" -> "CONCEPTS OF ECONOMICS"
+ * - Trailing code suffixes: "CONCEPTS OF ECONOMICS - HS301" -> "CONCEPTS OF ECONOMICS"
+ * - Code before paren: "HS301 (CONCEPTS OF ECONOMICS)" -> "CONCEPTS OF ECONOMICS"
+ * - Direct lookup via codeToNameMap
+ */
+export function cleanSubjectName(rawStr: string, codeToNameMap?: Record<string, string>): string {
+  if (!rawStr) return "";
+  const trimmed = String(rawStr).trim();
+
+  // If there's an exact match in the mapping (e.g. "HS301" -> "CONCEPTS OF ECONOMICS")
+  if (codeToNameMap) {
+    const direct = codeToNameMap[trimmed.toUpperCase()] || codeToNameMap[trimmed];
+    if (direct) return direct;
+  }
+
+  let s = trimmed.replace(/\s+/g, " ");
+
+  // If format is "CODE (NAME)", e.g. "HS301 (CONCEPTS OF ECONOMICS)"
+  const codeBeforeParenMatch = s.match(/^[A-Za-z0-9_-]{2,12}\s*\(([^()]+)\)$/);
+  if (codeBeforeParenMatch && /[a-zA-Z]{3,}/.test(codeBeforeParenMatch[1])) {
+    return codeBeforeParenMatch[1].trim();
+  }
+
+  // Strip trailing parenthesized code: "CONCEPTS OF ECONOMICS (HS301)" -> "CONCEPTS OF ECONOMICS"
+  s = s.replace(/\s*\([^()]*\)\s*$/, "");
+
+  // Strip trailing bracketed code: "CONCEPTS OF ECONOMICS [HS301]" -> "CONCEPTS OF ECONOMICS"
+  s = s.replace(/\s*\[[^[\]]*\]\s*$/, "");
+
+  // Strip leading code with separator: "HS301 - CONCEPTS OF ECONOMICS" or "HS301: CONCEPTS OF ECONOMICS"
+  const leadingCodeMatch = s.match(/^[A-Za-z0-9_-]{2,12}\s*[:–-]\s*(.+)$/);
+  if (leadingCodeMatch && /[a-zA-Z]{3,}/.test(leadingCodeMatch[1])) {
+    s = leadingCodeMatch[1].trim();
+  }
+
+  // Strip trailing code with separator: "CONCEPTS OF ECONOMICS - HS301"
+  const trailingCodeMatch = s.match(/^(.+?)\s*[:–-]\s*[A-Za-z0-9_-]{2,12}$/);
+  if (trailingCodeMatch && /[a-zA-Z]{3,}/.test(trailingCodeMatch[1])) {
+    s = trailingCodeMatch[1].trim();
+  }
+
+  // Check map again after stripping
+  if (codeToNameMap) {
+    const mapped = codeToNameMap[s.toUpperCase()] || codeToNameMap[s];
+    if (mapped) return mapped;
+  }
+
+  return s.trim();
 }
 
 function parseExamDateTime(str: string): Date | null {
@@ -176,9 +233,42 @@ export async function fetchExamSchedule(
   if (Array.isArray(rawItems)) {
     for (const raw of rawItems) {
       if (!raw) continue;
-      const subject = String(
-        getFieldCI(raw, "subjectdesc", "subjectname", "subject", "subjectcode") ?? ""
-      ).trim();
+      // Candidate keys for subject name/desc/code
+      const candidateKeys = [
+        "subjectname",
+        "subjectdesc",
+        "subjectdescription",
+        "subject_desc",
+        "coursename",
+        "papername",
+        "subject",
+        "subjectcode",
+      ];
+      const candidates: string[] = [];
+      for (const k of candidateKeys) {
+        const val = getFieldCI(raw, k);
+        if (val && !candidates.includes(val)) {
+          candidates.push(val);
+        }
+      }
+
+      const isBareCode = (str: string) => /^[A-Za-z0-9_-]{2,12}$/.test(str.trim());
+
+      // Score candidates: prefer full titles over bare course codes
+      let selectedSubject = "";
+      for (const cand of candidates) {
+        const cleaned = cleanSubjectName(cand, options?.codeToNameMap);
+        if (!isBareCode(cand) && cleaned.length > 0) {
+          selectedSubject = cleaned;
+          break;
+        }
+      }
+
+      if (!selectedSubject && candidates.length > 0) {
+        selectedSubject = cleanSubjectName(candidates[0], options?.codeToNameMap);
+      }
+
+      const subject = selectedSubject || "";
 
       const rawDate = String(
         getFieldCI(raw, "examdate", "date", "datetime") ?? ""

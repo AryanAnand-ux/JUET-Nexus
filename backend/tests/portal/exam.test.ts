@@ -252,3 +252,76 @@ describe("chronological sort with mixed formats", () => {
     expect(result.items[1].subject).toBe("Subject B");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 5. Subject Name cleanup — only display name, strip course code
+// ---------------------------------------------------------------------------
+
+describe("exam subject name cleanup (only use name, strip course code)", () => {
+  it("strips trailing parenthesized course code", async () => {
+    setupPortalMocks([
+      {
+        subjectdesc: "CONCEPTS OF ECONOMICS (HS301)",
+        datetime: "2026-10-15",
+        roomcode: "LT-1",
+        seatno: "A1",
+      },
+    ]);
+
+    const result = await fetchExamSchedule(transport as any, identity as any);
+    expect(result.items[0].subject).toBe("CONCEPTS OF ECONOMICS");
+  });
+
+  it("strips bracketed course code and leading course code prefixes", async () => {
+    setupPortalMocks([
+      {
+        subjectdesc: "COMPUTER NETWORKS [18B11CI514]",
+        datetime: "2026-10-15",
+        roomcode: "LT-1",
+        seatno: "A1",
+      },
+      {
+        subjectdesc: "HS301 - CONCEPTS OF ECONOMICS",
+        datetime: "2026-10-16",
+        roomcode: "LT-2",
+        seatno: "A2",
+      },
+    ]);
+
+    const result = await fetchExamSchedule(transport as any, identity as any);
+    expect(result.items[0].subject).toBe("COMPUTER NETWORKS");
+    expect(result.items[1].subject).toBe("CONCEPTS OF ECONOMICS");
+  });
+
+  it("prefers descriptive subjectname over bare subjectdesc course code", async () => {
+    setupPortalMocks([
+      {
+        subjectdesc: "HS301",
+        subjectname: "CONCEPTS OF ECONOMICS",
+        datetime: "2026-10-15",
+        roomcode: "LT-1",
+        seatno: "A1",
+      },
+    ]);
+
+    const result = await fetchExamSchedule(transport as any, identity as any);
+    expect(result.items[0].subject).toBe("CONCEPTS OF ECONOMICS");
+  });
+
+  it("resolves bare course code using codeToNameMap", async () => {
+    setupPortalMocks([
+      {
+        subjectdesc: "HS301",
+        datetime: "2026-10-15",
+        roomcode: "LT-1",
+        seatno: "A1",
+      },
+    ]);
+
+    const result = await fetchExamSchedule(transport as any, identity as any, {
+      codeToNameMap: { HS301: "CONCEPTS OF ECONOMICS" },
+    });
+    expect(result.items[0].subject).toBe("CONCEPTS OF ECONOMICS");
+  });
+});
+

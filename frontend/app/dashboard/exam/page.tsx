@@ -49,6 +49,29 @@ export default function ExamPage() {
   const { data: dashboardData } = useDashboard(enrollment);
   const { data: examData, isLoading, error, refresh, selectedEventId, selectEvent } = useExamSchedule();
 
+  const courseMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    if (dashboardData?.courses) {
+      for (const c of dashboardData.courses) {
+        if (c.code && c.title) {
+          map[c.code.toUpperCase()] = c.title;
+        }
+      }
+    }
+    if (dashboardData?.attendance) {
+      for (const a of dashboardData.attendance) {
+        if (a.subject && a.detailLink) {
+          const match = String(a.detailLink).match(/code=([^&]+)/);
+          if (match && match[1]) {
+            const code = decodeURIComponent(match[1]).toUpperCase();
+            map[code] = a.subject;
+          }
+        }
+      }
+    }
+    return map;
+  }, [dashboardData]);
+
   const handleLogout = async () => {
     await performLogout();
     router.push("/login");
@@ -92,6 +115,7 @@ export default function ExamPage() {
             schedule={examData}
             selectedEventId={selectedEventId}
             onSelectEvent={selectEvent}
+            courseMap={courseMap}
           />
         ) : (
           <div className="rounded-3xl border border-dashed border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-12 text-center">

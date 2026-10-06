@@ -274,14 +274,14 @@ describe("GET /api/exam", () => {
     expect(body.data.items).toHaveLength(2);
     // Should be sorted chronologically: 12/10/2026 before 13/10/2026
     expect(body.data.items[0]).toEqual({
-      subject: "CONCEPTS OF ECONOMICS (HS301)",
+      subject: "CONCEPTS OF ECONOMICS",
       datetime: "2026-10-12",
       datetimeupto: "12:00 pm to 01:30 pm",
       roomcode: "LT-12",
       seatno: "D5",
     });
     expect(body.data.items[1]).toEqual({
-      subject: "NANO SCIENCE (PH303)",
+      subject: "NANO SCIENCE",
       datetime: "2026-10-13",
       datetimeupto: "09:30 am to 11:00 am",
       roomcode: "LT-6",

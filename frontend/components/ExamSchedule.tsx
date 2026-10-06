@@ -13,10 +13,56 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-interface ExamScheduleProps {
+export interface ExamScheduleProps {
   schedule: ExamScheduleResponse;
   selectedEventId?: string | null;
   onSelectEvent?: (eventId: string) => void;
+  courseMap?: Record<string, string>;
+}
+
+export function cleanSubjectName(raw: string, courseMap?: Record<string, string>): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+
+  // 1. Direct match in courseMap (case-insensitive)
+  if (courseMap) {
+    const directMatch = courseMap[trimmed.toUpperCase()] || courseMap[trimmed];
+    if (directMatch) return directMatch;
+  }
+
+  let s = trimmed.replace(/\s+/g, " ");
+
+  // 2. If format is "CODE (NAME)" e.g. "HS301 (CONCEPTS OF ECONOMICS)"
+  const codeBeforeParenMatch = s.match(/^[A-Za-z0-9_-]{2,12}\s*\(([^()]+)\)$/);
+  if (codeBeforeParenMatch && /[a-zA-Z]{3,}/.test(codeBeforeParenMatch[1])) {
+    return codeBeforeParenMatch[1].trim();
+  }
+
+  // 3. Strip trailing parenthesized code: "CONCEPTS OF ECONOMICS (HS301)" -> "CONCEPTS OF ECONOMICS"
+  s = s.replace(/\s*\([^()]*\)\s*$/, "");
+
+  // 4. Strip trailing bracketed code: "CONCEPTS OF ECONOMICS [HS301]" -> "CONCEPTS OF ECONOMICS"
+  s = s.replace(/\s*\[[^[\]]*\]\s*$/, "");
+
+  // 5. Strip leading code prefix: "HS301 - CONCEPTS OF ECONOMICS" or "HS301: CONCEPTS OF ECONOMICS"
+  const leadingCodeMatch = s.match(/^[A-Za-z0-9_-]{2,12}\s*[:–-]\s*(.+)$/);
+  if (leadingCodeMatch && /[a-zA-Z]{3,}/.test(leadingCodeMatch[1])) {
+    s = leadingCodeMatch[1].trim();
+  }
+
+  // 6. Strip trailing code suffix: "CONCEPTS OF ECONOMICS - HS301"
+  const trailingCodeMatch = s.match(/^(.+?)\s*[:–-]\s*[A-Za-z0-9_-]{2,12}$/);
+  if (trailingCodeMatch && /[a-zA-Z]{3,}/.test(trailingCodeMatch[1])) {
+    s = trailingCodeMatch[1].trim();
+  }
+
+  // 7. Check courseMap after cleaning
+  if (courseMap) {
+    const cleanedMatch = courseMap[s.toUpperCase()] || courseMap[s];
+    if (cleanedMatch) return cleanedMatch;
+  }
+
+  return s.trim();
 }
 
 function hasExplicitTime(str: string): boolean {
@@ -166,15 +212,18 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
   schedule,
   selectedEventId,
   onSelectEvent,
+  courseMap,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const items = schedule.items || [];
-  const filtered = items.filter(
-    (item) =>
-      item.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.roomcode.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = items.filter((item) => {
+    const cleaned = cleanSubjectName(item.subject, courseMap).toLowerCase();
+    const rawSub = item.subject.toLowerCase();
+    const room = item.roomcode.toLowerCase();
+    const term = searchTerm.toLowerCase();
+    return cleaned.includes(term) || rawSub.includes(term) || room.includes(term);
+  });
 
   const availableEvents = schedule.availableEvents || [];
 
@@ -303,7 +352,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
 
                   {/* Subject Name */}
                   <h4 className="text-base font-bold text-gray-900 dark:text-slate-100 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    {item.subject}
+                    {cleanSubjectName(item.subject, courseMap)}
                   </h4>
 
                   {/* Date & Time */}

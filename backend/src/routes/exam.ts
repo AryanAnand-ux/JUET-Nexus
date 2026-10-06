@@ -25,9 +25,43 @@ export async function registerExamRoutes(fastify: FastifyInstance): Promise<void
 
     const query = request.query as { eventId?: string };
 
+    const cache = (request as any).globalCache || (fastify as any).globalCache;
+    let codeToNameMap: Record<string, string> | undefined;
+
+    const enrollmentKey = identity.enrollmentno || identity.username;
+    if (cache && enrollmentKey) {
+      try {
+        const cached = await cache.get("dashboard", enrollmentKey);
+        if (cached?.data) {
+          codeToNameMap = {};
+          if (Array.isArray(cached.data.courses)) {
+            for (const c of cached.data.courses) {
+              if (c?.code && c?.title) {
+                codeToNameMap[String(c.code).trim().toUpperCase()] = String(c.title).trim();
+              }
+            }
+          }
+          if (Array.isArray(cached.data.attendance)) {
+            for (const a of cached.data.attendance) {
+              if (a?.subject && a?.detailLink) {
+                const match = String(a.detailLink).match(/code=([^&]+)/);
+                if (match && match[1]) {
+                  const code = decodeURIComponent(match[1]).trim().toUpperCase();
+                  codeToNameMap[code] = String(a.subject).trim();
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Non-blocking best-effort cache lookup
+      }
+    }
+
     try {
       const schedule = await fetchExamSchedule(transport, identity, {
         exameventid: query?.eventId,
+        codeToNameMap,
       });
       return reply.send({ success: true, data: schedule });
     } catch (error: any) {
