@@ -340,8 +340,8 @@ describe("CampusLynx login routes", () => {
 
       const refreshedToken = "new.refreshed.jwt";
       mockRefreshToken.mockResolvedValue({
-        status: { responseStatus: "Success" },
-        response: { regdata: { ...REGDATA, token: refreshedToken } },
+        ok: true,
+        token: refreshedToken,
       });
 
       const res = await app.inject({
@@ -356,8 +356,7 @@ describe("CampusLynx login routes", () => {
       expect(body.enrollment).toBe("241B610");
       expect(mockRefreshToken).toHaveBeenCalledWith({
         username: "241B610",
-        token: expiredToken,
-        otppwd: "PWD",
+        tokendate: undefined,
       });
 
       const setCookie = res.headers["set-cookie"];

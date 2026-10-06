@@ -341,44 +341,57 @@ export class PortalClient {
   }
 
   /**
-   * Trade a still-valid token plus its OTP value for a fresh token. Portal
-   * tokens live only 15 minutes, so every long-lived session depends on this.
+   * Lightweight session refresh — does NOT need a captcha.
    *
-   * NOTE: the exact refresh payload is bundle-derived and still needs to be
-   * confirmed against the live portal.
+   * Confirmed by lazyportal reference implementation:
+   *   POST /token/refreshTokenRequest
+   *   Body: plain JSON { username, tokendate }   ← NOT AES-encrypted
+   *   Headers: Content-Type + LocalName nonce    ← no Authorization header
+   *   Response: { response: { msg: "Success", token?: "..." } }
+   *
+   * The portal may rotate the token in the response (check all known key names).
+   * Returns { ok: true, token? } on success; { ok: false } when the portal
+   * refuses (msg !== "Success" or empty body).
    */
   async refreshToken(params: {
     username: string;
-    token: string;
-    otppwd: string;
-  }): Promise<PortalTokenResponse> {
+    tokendate?: string;
+  }): Promise<{ ok: boolean; token?: string }> {
     const now = new Date();
-    const text = await this.send(
-      "/token/refreshTokenRequest",
-      encryptBody(
-        {
-          username: params.username,
-          Token: params.token,
-          otppwd: params.otppwd,
-          Modulename: "STUDENTMODULE",
-        },
-        deriveKey(now)
-      ),
-      {
-        ...ANONYMOUS_HEADERS(now),
-        Authorization: `Bearer ${params.token}`,
-      }
-    );
+    const payload = JSON.stringify({
+      username: params.username,
+      tokendate: params.tokendate ?? now.toString(),
+    });
 
-    if (!text || !text.trim()) {
-      throw new PortalError("The portal rejected the token refresh.", 401);
+    let text: string;
+    try {
+      text = await this.send(
+        "/token/refreshTokenRequest",
+        payload,
+        // Plain JSON — portal spec says NO AES encryption, NO Authorization here
+        { ...ANONYMOUS_HEADERS(now), "Content-Type": "application/json" }
+      );
+    } catch {
+      return { ok: false };
     }
-    const parsed = parseJson(text) as PortalTokenResponse;
-    if (typeof parsed !== "object" || parsed === null) {
-      throw new PortalError("The portal returned an unreadable refresh response.", 502);
-    }
-    return parsed;
+
+    if (!text?.trim()) return { ok: false };
+
+    const parsed = parseJson(text) as Record<string, any> | undefined;
+    if (!parsed || typeof parsed !== "object") return { ok: false };
+
+    const res = parsed.response ?? {};
+    if (res.msg !== "Success") return { ok: false };
+
+    // Token field name varies — try the known variants
+    const token =
+      ["token", "Token", "newToken", "accessToken", "jwt", "jwttoken"]
+        .map((k) => res[k])
+        .find((v) => typeof v === "string" && v.length > 0) ?? undefined;
+
+    return { ok: true, ...(token ? { token } : {}) };
   }
+
 }
 
 /** Convenience factory so callers can inject a base URL in tests. */

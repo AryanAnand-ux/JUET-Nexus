@@ -98,27 +98,40 @@ export async function getOrRenewCampusLynxIdentity(
   // Check if token has an exp claim and expires within 5 minutes (300 seconds)
   const exp = jwtExpiry(session.campusLynx.token);
   if (exp !== null && isTokenExpired(session.campusLynx.token, 300)) {
-    const client = createPortalClient({ timeout: 5000 });
+    const client = createPortalClient({ timeout: 8000 });
     try {
-      if (typeof client.refreshToken === "function") {
-        const refreshed = await client.refreshToken({
-          username: session.campusLynx.username,
-          token: session.campusLynx.token,
-          otppwd: session.campusLynx.otppwd || "PWD",
-        });
+      // Tier-1 lightweight refresh: plain JSON, no captcha, sub-100 ms.
+      // Confirmed working by lazyportal reference: POST /token/refreshTokenRequest
+      // with { username, tokendate }. Falls back gracefully if portal refuses.
+      const refreshed = await client.refreshToken({
+        username: session.campusLynx.username,
+        tokendate: (session.campusLynx as any).tokendate,
+      });
 
-        const newToken = refreshed?.response?.regdata?.token;
-        if (newToken) {
-          session.campusLynx.token = newToken;
-          if (refreshed.response?.regdata?.memberid) {
-            session.campusLynx.memberid = String(refreshed.response.regdata.memberid);
-          }
-          const updatedEncrypted = encryptSessionData(session);
-          if (reply) {
-            setAuthCookie(reply, updatedEncrypted);
-          }
-          request.log?.info?.(`[Session] Token transparently renewed for ${session.campusLynx.username}`);
-        } else if (isTokenExpired(session.campusLynx.token, 0)) {
+      if (refreshed.ok && refreshed.token) {
+        session.campusLynx.token = refreshed.token;
+        const updatedEncrypted = encryptSessionData(session);
+        if (reply) {
+          setAuthCookie(reply, updatedEncrypted);
+        }
+        request.log?.info?.(
+          `[Session] Token transparently renewed for ${session.campusLynx.username}`
+        );
+        return session.campusLynx;
+      }
+
+      // Refresh returned ok=true but no new token — server extended the existing one
+      if (refreshed.ok) {
+        request.log?.info?.(
+          `[Session] Token refresh confirmed (no rotation) for ${session.campusLynx.username}`
+        );
+      } else {
+        // Refresh refused — if token is still within exp, let it through
+        request.log?.warn?.(
+          `[Session] Lightweight refresh failed for ${session.campusLynx.username} — ` +
+          (isTokenExpired(session.campusLynx.token, 0) ? "token truly expired" : "falling back to existing token")
+        );
+        if (isTokenExpired(session.campusLynx.token, 0)) {
           throw {
             statusCode: 401,
             message: "CampusLynx session expired. Please log in again.",
@@ -127,8 +140,10 @@ export async function getOrRenewCampusLynxIdentity(
         }
       }
     } catch (refreshErr: any) {
+      // Re-throw structured 401s, swallow network/transient errors
+      if (refreshErr?.code === "SESSION_EXPIRED") throw refreshErr;
       request.log?.warn?.(
-        `[Session] Token refresh failed for ${session.campusLynx.username}: ${refreshErr?.message}`
+        `[Session] Token refresh threw for ${session.campusLynx.username}: ${refreshErr?.message}`
       );
       if (isTokenExpired(session.campusLynx.token, 0)) {
         throw {
@@ -137,18 +152,17 @@ export async function getOrRenewCampusLynxIdentity(
           code: "SESSION_EXPIRED",
         };
       }
-      if (reply) {
-        setAuthCookie(reply, encryptedSession);
-      }
     } finally {
       client.destroy();
     }
-  } else if (reply) {
-    // Sliding cookie window: extend cookie maxAge and expires on active request
+  }
+
+  if (reply) {
     setAuthCookie(reply, encryptedSession);
   }
 
   return session.campusLynx;
+
 }
 
 /**

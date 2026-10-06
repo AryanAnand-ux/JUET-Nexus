@@ -361,34 +361,30 @@ describe("PortalClient", () => {
   });
 
   describe("refreshToken", () => {
-    test("reuses the existing token and returns a new one", async () => {
+    test("sends plain JSON body and returns { ok, token } on success", async () => {
       let seen: any;
       handlers["/token/refreshTokenRequest"] = (c) => {
         seen = c;
         return {
-          data: JSON.stringify({ status: { responseStatus: "Success" }, response: { Token: "jwt.new.sig" } }),
+          data: JSON.stringify({ status: { responseStatus: "Success" }, response: { msg: "Success", token: "jwt.new.sig" } }),
         };
       };
 
-      const res = await client.refreshToken({
-        username: "241B610",
-        token: "jwt.old.sig",
-        otppwd: "PWD",
-      });
+      const res = await client.refreshToken({ username: "241B610" });
 
-      expect(res.response?.Token).toBe("jwt.new.sig");
-      expect(seen.headers.Authorization).toBe("Bearer jwt.old.sig");
-      expect(decodeBody(seen.body)).toMatchObject({
-        Token: "jwt.old.sig",
-        otppwd: "PWD",
-      });
+      expect(res.ok).toBe(true);
+      expect(res.token).toBe("jwt.new.sig");
+      // Body must be plain JSON (parseable), NOT AES ciphertext
+      expect(() => JSON.parse(seen.body)).not.toThrow();
+      expect(JSON.parse(seen.body).username).toBe("241B610");
+      // No Authorization header
+      expect(seen.headers.Authorization).toBeUndefined();
     });
 
-    test("rejects an empty refresh body", async () => {
+    test("returns { ok: false } on empty refresh body", async () => {
       handlers["/token/refreshTokenRequest"] = () => ({ data: "" });
-      await expect(
-        client.refreshToken({ username: "1", token: "t", otppwd: "o" })
-      ).rejects.toThrow(/rejected the token refresh/i);
+      const res = await client.refreshToken({ username: "1" });
+      expect(res.ok).toBe(false);
     });
   });
 
