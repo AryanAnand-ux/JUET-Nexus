@@ -1,6 +1,6 @@
 /**
- * Bunk Meter Component
- * Premium attendance tracker with modern typography, glass effects, and micro-animations.
+ * Attendance Tracker Component
+ * Real-time course-wise attendance tracker with safe skips, thresholds, and drill-downs.
  */
 
 "use client";
@@ -10,19 +10,19 @@ import Link from "next/link";
 import { FigmaCard } from "./base";
 import type { AttendanceRecord } from "@/types";
 import { calculateBunkStatus } from "@/utils/bunkHelpers";
-import { CheckCircle2, AlertTriangle, XCircle, BarChart3, ArrowUpRight } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, ArrowUpRight } from "lucide-react";
 
-export interface BunkMeterProps {
+export interface AttendanceTrackerProps {
   attendanceRecords: AttendanceRecord[];
 }
 
-export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
+export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendanceRecords }) => {
   const getAttendanceStatus = (percentage: number): { text: string; icon: React.ReactNode; badgeClass: string; ringColor: string } => {
     if (percentage >= 85) {
       return { 
         text: "SAFE", 
         icon: <CheckCircle2 className="w-3.5 h-3.5 text-green-600 mr-1" />, 
-        badgeClass: "bg-green-50 text-green-700 border border-green-100",
+        badgeClass: "bg-green-50 text-green-700 border border-green-100 dark:bg-green-950/20 dark:text-green-300 dark:border-green-900/40",
         ringColor: "text-green-500"
       };
     }
@@ -30,14 +30,14 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
       return { 
         text: "CAUTION", 
         icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mr-1" />, 
-        badgeClass: "bg-amber-50 text-amber-700 border border-amber-100",
+        badgeClass: "bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-300 dark:border-amber-900/40",
         ringColor: "text-amber-500"
       };
     }
     return { 
       text: "CRITICAL", 
       icon: <XCircle className="w-3.5 h-3.5 text-rose-600 mr-1" />, 
-      badgeClass: "bg-rose-50 text-rose-700 border border-rose-100",
+      badgeClass: "bg-rose-50 text-rose-700 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-300 dark:border-rose-900/40",
       ringColor: "text-rose-600"
     };
   };
@@ -61,10 +61,10 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
     <FigmaCard 
       heading={
         <span className="flex items-center text-slate-800 dark:text-slate-100 font-extrabold text-lg md:text-xl font-nunito tracking-tight">
-          <BarChart3 className="w-5 h-5 mr-2 text-accent-primary" /> Bunk Meter — Attendance Tracker
+          <CheckCircle2 className="w-5 h-5 mr-2 text-accent-primary" /> Attendance Tracker
         </span>
       } 
-      className="border border-slate-200/80 shadow-md rounded-[24px] p-6 md:p-8"
+      className="border border-slate-200/80 dark:border-slate-800 shadow-md rounded-[24px] p-6 md:p-8"
     >
       {attendanceRecords.length === 0 ? (
         <div className="text-center py-12">
@@ -77,15 +77,15 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
           {/* Overall Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550 mb-1">
-                Enrolled Subjects
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
+                Enrolled Courses
               </p>
               <p className="text-4xl font-extrabold text-slate-850 dark:text-slate-100 font-nunito tracking-tight">
                 {stats.subjectCount}
               </p>
             </div>
             <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550 mb-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
                 Average Attendance
               </p>
               <p className="text-4xl font-extrabold text-accent-primary font-nunito tracking-tight">
@@ -93,8 +93,8 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
               </p>
             </div>
             <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550 mb-1">
-                Defaulter Warnings
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
+                Attention Required (&lt;75%)
               </p>
               <p className={`text-4xl font-extrabold font-nunito tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600' : 'text-green-600'}`}>
                 {stats.belowThreshold}
@@ -115,24 +115,24 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
               const skipInfo = (() => {
                 if (record.classesHeld <= 0) {
                   return {
-                    text: "Sync details to plan skips",
-                    className: "text-slate-400 border-slate-200 bg-slate-50/40",
+                    text: "Sync details to plan classes",
+                    className: "text-slate-400 border-slate-200 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-900/30",
                   };
                 }
                 const bunkStatus = calculateBunkStatus(record.classesAttended, record.classesHeld, 75);
                 if (bunkStatus.status === "critical") {
                   return {
                     text: `Must attend next ${bunkStatus.count} class${bunkStatus.count > 1 ? "es" : ""}`,
-                    className: "text-rose-600 border-rose-100 bg-rose-50/40",
+                    className: "text-rose-600 border-rose-100 bg-rose-50/40 dark:text-rose-400 dark:border-rose-900/40 dark:bg-rose-950/20",
                   };
                 }
                 return {
                   text: bunkStatus.count > 0 
-                    ? `Safe to skip ${bunkStatus.count} class${bunkStatus.count > 1 ? "es" : ""}`
-                    : "Caution: Cannot skip any classes",
+                    ? `Safe to miss ${bunkStatus.count} class${bunkStatus.count > 1 ? "es" : ""}`
+                    : "Caution: Cannot miss any classes",
                   className: bunkStatus.count > 0
-                    ? "text-green-600 border-green-100 bg-green-50/40"
-                    : "text-amber-600 border-amber-100 bg-amber-50/40",
+                    ? "text-green-600 border-green-100 bg-green-50/40 dark:text-green-400 dark:border-green-900/40 dark:bg-green-950/20"
+                    : "text-amber-600 border-amber-100 bg-amber-50/40 dark:text-amber-400 dark:border-amber-900/40 dark:bg-amber-950/20",
                 };
               })();
 
@@ -250,4 +250,7 @@ export const BunkMeter: React.FC<BunkMeterProps> = ({ attendanceRecords }) => {
   );
 };
 
-BunkMeter.displayName = "BunkMeter";
+AttendanceTracker.displayName = "AttendanceTracker";
+
+// Backward-compatible alias
+export const BunkMeter = AttendanceTracker;

@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  PieChart,
+  CheckCircle2,
   TrendingUp,
   BookOpen,
   CalendarCheck,
@@ -20,8 +20,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     href: "/dashboard",
-    label: "Bunk",
-    icon: <PieChart className="w-5 h-5" />,
+    label: "Attendance",
+    icon: <CheckCircle2 className="w-5 h-5" />,
   },
   {
     href: "/dashboard/performance",

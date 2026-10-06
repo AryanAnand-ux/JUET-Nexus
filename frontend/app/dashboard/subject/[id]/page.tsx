@@ -159,8 +159,8 @@ function SubjectDetailContent() {
       }
     } else {
       actionText = bunkStatus.count > 0
-        ? `You can safely bunk ${bunkStatus.count} more class${bunkStatus.count !== 1 ? "es" : ""}.`
-        : "You cannot bunk any more classes.";
+        ? `You can safely miss ${bunkStatus.count} more class${bunkStatus.count !== 1 ? "es" : ""}.`
+        : `You cannot miss any more classes without dropping below ${targetPercentage}%.`;
     }
   }
 
@@ -340,7 +340,7 @@ function SubjectDetailContent() {
                     onClick={handleAttend}
                     className="flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white border-2 border-green-600 font-bold transition-all hover:-translate-y-1 shadow-sm font-nunito"
                   >
-                    <span className="text-sm font-black">+ Attend</span>
+                    <span className="text-sm font-black">+ Attend Class</span>
                     {extraAttends > 0 && (
                       <span className="text-[10px] font-bold opacity-80">+{extraAttends} added</span>
                     )}
@@ -349,7 +349,7 @@ function SubjectDetailContent() {
                     onClick={handleBunk}
                     className="flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-xl bg-red-500 hover:bg-red-600 text-white border-2 border-red-600 font-bold transition-all hover:-translate-y-1 shadow-sm font-nunito"
                   >
-                    <span className="text-sm font-black">− Bunk</span>
+                    <span className="text-sm font-black">− Skip Class</span>
                     {extraBunks > 0 && (
                       <span className="text-[10px] font-bold opacity-80">+{extraBunks} skipped</span>
                     )}
@@ -370,8 +370,8 @@ function SubjectDetailContent() {
             )}
           </FigmaCard>
 
-          {/* Advanced Bunk Planner (Scenario Simulation) */}
-          <FigmaCard heading="Advanced Bunk Planner">
+          {/* Attendance Planner & Simulator */}
+          <FigmaCard heading="Attendance Planner & Simulator">
             {actualHeld === 0 ? (
               <div className="text-center py-4">
                 <p className="text-xs font-semibold text-gray-400 font-nunito leading-normal">
@@ -384,7 +384,7 @@ function SubjectDetailContent() {
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <label className="text-xs uppercase font-bold tracking-wider text-gray-500 font-nunito">
-                      Miss classes (Bunk N)
+                      Simulate Missed Classes
                     </label>
                     <span className="text-xs font-bold text-gray-400 font-mono">
                       {simulatedBunks} classes
