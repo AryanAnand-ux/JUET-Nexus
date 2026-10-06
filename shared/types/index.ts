@@ -19,8 +19,8 @@ export interface AttendanceRecord {
   lecturePercent: number;       // Lecture only %
   tutorialPercent: number;      // Tutorial only %
   practicalPercent: number;     // Practical %
-  classesHeld: number;          // 0 when WebKiosk doesn't provide raw counts
-  classesAttended: number;      // 0 when WebKiosk doesn't provide raw counts
+  classesHeld: number;          // 0 when Campus Portal doesn't provide raw counts
+  classesAttended: number;      // 0 when Campus Portal doesn't provide raw counts
   safeBunksLeft: number;        // 0 when raw counts unavailable
   detailLink?: string;          // Link to detailed day-by-day attendance log
 }
@@ -65,7 +65,7 @@ export type Performance = PerformanceData;
 // Notice Data
 export interface NoticeRecord {
   title: string;
-  date: string; // Display string from WebKiosk
+  date: string; // Display string from Campus Portal
   link: string;
 }
 

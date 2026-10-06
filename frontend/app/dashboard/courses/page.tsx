@@ -76,7 +76,7 @@ export default function CoursesPage() {
               href="/dashboard" 
               className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 font-nunito"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Bunk Meter
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Attendance Tracker
             </Link>
           </div>
           <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight font-nunito">

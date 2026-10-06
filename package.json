@@ -1,7 +1,7 @@
 {
   "name": "juet-sync",
   "version": "1.0.0",
-  "description": "JUET//SYNC - Modern proxy layer for WebKiosk ERP",
+  "description": "JUET Nexus - Modern client and proxy layer for Campus Portal (CampusLynx)",
   "private": true,
   "workspaces": [
     "frontend",
