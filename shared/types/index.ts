@@ -221,3 +221,29 @@ export interface GradeCardResponse {
   subjects: GradeSubject[];
 }
 
+// Feedback
+export type FeedbackCategory = "bug" | "feature" | "improvement" | "general";
+
+export interface FeedbackPayload {
+  category: FeedbackCategory;
+  subject: string;
+  message: string;
+  email?: string;
+  enrollment?: string;
+  name?: string;
+  rating?: number;
+  metadata?: {
+    device?: string;
+    url?: string;
+    userAgent?: string;
+    screen?: string;
+  };
+}
+
+export interface FeedbackResponse {
+  success: boolean;
+  message: string;
+  mailed?: boolean;
+  fallbackMailto?: string;
+}
+

@@ -13,6 +13,7 @@ import {
   Copy,
   Check,
   LogOut,
+  MessageSquare,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { performLogout } from "@/utils/logout";
@@ -229,6 +230,19 @@ export function MobileBottomNav() {
                 {branch}
               </p>
             </div>
+
+            {/* Feedback */}
+            <Link
+              href="/dashboard/feedback"
+              onClick={() => setProfileOpen(false)}
+              className="flex items-center justify-between bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/50 rounded-2xl px-4 py-3 text-indigo-700 dark:text-indigo-300 font-bold text-sm transition-colors hover:bg-indigo-100/70 dark:hover:bg-indigo-900/60 font-nunito"
+            >
+              <div className="flex items-center gap-2.5">
+                <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Send Feedback</span>
+              </div>
+              <span className="text-[11px] font-medium text-indigo-500/80">juetnexus@gmail.com</span>
+            </Link>
           </div>
 
           {/* Theme + Logout */}

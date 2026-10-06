@@ -14,6 +14,7 @@ import { registerAttendanceRoutes } from './routes/attendance';
 import { registerExamRoutes } from './routes/exam';
 import { registerGradesRoutes } from './routes/grades';
 import { registerNotificationRoutes } from './routes/notifications';
+import { registerFeedbackRoutes } from './routes/feedback';
 import { CacheService } from './utils/cache';
 import { validateKey } from './utils/encryption';
 import { assertKnownProvider } from './utils/provider';
@@ -97,6 +98,7 @@ export async function createServer() {
   await registerExamRoutes(fastify);
   await registerGradesRoutes(fastify, globalCache);
   await registerNotificationRoutes(fastify, globalCache);
+  await registerFeedbackRoutes(fastify);
 
   fastify.get('/health', async () => ({
     status: 'ok',
