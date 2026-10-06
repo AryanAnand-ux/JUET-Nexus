@@ -1,106 +1,128 @@
 # JUET Nexus
 
-**JUET Nexus** is a modern, high-performance student dashboard proxy for the Jaypee University of Engineering and Technology (JUET) Student Portal.
+**JUET Nexus** is a modern, high-performance academic portal and dashboard client designed for Jaypee University of Engineering and Technology (JUET). Built on Next.js 15 App Router and Fastify, it connects directly to the official CampusLynx REST portal API with permanent sliding session persistence, attendance tracking, and a mobile-first interface.
 
 ---
 
 ## Key Features
 
-- **Premium Design:** Built with a visually stunning theme, custom cards, and smooth transitions.
-- **Two-Step Login:** Enrollment + captcha, then password — matching the JUET Student Portal's own flow.
-- **Interactive Collapsible Sidebar:** Supports dynamic folding/unfolding on desktop. Features click-to-expand and click-outside-to-collapse behavior.
-- **Bunk Meter:** Instantly visualizes your attendance percentage with interactive simulators to calculate safe upcoming bunks or how many consecutive classes you need to attend to meet your target.
-- **Performance Hub:** Centralized display of SGPA, CGPA standings, and recent evaluation scores.
-- **Session Persistence:** Configured with secure CORS and httpOnly cookies, keeping you logged in even after refreshing your browser.
+- **Unified Single-Screen Login**: Clean, accessible login card presenting Enrollment Number, Password, and Captcha code simultaneously with password visibility toggle and instant captcha reload.
+- **Permanent Session Persistence**: Transparent sliding token renewal extends encrypted HTTP-only session cookies on every request, paired with a proactive client-side keepalive heartbeat (`useSessionHeartbeat`). Users stay logged in until explicit logout.
+- **Attendance Tracker**: Comprehensive subject-wise breakdown of lectures, tutorials, and practicals, complete with interactive safe-skip / target-attainment calculations and an overall attendance summary ring.
+- **Academic Performance & Results**: Fast viewing of SGPA, cumulative CGPA, semester transcripts, and exam schedules.
+- **Mobile Bottom Navigation**: Fixed, thumb-accessible bottom navigation bar for quick routing across Attendance, GPA Hub, Courses, Exams, and Grades.
+- **Light & Dark Mode**: Streamlined theme toggle with smooth system and user preference switching.
+- **Resilient Offline & Outage Handling**: Stale-while-revalidate caching (Redis or in-memory fallback) ensures academic data remains readable even during upstream portal maintenance.
 
 ---
 
 ## Technical Architecture
 
-JUET Nexus is structured as a TypeScript monorepo:
-- **Frontend (`/frontend`):** Built with React, Next.js (App Router), Tailwind CSS, Lucide Icons, and Axios client-side connection.
-- **Backend (`/backend`):** Powered by Fastify and Axios. Features AES-256-GCM encryption for cookies and a dual-tier caching layer (Redis + in-memory Map fallback).
-- **Shared (`/shared`):** Universal TypeScript interfaces and type declarations ensuring strict data contracts.
+JUET Nexus is organized as a TypeScript npm-workspaces monorepo:
 
-### Data Provider
+- **Frontend (`/frontend`)**: Next.js 15 (App Router), React 19, Tailwind CSS, Lucide Icons, and Axios client.
+- **Backend (`/backend`)**: Fastify REST API, CampusLynx REST portal client with AES-256-GCM encrypted cookies and dual-tier cache (Redis with memory fallback).
+- **Shared (`/shared`)**: Shared TypeScript interfaces establishing strict type contracts between frontend and backend.
 
-The backend supports two data providers, selected via the `DATA_PROVIDER` environment variable:
-
-| Provider | Description |
-|---|---|
-| `campuslynx` (default) | JUET Student Portal JSON API — the current production backend |
-| `webkiosk` | Legacy scraped WebKiosk flow — kept as a fallback |
+```
+JUET Nexus Architecture
+┌───────────────────────────────┐
+│     Next.js 15 Frontend       │
+│  (App Router, Mobile UI, PWA) │
+└──────────────┬────────────────┘
+               │ HTTP / JSON
+┌──────────────▼────────────────┐
+│      Fastify Backend          │
+│ (Sliding Session, Redis Cache)│
+└──────────────┬────────────────┘
+               │ REST API (Bearer JWT)
+┌──────────────▼────────────────┐
+│   JUET CampusLynx Portal API  │
+└───────────────────────────────┘
+```
 
 ---
 
-## Local Development
+## Getting Started
 
-### 1. Prerequisites
-- **Node.js:** v18.x or later
-- **npm:** v10.x or later
-- **Redis (Optional):** Required for shared multi-session cache. Otherwise falls back to safe in-memory cache.
+### Prerequisites
 
-### 2. Installation
-Clone the repository and install workspace dependencies:
+- **Node.js**: v18.x or later (v20+ recommended)
+- **npm**: v10.x or later
+- **Redis (Optional)**: Automatically falls back to an in-memory cache if Redis is not running.
+
+### Installation
+
+Clone the repository and install dependencies across all workspaces:
+
 ```bash
 git clone https://github.com/AryanAnand-ux/JUET-Nexus.git
 cd JUET-Nexus
 npm install
 ```
 
-### 3. Environment Setup
-Configure your environment variables:
+### Environment Configuration
 
-**Backend (`/backend/.env`):**
-```env
-PORT=3001
-HOST=0.0.0.0
-NODE_ENV=development
-DATA_PROVIDER=campuslynx
-PORTAL_BASE_URL=https://studentportal.juet.ac.in/StudentPortalAPI
-PORTAL_TIMEZONE=Asia/Kolkata
-ENCRYPTION_KEY=your-256-bit-hex-key-here-64-characters-minimum
-CORS_ORIGIN=http://localhost:3000
-FRONTEND_URL=http://localhost:3000
-REQUEST_TIMEOUT=15000
-# REDIS_URL=redis://localhost:6379/0  # Optional (Falls back to memory)
-```
-*Note: Generate `ENCRYPTION_KEY` using `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.*
+1. **Backend (`backend/.env`)**:
+   ```env
+   PORT=3001
+   HOST=0.0.0.0
+   NODE_ENV=development
+   PORTAL_BASE_URL=https://studentportal.juet.ac.in/StudentPortalAPI
+   PORTAL_TIMEZONE=Asia/Kolkata
+   ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+   CORS_ORIGIN=http://localhost:3000
+   FRONTEND_URL=http://localhost:3000
+   REQUEST_TIMEOUT=15000
+   # REDIS_URL=redis://localhost:6379/0  # Optional (falls back to memory)
+   ```
+   *Generate a 64-character hex encryption key:*
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
 
-**Frontend (`/frontend/.env.local`):**
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3001
-```
+2. **Frontend (`frontend/.env.local`)**:
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:3001
+   ```
 
-### 4. Running the App
-Run both servers concurrently from the root directory:
+### Running Locally
+
+Start both the frontend (:3000) and backend (:3001) concurrently:
+
 ```bash
 npm run dev
 ```
-- Frontend starts at: `http://localhost:3000`
-- Backend API starts at: `http://localhost:3001`
+
+Or run individual workspaces:
+```bash
+npm run dev:frontend   # Next.js development server
+npm run dev:backend    # Fastify backend with ts-node
+```
+
+---
+
+## Verification & Testing
+
+```bash
+npm run type-check     # Strict TypeScript checks across frontend & backend
+npm run lint           # ESLint verification across frontend & backend
+npm test               # Run backend Jest test suite
+npm run build          # Production Next.js build + Fastify build
+```
 
 ---
 
 ## API Endpoints
 
-| Endpoint | Description |
-|---|---|
-| `GET /api/init` | Fetch captcha + session token for login |
-| `POST /api/auth/verify-user` | Step 1: verify enrollment + captcha |
-| `POST /api/auth` | Step 2: exchange login token + password for session |
-| `POST /api/logout` | Clear session |
-| `GET /api/dashboard` | Full dashboard data (SWR cached) |
-| `GET /api/attendance/details` | Day-by-day attendance for a subject |
-| `POST /api/notifications/subscribe` | Register push notification |
-
----
-
-## Known Limitations
-
-- **SGPA/CGPA:** The portal's `getallsemesterdata` endpoint currently returns a 500 error. When it works, semester data populates normally; until then the Performance Hub shows an "unavailable" state.
-- **Notices:** The portal has no noticeboard API. The login marquee is the only announcement channel.
-- **Course Credits:** The portal does not expose per-subject credits. Course cards hide the credits UI when none are available.
-- **Push Notifications:** CampusLynx sessions cannot silently re-login (no password stored), so background push updates are skipped for portal-authenticated users.
-
----
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/init` | Initialize login session & fetch captcha image |
+| `POST` | `/api/auth/verify-user` | Step 1: verify enrollment number & captcha |
+| `POST` | `/api/auth` | Step 2: authenticate password & issue encrypted cookie |
+| `POST` | `/api/auth/refresh` | Lightweight session keepalive & sliding cookie renewal |
+| `POST` | `/api/logout` | Explicitly destroy session & clear auth cookies |
+| `GET` | `/api/dashboard` | Student profile, courses, and attendance summary (SWR) |
+| `GET` | `/api/attendance/details` | Day-by-day attendance history for a subject |
+| `GET` | `/api/exam/schedule` | Registered exam schedule and timings |
+| `GET` | `/api/grades` | SGPA/CGPA semester transcript |
