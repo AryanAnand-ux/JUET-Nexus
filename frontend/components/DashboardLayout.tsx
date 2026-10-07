@@ -119,21 +119,21 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-slate-900 font-nunito overflow-hidden transition-colors duration-200">
+    <div className="flex h-screen bg-gray-50 dark:bg-[#09090b] font-nunito overflow-hidden transition-colors duration-200">
 
       {/* Sidebar Panel */}
       <aside
         ref={sidebarRef}
         onClick={handleSidebarClick}
         className={clsx(
-          "hidden lg:flex fixed inset-y-0 left-0 z-50 lg:static flex-col bg-white dark:bg-slate-950/40 border-r border-gray-200 dark:border-slate-900 transition-all duration-300 ease-in-out",
+          "hidden lg:flex fixed inset-y-0 left-0 z-50 lg:static flex-col bg-white dark:bg-zinc-950/80 border-r border-gray-200 dark:border-zinc-850 transition-all duration-300 ease-in-out",
           // Desktop state
           sidebarCollapsed ? "lg:w-20 cursor-pointer" : "lg:w-64 cursor-default"
         )}
       >
         {/* Brand Header */}
         <div className={clsx(
-          "border-b border-gray-100 dark:border-slate-800 flex items-center justify-between transition-all duration-300",
+          "border-b border-gray-100 dark:border-zinc-800/80 flex items-center justify-between transition-all duration-300",
           sidebarCollapsed ? "p-4 justify-center" : "p-6"
         )}>
           {!sidebarCollapsed ? (
@@ -206,14 +206,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </nav>
 
         {/* Collapse Toggle Footer (Desktop only) */}
-        <div className="border-t border-gray-100 dark:border-slate-800 p-4 hidden lg:block">
+        <div className="border-t border-gray-100 dark:border-zinc-800/80 p-4 hidden lg:block">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setSidebarCollapsed(!sidebarCollapsed);
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-figma-gray dark:text-slate-400 hover:text-figma-dark dark:hover:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-nunito text-xs font-bold"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-figma-gray dark:text-zinc-400 hover:text-figma-dark dark:hover:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-850 transition-colors font-nunito text-xs font-bold"
           >
             <svg
               className={clsx("w-5 h-5 transition-transform duration-300", sidebarCollapsed && "rotate-180")}
@@ -231,7 +231,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header bar */}
-        <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 shadow-sm z-10 transition-colors duration-200">
+        <header className="bg-white dark:bg-[#09090b] border-b border-gray-200 dark:border-zinc-800/80 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 shadow-sm z-10 transition-colors duration-200">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <h1 className="text-base sm:text-xl font-bold text-figma-dark dark:text-slate-100 font-nunito truncate">
               {pathname === "/dashboard/performance"
@@ -279,7 +279,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </header>
 
         {/* Content body */}
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-gray-50 dark:bg-slate-900 p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 touch-scroll-momentum transition-colors duration-200">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-gray-50 dark:bg-[#09090b] p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 touch-scroll-momentum transition-colors duration-200">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

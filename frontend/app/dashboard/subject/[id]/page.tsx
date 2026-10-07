@@ -470,7 +470,7 @@ function SubjectDetailContent() {
                       );
                     }
                     
-                    return [...filteredLogs].reverse().map((log, i) => (
+                    return filteredLogs.map((log, i) => (
                       <tr
                         key={i}
                         className="border-b border-gray-100 dark:border-slate-900/60 hover:bg-gray-50 dark:hover:bg-slate-900/30 transition-colors last:border-0 dark:border-slate-800/50"

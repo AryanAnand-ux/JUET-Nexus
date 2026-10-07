@@ -88,13 +88,13 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
       </div>
 
       {/* Overview Stats Banner */}
-      <div className="rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl border border-indigo-800/40 relative overflow-hidden">
-        <div className="absolute right-0 top-0 -mt-10 -mr-10 w-44 h-44 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+      <div className="rounded-3xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 text-white p-6 sm:p-8 shadow-xl border border-zinc-800/80 relative overflow-hidden">
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 w-44 h-44 rounded-full bg-zinc-700/10 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-2 border border-indigo-500/30">
-              <Sparkles className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs font-semibold uppercase tracking-wider mb-2 border border-zinc-700">
+              <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
               <span>Official Result Sheet</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
@@ -102,35 +102,35 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
                 ? currentSemester.semester
                 : `Semester ${currentSemester.semester}`}
             </h2>
-            <p className="mt-1 text-sm text-indigo-200/80 font-medium">
+            <p className="mt-1 text-sm text-zinc-400 font-medium">
               Academic Performance Breakdown
             </p>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10">
-              <p className="text-xs text-indigo-200/70 font-medium">Semester SGPA</p>
+              <p className="text-xs text-zinc-400 font-medium">Semester SGPA</p>
               <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
                 {currentSemester.sgpa ? currentSemester.sgpa.toFixed(2) : "N/A"}
               </p>
             </div>
 
             <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10">
-              <p className="text-xs text-indigo-200/70 font-medium">Cumulative CGPA</p>
+              <p className="text-xs text-zinc-400 font-medium">Cumulative CGPA</p>
               <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
                 {currentSemester.cgpa ? currentSemester.cgpa.toFixed(2) : "N/A"}
               </p>
             </div>
 
             <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10">
-              <p className="text-xs text-indigo-200/70 font-medium">Total Credits</p>
+              <p className="text-xs text-zinc-400 font-medium">Total Credits</p>
               <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
                 {totalCredits || "—"}
               </p>
             </div>
 
             <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10">
-              <p className="text-xs text-indigo-200/70 font-medium">Subjects Cleared</p>
+              <p className="text-xs text-zinc-400 font-medium">Subjects Cleared</p>
               <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
                 {passedSubjects} / {subjects.length}
               </p>

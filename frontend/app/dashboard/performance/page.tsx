@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { performLogout } from "@/utils/logout";
 import { PerformanceHub } from "@/components/PerformanceHub";
-import { GpaPredictor } from "@/components/GpaPredictor";
 import { useDashboard } from "@/hooks/useDashboard";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
@@ -33,7 +32,6 @@ const LoadingSkeleton: React.FC = () => (
 export default function PerformancePage() {
   const router = useRouter();
   const [enrollment, setEnrollment] = React.useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"standing" | "predictor">("standing");
 
   useEffect(() => {
     const storedEnrollment = localStorage.getItem("enrollment");
@@ -88,46 +86,12 @@ export default function PerformancePage() {
         </button>
       </div>
 
-      {/* Tabs Switcher */}
-      {data && (
-        <div className="mb-6 flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm p-1 rounded-xl w-fit border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
-          <button
-            onClick={() => setActiveTab("standing")}
-            className={`px-4 py-2 rounded-lg text-sm font-bold font-nunito transition-all duration-200 ${
-              activeTab === "standing"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/30 dark:border-slate-700/50"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-            }`}
-          >
-            Academic Standing
-          </button>
-          <button
-            onClick={() => setActiveTab("predictor")}
-            className={`px-4 py-2 rounded-lg text-sm font-bold font-nunito transition-all duration-200 ${
-              activeTab === "predictor"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/30 dark:border-slate-700/50"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-            }`}
-          >
-            GPA Predictor
-          </button>
-        </div>
-      )}
-
       {error && <ErrorBanner error={error} />}
 
       {isLoading && !data ? (
         <LoadingSkeleton />
       ) : data ? (
-        activeTab === "standing" ? (
-          <PerformanceHub performance={data.performance} detailedMarks={data.detailedMarks} />
-        ) : (
-          <GpaPredictor 
-            key={data.courses ? data.courses.map(c => c.code).join(',') : 'empty'}
-            courses={data.courses} 
-            performance={data.performance} 
-          />
-        )
+        <PerformanceHub performance={data.performance} detailedMarks={data.detailedMarks} />
       ) : (
         <div className="border border-gray-200 dark:border-slate-800 rounded-[24px] bg-white dark:bg-slate-900 p-12 text-center shadow-sm">
           <p className="text-sm font-medium text-slate-400 dark:text-slate-500 font-nunito mb-4">

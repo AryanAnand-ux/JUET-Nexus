@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import { apiClient } from "@/utils/api";
 import type { ExamScheduleResponse } from "@/types";
 
 export interface ExamScheduleState {
@@ -36,9 +36,8 @@ export function useExamSchedule() {
         params.eventId = activeEventId;
       }
 
-      const response = await axios.get(`${API_URL}/api/exam`, {
+      const response = await apiClient.get(`/api/exam`, {
         params: Object.keys(params).length > 0 ? params : undefined,
-        withCredentials: true,
         headers,
         timeout: 60000,
       });

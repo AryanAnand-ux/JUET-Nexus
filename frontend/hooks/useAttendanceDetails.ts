@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import axios from "axios";
+import { apiClient } from "@/utils/api";
 import type { AttendanceDetailsResponse } from "@/types";
 
 export interface AttendanceDetailsState {
@@ -41,12 +41,11 @@ export function useAttendanceDetails(
         headers["x-session-token"] = sessionToken;
       }
 
-      const response = await axios.get(
-        `${API_URL}/api/attendance/details?subject=${encodeURIComponent(
+      const response = await apiClient.get(
+        `/api/attendance/details?subject=${encodeURIComponent(
           subject
         )}&link=${encodeURIComponent(link)}`,
         {
-          withCredentials: true,
           headers,
           timeout: 60000,
         }

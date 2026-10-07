@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import { apiClient } from "@/utils/api";
 import type { DashboardResponse } from "@/types";
 
 export interface DashboardState {
@@ -60,10 +60,9 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         headers["x-session-token"] = sessionToken;
       }
 
-      const response = await axios.get(
-        `${API_URL}/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
+      const response = await apiClient.get(
+        `/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
         {
-          withCredentials: true,
           headers,
           timeout: 60000,
         }
@@ -146,11 +145,11 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       if (sessionToken) {
         headers["x-session-token"] = sessionToken;
       }
-      await axios.get(
-        `${API_URL}/api/dashboard/invalidate?enrollment=${encodeURIComponent(
+      await apiClient.get(
+        `/api/dashboard/invalidate?enrollment=${encodeURIComponent(
           enrollment
         )}`,
-        { withCredentials: true, headers }
+        { headers }
       );
       // Fetch fresh data
       await fetchDashboard();
@@ -165,7 +164,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         }
       }));
     }
-  }, [enrollment, API_URL, fetchDashboard]);
+  }, [enrollment, fetchDashboard]);
 
   /**
    * Check cache status
@@ -174,11 +173,10 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     if (!enrollment) return;
 
     try {
-      const response = await axios.get(
-        `${API_URL}/api/dashboard/cache-status?enrollment=${encodeURIComponent(
+      const response = await apiClient.get(
+        `/api/dashboard/cache-status?enrollment=${encodeURIComponent(
           enrollment
-        )}`,
-        { withCredentials: true }
+        )}`
       );
 
       const { cached, ttl } = response.data;

@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const HEARTBEAT_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+const HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000; // 4 minutes
 
 /**
  * Periodically refreshes the CampusLynx session token and sliding 30-day cookie
@@ -19,14 +19,26 @@ export function useSessionHeartbeat() {
     const pingRefresh = async () => {
       try {
         lastPingRef.current = Date.now();
-        await axios.post(
+        const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
+        const headers: Record<string, string> = {};
+        if (sessionToken) {
+          headers["x-session-token"] = sessionToken;
+        }
+
+        const res = await axios.post(
           `${API_URL}/api/auth/refresh`,
           {},
           {
             withCredentials: true,
+            headers,
             timeout: 15000,
           }
         );
+
+        const renewed = res.data?.sessionToken || res.headers?.["x-session-token"];
+        if (renewed && typeof window !== "undefined") {
+          localStorage.setItem("sessionToken", renewed);
+        }
       } catch {
         // Background keep-alive is best-effort: silently swallow network blips
       }

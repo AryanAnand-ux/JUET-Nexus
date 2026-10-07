@@ -137,18 +137,18 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
       {/* Modal Dialog Card */}
       <div className="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 shadow-2xl overflow-hidden transition-all duration-300 z-10 font-nunito max-h-[90vh] flex flex-col pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-0">
         {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-950 dark:to-slate-950 text-white p-5 sm:p-6 relative shrink-0">
+        <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 text-white p-5 sm:p-6 relative shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors touch-manipulation active:scale-95"
+            className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors touch-manipulation active:scale-95"
             aria-label="Close feedback modal"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold mb-2 border border-indigo-500/30">
-            <Mail className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs font-semibold mb-2 border border-zinc-700">
+            <Mail className="w-3.5 h-3.5 text-zinc-300" />
             <span>Direct to juetnexus@gmail.com</span>
           </div>
 

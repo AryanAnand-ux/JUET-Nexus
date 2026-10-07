@@ -230,29 +230,29 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-950 dark:to-slate-950 text-white p-6 sm:p-8 shadow-xl border border-indigo-900/30">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 text-white p-6 sm:p-8 shadow-xl border border-zinc-800/80">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 rounded-full bg-zinc-700/10 blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-2 border border-indigo-500/30">
-              <CalendarCheck className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs font-semibold uppercase tracking-wider mb-2 border border-zinc-700">
+              <CalendarCheck className="w-3.5 h-3.5 text-zinc-300" />
               <span>Official Schedule</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               {schedule.event || "Examination Schedule"}
             </h2>
-            <p className="mt-1 text-sm text-indigo-200/80 font-medium">
+            <p className="mt-1 text-sm text-zinc-400 font-medium">
               {schedule.semester || "Current Academic Session"}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10 flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300">
-                <Calendar className="w-5 h-5" />
+              <div className="p-2 rounded-xl bg-zinc-800 text-zinc-300">
+                <Calendar className="w-5 h-5 text-zinc-300" />
               </div>
               <div>
-                <p className="text-xs text-indigo-200/70 font-medium">Total Exams</p>
+                <p className="text-xs text-zinc-400 font-medium">Total Exams</p>
                 <p className="text-lg font-bold text-white">{items.length}</p>
               </div>
             </div>

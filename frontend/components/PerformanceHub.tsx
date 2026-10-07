@@ -8,7 +8,7 @@
 import React, { useState } from "react";
 import { FigmaCard } from "./base";
 import type { PerformanceData, DetailedCourseMarks } from "@/types";
-import { TrendingUp, ClipboardList, BarChart2, Lightbulb, GraduationCap, X, Info } from "lucide-react";
+import { TrendingUp, ClipboardList, Lightbulb, GraduationCap, X, Info } from "lucide-react";
 import { PerformanceChart } from "./PerformanceChart";
 
 export interface PerformanceHubProps {
@@ -234,38 +234,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
         </div>
       )}
 
-      {/* GPA Scale Reference */}
-      <div className="mt-8 border-t border-slate-100 dark:border-slate-800/80 pt-6">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center">
-          <BarChart2 className="w-4 h-4 mr-2 text-accent-primary" /> GPA Grading Scale Reference
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          <div className="border border-green-100 dark:border-green-950/30 bg-green-50/50 dark:bg-green-950/10 rounded-xl px-2 py-3 text-center">
-            <p className="text-[9px] font-bold text-slate-400 uppercase">9.0-10.0</p>
-            <p className="text-base font-extrabold text-green-700 dark:text-green-450 mt-0.5 font-nunito">A+</p>
-          </div>
-          <div className="border border-green-100 dark:border-green-950/30 bg-green-50/50 dark:bg-green-950/10 rounded-xl px-2 py-3 text-center">
-            <p className="text-[9px] font-bold text-slate-400 uppercase">8.5-9.0</p>
-            <p className="text-base font-extrabold text-green-700 dark:text-green-450 mt-0.5 font-nunito">A</p>
-          </div>
-          <div className="border border-accent-primary/20 bg-accent-light rounded-xl px-2 py-3 text-center">
-            <p className="text-[9px] font-bold text-slate-450 uppercase">8.0-8.5</p>
-            <p className="text-base font-extrabold text-accent-primary mt-0.5 font-nunito">A-</p>
-          </div>
-          <div className="border border-accent-primary/20 bg-accent-light rounded-xl px-2 py-3 text-center">
-            <p className="text-[9px] font-bold text-slate-455 uppercase">7.5-8.0</p>
-            <p className="text-base font-extrabold text-accent-primary mt-0.5 font-nunito">B+</p>
-          </div>
-          <div className="border border-amber-100 dark:border-amber-950/30 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl px-2 py-3 text-center">
-            <p className="text-[9px] font-bold text-slate-400 uppercase">7.0-7.5</p>
-            <p className="text-base font-extrabold text-amber-700 dark:text-amber-450 mt-0.5 font-nunito">B</p>
-          </div>
-          <div className="border border-rose-100 dark:border-rose-950/30 bg-rose-50/50 dark:bg-rose-950/10 rounded-xl px-2 py-3 text-center">
-            <p className="text-[9px] font-bold text-slate-400 uppercase">&lt;7.0</p>
-            <p className="text-base font-extrabold text-rose-700 dark:text-rose-450 mt-0.5 font-nunito">C/D</p>
-          </div>
-        </div>
-      </div>
+
 
       {/* Performance Insights */}
       <div className="mt-8 relative overflow-hidden bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-2xl p-5">
