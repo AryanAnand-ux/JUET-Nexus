@@ -1,11 +1,12 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import nodemailer, { type Transporter } from "nodemailer";
 import { decryptSessionData } from "../utils/encryption";
-import type { FeedbackPayload, FeedbackResponse } from "../../../shared/types";
+import { validateFeedback } from "../utils/feedbackValidation";
+import { saveFeedbackRecord, getRecentFeedback } from "../db/feedbackRepository";
+import type { FeedbackPayload } from "../../../shared/types";
 
 const TARGET_EMAIL = "juetnexus@gmail.com";
 
-/** Escape user-supplied strings before interpolating into HTML email bodies. */
 function escapeHtml(str: string | undefined | null): string {
   if (!str) return "";
   return str
@@ -32,130 +33,114 @@ function getCategoryLabel(category: string): string {
 function getCategoryColor(category: string): string {
   switch (category) {
     case "bug":
-      return "#ef4444"; // red
+      return "#ef4444";
     case "feature":
-      return "#f59e0b"; // amber
+      return "#f59e0b";
     case "improvement":
-      return "#8b5cf6"; // purple
+      return "#8b5cf6";
     default:
-      return "#6366f1"; // indigo
+      return "#6366f1";
   }
 }
 
-export function buildMailtoUrl(payload: FeedbackPayload): string {
-  const categoryLabel = getCategoryLabel(payload.category);
-  const subject = `[JUET Nexus - ${categoryLabel}] ${payload.subject || "Student Feedback"}`;
-  const studentEmail =
-    payload.email?.trim() ||
-    (payload.enrollment ? `${payload.enrollment.toLowerCase()}@juetguna.in` : "");
-  const lines = [
-    `Category: ${categoryLabel}`,
-    payload.enrollment ? `Enrollment: ${payload.enrollment}` : "",
-    payload.name ? `Name: ${payload.name}` : "",
-    studentEmail ? `Email: ${studentEmail}` : "",
-    payload.rating ? `Rating: ${payload.rating}/5` : "",
-    "",
-    "--- Message ---",
-    payload.message,
-    "",
-    "--- Device / Context ---",
-    payload.metadata?.url ? `URL: ${payload.metadata.url}` : "",
-    payload.metadata?.device ? `Device: ${payload.metadata.device}` : "",
-  ].filter(Boolean);
+function createMailerTransport(): Transporter | null {
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = parseInt(process.env.SMTP_PORT || "587", 10);
+  const user = process.env.SMTP_USER;
+  const pass = (process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS || "").replace(/\s+/g, "");
 
-  const body = lines.join("\n");
-  return `mailto:${encodeURIComponent(TARGET_EMAIL)}?subject=${encodeURIComponent(
-    subject
-  )}&body=${encodeURIComponent(body)}`;
-}
-
-export function createMailerTransport(): Transporter | null {
-  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
-  const pass = rawPass ? rawPass.replace(/\s+/g, "") : null;
-  const user = (process.env.SMTP_USER || TARGET_EMAIL).trim();
-
-  if (!pass) {
+  if (!user && !process.env.SMTP_PASS && !process.env.GMAIL_APP_PASSWORD) {
     return null;
   }
 
-  // If standard SMTP host is provided
-  if (process.env.SMTP_HOST) {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 465,
-      secure: process.env.SMTP_SECURE !== "false",
-      auth: { user, pass },
-    });
-  }
-
-  // Default to Gmail service
   return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user, pass },
+    host,
+    port,
+    secure: port === 465,
+    auth: {
+      user: user || TARGET_EMAIL,
+      pass,
+    },
   });
+}
+
+function buildMailtoUrl(payload: {
+  category: string;
+  subject: string;
+  message: string;
+  enrollment?: string | null;
+  email?: string | null;
+  rating?: number | null;
+}): string {
+  const categoryLabel = getCategoryLabel(payload.category);
+  const subject = encodeURIComponent(`[JUET Nexus - ${categoryLabel}] ${payload.subject}`);
+  const bodyText = encodeURIComponent(
+    `Category: ${categoryLabel}\n` +
+      `Enrollment: ${payload.enrollment || "N/A"}\n` +
+      (payload.email ? `Email: ${payload.email}\n` : "") +
+      (payload.rating ? `Rating: ${payload.rating}/5\n` : "") +
+      `\n--- Feedback ---\n${payload.message}`
+  );
+  return `mailto:${encodeURIComponent(TARGET_EMAIL)}?subject=${subject}&body=${bodyText}`;
 }
 
 export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post(
     "/api/feedback",
-    {
-      config: {
-        rateLimit: {
-          max: 10,
-          timeWindow: "5 minutes",
-        },
-      },
-    },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const body = (request.body || {}) as FeedbackPayload;
-      const message = String(body.message || "").trim();
+    async (request: FastifyRequest<{ Body: FeedbackPayload }>, reply: FastifyReply) => {
+      const clientIp =
+        (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || request.ip;
 
-      if (!message) {
+      const validation = validateFeedback(request.body, clientIp);
+      if (!validation.valid || !validation.sanitized) {
         return reply.status(400).send({
           success: false,
-          error: "Message is required to submit feedback.",
+          error: validation.error || "Invalid feedback data",
         });
       }
 
-      // Try extracting enrollment from session if not provided
-      let enrollment = body.enrollment;
-      if (!enrollment && request.cookies?.auth) {
+      const { sanitized } = validation;
+
+      // Extract enrollment from session if not provided in payload
+      let enrollment = sanitized.enrollment;
+      const authCookie = request.cookies.auth;
+      if (!enrollment && authCookie) {
         try {
-          const session = decryptSessionData(request.cookies.auth);
-          enrollment = session.enrollment || session.campusLynx?.enrollmentno;
+          const session = decryptSessionData(authCookie);
+          enrollment = session.enrollment || session.campusLynx?.enrollmentno || null;
         } catch {
-          // ignore session decrypt error
+          // ignore session decrypt failure
         }
       }
 
-      const category = body.category || "general";
-      const categoryLabel = getCategoryLabel(category);
-      const categoryColor = getCategoryColor(category);
-      const subject = body.subject?.trim() || `${categoryLabel} from ${enrollment || "Student"}`;
+      // Infer college email if not explicitly provided
+      const email =
+        sanitized.email || (enrollment ? `${enrollment.toLowerCase()}@juetguna.in` : null);
+
+      const categoryLabel = getCategoryLabel(sanitized.category);
+      const categoryColor = getCategoryColor(sanitized.category);
+      const subject =
+        sanitized.subject || `${categoryLabel} from ${enrollment || "Student"}`;
       const emailSubject = `[JUET Nexus - ${categoryLabel}] ${subject}`;
 
-      // Auto-infer student's college email if not provided
-      const studentEmail =
-        body.email?.trim() ||
-        (enrollment ? `${enrollment.toLowerCase()}@juetguna.in` : undefined);
-
-      const payloadWithEnrollment: FeedbackPayload = {
-        ...body,
-        category,
+      const fallbackMailto = buildMailtoUrl({
+        category: sanitized.category,
         subject,
-        message,
+        message: sanitized.message,
         enrollment,
-        email: studentEmail,
-      };
-
-      const fallbackMailto = buildMailtoUrl(payloadWithEnrollment);
+        email,
+        rating: sanitized.rating,
+      });
 
       let mailed = false;
       const transporter = createMailerTransport();
 
       if (transporter) {
         try {
-          const stars = body.rating ? "★".repeat(body.rating) + "☆".repeat(5 - body.rating) : null;
+          const stars = sanitized.rating
+            ? "★".repeat(sanitized.rating) + "☆".repeat(5 - sanitized.rating)
+            : null;
+
           const htmlContent = `
             <!DOCTYPE html>
             <html>
@@ -188,21 +173,32 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
                         <div class="info-label">Student Enrollment</div>
                         <div class="info-value">${escapeHtml(enrollment) || "Anonymous / Not logged in"}</div>
                       </div>
-                      ${body.name ? `
-                      <div class="info-item">
+                      ${
+                        sanitized.name
+                          ? `<div class="info-item">
                         <div class="info-label">Name</div>
-                        <div class="info-value">${escapeHtml(body.name)}</div>
-                      </div>` : ""}
-                      ${studentEmail ? `
-                      <div class="info-item">
+                        <div class="info-value">${escapeHtml(sanitized.name)}</div>
+                      </div>`
+                          : ""
+                      }
+                      ${
+                        email
+                          ? `<div class="info-item">
                         <div class="info-label">Contact Email</div>
-                        <div class="info-value"><a href="mailto:${escapeHtml(studentEmail)}">${escapeHtml(studentEmail)}</a></div>
-                      </div>` : ""}
-                      ${stars ? `
-                      <div class="info-item">
+                        <div class="info-value"><a href="mailto:${escapeHtml(email)}">${escapeHtml(
+                              email
+                            )}</a></div>
+                      </div>`
+                          : ""
+                      }
+                      ${
+                        stars
+                          ? `<div class="info-item">
                         <div class="info-label">Rating</div>
-                        <div class="info-value" style="color: #f59e0b; font-size: 16px;">${stars} (${body.rating}/5)</div>
-                      </div>` : ""}
+                        <div class="info-value" style="color: #f59e0b; font-size: 16px;">${stars} (${sanitized.rating}/5)</div>
+                      </div>`
+                          : ""
+                      }
                     </div>
 
                     <div style="font-weight: 700; font-size: 16px; color: #0f172a; margin-bottom: 8px;">
@@ -210,14 +206,28 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
                     </div>
 
                     <div class="message-box">
-                      ${escapeHtml(message)}
+                      ${escapeHtml(sanitized.message)}
                     </div>
 
                     <div class="meta">
-                      <div><strong>Received:</strong> ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST</div>
-                      ${body.metadata?.url ? `<div><strong>Page:</strong> ${body.metadata.url}</div>` : ""}
-                      ${body.metadata?.device ? `<div><strong>Device:</strong> ${body.metadata.device}</div>` : ""}
-                      ${body.metadata?.userAgent ? `<div><strong>User Agent:</strong> ${body.metadata.userAgent}</div>` : ""}
+                      <div><strong>Received:</strong> ${new Date().toLocaleString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                      })} IST</div>
+                      ${
+                        sanitized.metadata?.url
+                          ? `<div><strong>Page:</strong> ${sanitized.metadata.url}</div>`
+                          : ""
+                      }
+                      ${
+                        sanitized.metadata?.device
+                          ? `<div><strong>Device:</strong> ${sanitized.metadata.device}</div>`
+                          : ""
+                      }
+                      ${
+                        sanitized.metadata?.userAgent
+                          ? `<div><strong>User Agent:</strong> ${sanitized.metadata.userAgent}</div>`
+                          : ""
+                      }
                     </div>
                   </div>
                 </div>
@@ -225,47 +235,70 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
             </html>
           `;
 
-          const textContent = `JUET Nexus — Student Feedback\n\n` +
+          const textContent =
+            `JUET Nexus — Student Feedback\n\n` +
             `Category: ${categoryLabel}\n` +
             `Enrollment: ${enrollment || "N/A"}\n` +
-            `Name: ${body.name || "N/A"}\n` +
-            `Contact Email: ${studentEmail || "N/A"}\n` +
-            (body.rating ? `Rating: ${body.rating}/5\n` : "") +
+            `Name: ${sanitized.name || "N/A"}\n` +
+            `Contact Email: ${email || "N/A"}\n` +
+            (sanitized.rating ? `Rating: ${sanitized.rating}/5\n` : "") +
             `Subject: ${subject}\n\n` +
-            `--- Message ---\n${message}\n\n` +
+            `--- Message ---\n${sanitized.message}\n\n` +
             `--- Details ---\n` +
             `Date: ${new Date().toISOString()}\n` +
-            (body.metadata?.url ? `Page: ${body.metadata.url}\n` : "") +
-            (body.metadata?.device ? `Device: ${body.metadata.device}\n` : "");
+            (sanitized.metadata?.url ? `Page: ${sanitized.metadata.url}\n` : "") +
+            (sanitized.metadata?.device ? `Device: ${sanitized.metadata.device}\n` : "");
 
           await transporter.sendMail({
             from: `"JUET Nexus Feedback" <${process.env.SMTP_USER || TARGET_EMAIL}>`,
             to: TARGET_EMAIL,
-            replyTo: studentEmail || undefined,
+            replyTo: email || undefined,
             subject: emailSubject,
             text: textContent,
             html: htmlContent,
           });
 
           mailed = true;
-          request.log.info({ enrollment, category, subject }, "[Feedback] Successfully emailed to juetnexus@gmail.com");
+          request.log.info({ enrollment, category: sanitized.category, subject }, "[Feedback] Successfully emailed");
         } catch (mailError: any) {
           request.log.error(mailError, "[Feedback] Failed to send email via SMTP, fallback link provided");
         }
       } else {
-        request.log.info({ enrollment, category, subject }, "[Feedback] SMTP not configured; recorded feedback to server logs");
+        request.log.info({ enrollment, category: sanitized.category, subject }, "[Feedback] SMTP not configured");
       }
 
-      const response: FeedbackResponse = {
+      // Persist feedback to database (with automatic local file fallback)
+      const { record, storedInDb } = await saveFeedbackRecord({
+        message: sanitized.message,
+        category: sanitized.category,
+        subject,
+        rating: sanitized.rating,
+        name: sanitized.name,
+        email,
+        enrollment,
+        metadata: sanitized.metadata,
+        mailed,
+      });
+
+      return reply.status(200).send({
         success: true,
+        id: record.id,
         message: mailed
           ? "Thank you! Your feedback has been sent directly to the development team."
           : "Thank you for your feedback! It has been recorded.",
         mailed,
+        storedInDb,
         fallbackMailto,
-      };
-
-      return reply.status(200).send(response);
+      });
     }
   );
+
+  fastify.get("/api/feedback", async (_request: FastifyRequest, reply: FastifyReply) => {
+    const records = await getRecentFeedback();
+    return reply.status(200).send({
+      success: true,
+      count: records.length,
+      feedback: records,
+    });
+  });
 }

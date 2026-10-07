@@ -14,6 +14,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { performLogout } from "@/utils/logout";
 import { AlertTriangle, MapPin, Copy, Check, Eye, EyeOff } from "lucide-react";
+import { Typing } from "@/components/loading-ui/typing";
 
 /**
  * Error Display Component
@@ -32,6 +33,12 @@ const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
  */
 const LoadingSkeleton: React.FC = () => (
   <div className="space-y-6">
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-slate-400 dark:text-slate-500">
+      <Typing size="lg" duration={0.9} className="text-accent-primary" />
+      <p className="text-sm font-semibold font-nunito tracking-wide animate-pulse">
+        Loading your dashboard…
+      </p>
+    </div>
     {[1, 2, 3].map((i) => (
       <div
         key={i}

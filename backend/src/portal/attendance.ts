@@ -133,6 +133,30 @@ function round1(value: number): number {
 }
 
 /**
+ * Parse a portal datetime string such as `"25/09/2026 (11:00:AM - 11:50 AM)"`
+ * into a numeric sort key (YYYYMMDD integer).
+ *
+ * Uses arithmetic on the day/month/year parts rather than `new Date()` so that
+ * the result is always in IST wall-clock terms and is never shifted by the
+ * Node process timezone or UTC offset arithmetic.
+ *
+ * Returns 0 for any string that cannot be parsed, so unparseable rows sort to
+ * the bottom (oldest) rather than throwing.
+ */
+export function parseDateForSort(dateStr: string): number {
+  // The portal format starts with DD/MM/YYYY; anything after is timing noise.
+  const match = String(dateStr).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!match) return 0;
+  const day   = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const year  = parseInt(match[3], 10);
+  // Validate ranges to avoid silently accepting malformed strings.
+  if (day < 1 || day > 31 || month < 1 || month > 12 || year < 2000) return 0;
+  // YYYYMMDD: a plain integer comparison gives the correct chronological order.
+  return year * 10000 + month * 100 + day;
+}
+
+/**
  * The portal's subject labels carry the code in parentheses --
  * `"NANO SCIENCE(PH303)"` -- while the WebKiosk parser (and therefore the UI)
  * works with the bare name. Strip a single trailing parenthesised suffix so
@@ -452,6 +476,13 @@ export async function fetchAttendanceDetail(
       if (mapped) logs.push(mapped);
     }
   }
+
+  // Sort logs latest-first by actual date value.
+  // Sorting is done on the merged array (after all component calls) so that
+  // lectures, tutorials, and practicals from the same date appear together,
+  // ordered newest → oldest.  Within the same date, the original L→T→P
+  // component order is preserved (Array.sort is stable in V8/Node ≥ 11).
+  logs.sort((a, b) => parseDateForSort(b.date) - parseDateForSort(a.date));
 
   const classesHeld = logs.length;
   const classesAttended = logs.filter((l) => l.status === "Present").length;

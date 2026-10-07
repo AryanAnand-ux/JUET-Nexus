@@ -18,6 +18,7 @@ import {
   fetchLatestRegistration,
   fetchAttendanceSummary,
   fetchAttendanceDetail,
+  parseDateForSort,
   type AttendanceContext,
   type AttendanceTransport,
 } from "../../src/portal/attendance";
@@ -243,8 +244,15 @@ describe("fetchAttendanceDetail", () => {
     expect(detail.classesAttended).toBe(46);
     expect(detail.percentage).toBe(88.5);
     expect(detail.logs).toHaveLength(52);
-    expect(detail.logs[0].type).toBe("Lecture");
-    expect(detail.logs[26].type).toBe("Tutorial");
+    // After sorting latest-first, every log must have a date >= the next log's
+    // date.  Both components share the same fixture so each date appears twice
+    // (once for L, once for T); within the same date the original L→T order
+    // is preserved by a stable sort.
+    for (let i = 0; i < detail.logs.length - 1; i++) {
+      const curr = parseDateForSort(detail.logs[i].date);
+      const next = parseDateForSort(detail.logs[i + 1].date);
+      expect(curr).toBeGreaterThanOrEqual(next);
+    }
   });
 
   test("a subject with no components returns empty logs without calling", async () => {
@@ -324,6 +332,152 @@ describe("fetchAttendanceDetail", () => {
       { subjectcomponentid: "JESCP06030000001" },
       { subjectcomponentid: "JESCP06030000009" },
     ]);
+  });
+
+  test("logs are sorted latest-first across components", async () => {
+    // Three rows with deliberately out-of-order dates across two components.
+    // After merging L and T, the sort must produce strict newest→oldest order.
+    const mkRow = (date: string, present: string) => ({ datetime: date, present });
+    let call = 0;
+    const transport: AttendanceTransport = {
+      async postEncrypted() {
+        // First call (L): older date then newer date (out of order from portal)
+        // Second call (T): a date that falls between the two L dates
+        if (call++ === 0) {
+          return {
+            status: { responseStatus: "Success" },
+            response: {
+              studentAttdsummarylist: [
+                mkRow("15/10/2026 (09:00:AM - 09:50 AM)", "Present"),
+                mkRow("01/09/2026 (11:00:AM - 11:50 AM)", "Absent"),
+              ],
+            },
+          };
+        }
+        return {
+          status: { responseStatus: "Success" },
+          response: {
+            studentAttdsummarylist: [
+              mkRow("10/10/2026 (02:00:PM - 02:50 PM)", "Present"),
+            ],
+          },
+        };
+      },
+    };
+
+    const detail = await fetchAttendanceDetail(transport, ctx, {
+      subject: "SORT TEST",
+      subjectid: "99",
+      individualsubjectcode: "X999",
+      components: { L: "CMP_L", T: "CMP_T" },
+    });
+
+    expect(detail.logs).toHaveLength(3);
+    // Expected order: 15/10/2026, 10/10/2026, 01/09/2026
+    expect(parseDateForSort(detail.logs[0].date)).toBe(20261015);
+    expect(parseDateForSort(detail.logs[1].date)).toBe(20261010);
+    expect(parseDateForSort(detail.logs[2].date)).toBe(20260901);
+    // L→T ordering preserved within same date (none here, so just check types)
+    expect(detail.logs[0].type).toBe("Lecture");
+    expect(detail.logs[1].type).toBe("Tutorial");
+    expect(detail.logs[2].type).toBe("Lecture");
+  });
+
+  test("logs from different years sort correctly (cross-year)", async () => {
+    const transport: AttendanceTransport = {
+      async postEncrypted() {
+        return {
+          status: { responseStatus: "Success" },
+          response: {
+            studentAttdsummarylist: [
+              { datetime: "01/01/2025 (09:00:AM)", present: "Present" },
+              { datetime: "31/12/2025 (10:00:AM)", present: "Absent" },
+              { datetime: "15/06/2026 (11:00:AM)", present: "Present" },
+            ],
+          },
+        };
+      },
+    };
+
+    const detail = await fetchAttendanceDetail(transport, ctx, {
+      subject: "YEAR TEST",
+      subjectid: "100",
+      individualsubjectcode: "Y100",
+      components: { L: "CMP_L" },
+    });
+
+    expect(detail.logs).toHaveLength(3);
+    expect(parseDateForSort(detail.logs[0].date)).toBe(20260615); // newest
+    expect(parseDateForSort(detail.logs[1].date)).toBe(20251231);
+    expect(parseDateForSort(detail.logs[2].date)).toBe(20250101); // oldest
+  });
+
+  test("counts and percentage are unaffected by the sort", async () => {
+    const transport: AttendanceTransport = {
+      async postEncrypted() {
+        return {
+          status: { responseStatus: "Success" },
+          response: {
+            studentAttdsummarylist: [
+              { datetime: "05/08/2026", present: "Absent" },
+              { datetime: "20/09/2026", present: "Present" },
+              { datetime: "01/07/2026", present: "Present" },
+            ],
+          },
+        };
+      },
+    };
+
+    const detail = await fetchAttendanceDetail(transport, ctx, {
+      subject: "COUNT TEST",
+      subjectid: "101",
+      individualsubjectcode: "C101",
+      components: { L: "CMP_L" },
+    });
+
+    // Sorting must not affect counts or percentage.
+    expect(detail.classesHeld).toBe(3);
+    expect(detail.classesAttended).toBe(2);
+    expect(detail.percentage).toBe(66.7);
+  });
+});
+
+describe("parseDateForSort", () => {
+  test("returns YYYYMMDD integer for a bare DD/MM/YYYY string", () => {
+    expect(parseDateForSort("25/09/2026")).toBe(20260925);
+    expect(parseDateForSort("01/01/2025")).toBe(20250101);
+    expect(parseDateForSort("31/12/2024")).toBe(20241231);
+  });
+
+  test("ignores the time suffix the portal appends after the date", () => {
+    // The portal emits "DD/MM/YYYY (HH:MM:AM - HH:MM PM)"; only the date matters.
+    expect(parseDateForSort("25/09/2026 (11:00:AM - 11:50 AM)")).toBe(20260925);
+    expect(parseDateForSort("01/07/2026 (09:00:AM)")).toBe(20260701);
+  });
+
+  test("cross-month ordering is numeric not alphabetical", () => {
+    // String sort of MM would give 10 < 09 (wrong); numeric gives 10 > 09 (correct).
+    const oct = parseDateForSort("01/10/2026");
+    const sep = parseDateForSort("01/09/2026");
+    expect(oct).toBeGreaterThan(sep);
+  });
+
+  test("cross-year ordering is correct", () => {
+    expect(parseDateForSort("31/12/2025")).toBeGreaterThan(parseDateForSort("01/01/2025"));
+    expect(parseDateForSort("01/01/2026")).toBeGreaterThan(parseDateForSort("31/12/2025"));
+  });
+
+  test("single-digit day and month are handled", () => {
+    expect(parseDateForSort("5/9/2026")).toBe(20260905);
+    expect(parseDateForSort("1/1/2026")).toBe(20260101);
+  });
+
+  test("returns 0 for unparseable or empty strings (sort to bottom, no throw)", () => {
+    expect(parseDateForSort("")).toBe(0);
+    expect(parseDateForSort("not-a-date")).toBe(0);
+    expect(parseDateForSort("2026-09-25")).toBe(0); // ISO format not supported
+    expect(parseDateForSort("32/13/2026")).toBe(0); // out-of-range
+    expect(parseDateForSort("01/01/1999")).toBe(0); // year < 2000
   });
 });
 

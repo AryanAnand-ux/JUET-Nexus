@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { formatEnrollment, isValidEnrollment } from "@/utils/formatters";
 import type { AuthError } from "@/hooks/useAuthFlow";
 import { Eye, EyeOff, RotateCw, AlertCircle, ArrowRight } from "lucide-react";
+import { Typing } from "@/components/loading-ui/typing";
 
 interface CampusLynxLoginFormProps {
   captchaImage: string | null;
@@ -285,8 +286,8 @@ export function CampusLynxLoginForm({
         >
           {isLoading ? (
             <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Authenticating...</span>
+              <span>Authenticating</span>
+              <Typing size="xs" duration={0.7} className="text-white/90" />
             </>
           ) : (
             <>

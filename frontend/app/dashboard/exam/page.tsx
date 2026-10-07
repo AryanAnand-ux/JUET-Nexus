@@ -9,6 +9,7 @@ import { ExamSchedule } from "@/components/ExamSchedule";
 import { performLogout } from "@/utils/logout";
 import { ArrowLeft, RefreshCw, Calendar } from "lucide-react";
 import Link from "next/link";
+import { Typing } from "@/components/loading-ui/typing";
 
 const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
   <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm">
@@ -21,6 +22,10 @@ const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
 
 const LoadingSkeleton: React.FC = () => (
   <div className="space-y-6">
+    <div className="flex flex-col items-center justify-center gap-3 py-8 text-slate-400 dark:text-slate-500">
+      <Typing size="lg" duration={0.9} className="text-accent-primary" />
+      <p className="text-sm font-semibold font-nunito tracking-wide animate-pulse">Loading exam schedule…</p>
+    </div>
     <div className="h-40 rounded-3xl bg-gray-200 dark:bg-slate-800 animate-pulse" />
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {[1, 2, 3, 4, 5, 6].map((i) => (

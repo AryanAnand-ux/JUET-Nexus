@@ -232,6 +232,7 @@ export interface FeedbackPayload {
   enrollment?: string;
   name?: string;
   rating?: number;
+  website?: string; // honeypot field for anti-spam
   metadata?: {
     device?: string;
     url?: string;
@@ -240,10 +241,24 @@ export interface FeedbackPayload {
   };
 }
 
+export interface FeedbackRecord {
+  id: string;
+  category: FeedbackCategory;
+  subject?: string | null;
+  message: string;
+  rating?: number | null;
+  name?: string | null;
+  email?: string | null;
+  enrollment?: string | null;
+  metadata?: Record<string, any> | null;
+  created_at: string;
+}
+
 export interface FeedbackResponse {
   success: boolean;
   message: string;
   mailed?: boolean;
+  storedInDb?: boolean;
   fallbackMailto?: string;
 }
 

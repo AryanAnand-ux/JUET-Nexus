@@ -7,6 +7,7 @@ import { FigmaCard } from "@/components/base";
 import { useAttendanceDetails } from "@/hooks/useAttendanceDetails";
 import { calculateBunkStatus } from "@/utils/bunkHelpers";
 import { performLogout } from "@/utils/logout";
+import { Typing } from "@/components/loading-ui/typing";
 
 function SubjectDetailContent() {
   const params = useParams();
@@ -271,8 +272,9 @@ function SubjectDetailContent() {
             )}
 
             {!hasDetailData && isLoading && (
-              <div className="mb-6 py-3 text-center">
-                <p className="text-xs font-medium text-gray-400 animate-pulse font-nunito">
+              <div className="mb-6 py-3 flex flex-col items-center gap-2">
+                <Typing size="sm" duration={0.8} className="text-accent-primary" />
+                <p className="text-xs font-medium text-gray-400 font-nunito">
                   Loading class counts from portal…
                 </p>
               </div>
@@ -406,7 +408,13 @@ function SubjectDetailContent() {
 
           {isLoading ? (
             <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
+              <div className="flex flex-col items-center justify-center gap-3 py-10 text-slate-400 dark:text-slate-500">
+                <Typing size="md" duration={0.85} className="text-accent-primary" />
+                <p className="text-xs font-semibold font-nunito tracking-wide animate-pulse">
+                  Fetching attendance logs…
+                </p>
+              </div>
+              {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
                   className="border border-gray-100 bg-gray-50 rounded-2xl h-14 animate-pulse"

@@ -9,6 +9,7 @@ import { GradeCard } from "@/components/GradeCard";
 import { performLogout } from "@/utils/logout";
 import { ArrowLeft, RefreshCw, Award } from "lucide-react";
 import Link from "next/link";
+import { Typing } from "@/components/loading-ui/typing";
 
 const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
   <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm">
@@ -21,6 +22,10 @@ const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
 
 const LoadingSkeleton: React.FC = () => (
   <div className="space-y-6">
+    <div className="flex flex-col items-center justify-center gap-3 py-8 text-slate-400 dark:text-slate-500">
+      <Typing size="lg" duration={0.9} className="text-accent-primary" />
+      <p className="text-sm font-semibold font-nunito tracking-wide animate-pulse">Loading your grades…</p>
+    </div>
     <div className="flex gap-2">
       {[1, 2, 3, 4].map((i) => (
         <div key={i} className="h-9 w-24 rounded-2xl bg-gray-200 dark:bg-slate-800 animate-pulse" />

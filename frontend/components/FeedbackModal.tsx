@@ -80,6 +80,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   const [email, setEmail] = useState("");
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [website, setWebsite] = useState("");
 
   const { submitFeedback, isSubmitting, result, error, reset } = useFeedback();
 
@@ -87,6 +88,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     if (isOpen) {
       reset();
       setCategory(defaultCategory);
+      setWebsite("");
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -116,6 +118,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
       enrollment: enrollment || undefined,
       name: studentName || undefined,
       rating,
+      website: website || undefined,
       metadata,
     };
 
@@ -203,6 +206,18 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
           ) : (
             /* Feedback Form */
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Honeypot field for anti-spam */}
+              <div className="hidden" aria-hidden="true" tabIndex={-1}>
+                <input
+                  type="text"
+                  name="website"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </div>
+
               {error && (
                 <div className="border border-rose-200 dark:border-rose-900/50 rounded-2xl bg-rose-50 dark:bg-rose-950/30 p-3.5 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300">
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />

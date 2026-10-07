@@ -7,6 +7,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { performLogout } from "@/utils/logout";
 import { ArrowLeft, RefreshCw, Search, BookOpen, Layers, Award } from "lucide-react";
 import Link from "next/link";
+import { Typing } from "@/components/loading-ui/typing";
 
 const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
   <div className="mb-6 border border-red-200 rounded-2xl bg-red-50 p-4 flex items-start gap-3 shadow-sm">
@@ -18,13 +19,19 @@ const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
 );
 
 const LoadingSkeleton: React.FC = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {[1, 2, 3, 4, 5, 6].map((i) => (
-      <div
-        key={i}
-        className="border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 rounded-[20px] h-[160px] animate-pulse shadow-sm"
-      />
-    ))}
+  <div className="space-y-6">
+    <div className="flex flex-col items-center justify-center gap-3 py-8 text-slate-400 dark:text-slate-500">
+      <Typing size="lg" duration={0.9} className="text-accent-primary" />
+      <p className="text-sm font-semibold font-nunito tracking-wide animate-pulse">Loading your courses…</p>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div
+          key={i}
+          className="border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 rounded-[20px] h-[160px] animate-pulse shadow-sm"
+        />
+      ))}
+    </div>
   </div>
 );
 
