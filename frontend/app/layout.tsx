@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Inter, Newsreader, Nunito_Sans } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "../context/ThemeContext";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const newsreader = Newsreader({
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ThemeProvider>
           {children}
         </ThemeProvider>
+        <Analytics />
         <Script id="register-sw" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
