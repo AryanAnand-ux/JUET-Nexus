@@ -67,8 +67,9 @@ export function buildMailtoUrl(payload: FeedbackPayload): string {
 }
 
 export function createMailerTransport(): Transporter | null {
-  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
-  const user = process.env.SMTP_USER || TARGET_EMAIL;
+  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const pass = rawPass ? rawPass.replace(/\s+/g, "") : null;
+  const user = (process.env.SMTP_USER || TARGET_EMAIL).trim();
 
   if (!pass) {
     return null;
