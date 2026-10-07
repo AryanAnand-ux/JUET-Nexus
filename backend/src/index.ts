@@ -22,10 +22,15 @@ import { checkAcademicUpdates } from './utils/pushWorker';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
-const CORS_ORIGIN =
+// Support comma-separated list: e.g. "https://juetnexus.vercel.app,https://juet-nexus-frontend.vercel.app"
+const CORS_ORIGINS: string[] = (
   process.env.CORS_ORIGIN ||
   process.env.FRONTEND_URL ||
-  'http://localhost:3000';
+  'http://localhost:3000'
+)
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 
 // Validate critical env vars at startup
 try {
@@ -71,7 +76,7 @@ export async function createServer() {
       if (!origin || process.env.NODE_ENV !== 'production') {
         return cb(null, true);
       }
-      if (origin === CORS_ORIGIN || origin.startsWith('http://localhost:')) {
+      if (CORS_ORIGINS.includes(origin) || origin.startsWith('http://localhost:')) {
         return cb(null, true);
       }
       return cb(new Error(`Origin ${origin} not allowed by CORS`), false);
