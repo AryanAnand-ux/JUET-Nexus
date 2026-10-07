@@ -107,9 +107,13 @@ export async function createServer() {
 
   fastify.setErrorHandler((error, _request, reply) => {
     fastify.log.error(error);
-    reply.status(error.statusCode || 500).send({
+    const isProduction = process.env.NODE_ENV === 'production';
+    const statusCode = error.statusCode || 500;
+    reply.status(statusCode).send({
       success: false,
-      error: error.message,
+      error: isProduction && statusCode >= 500
+        ? 'Internal server error'
+        : error.message,
       code: error.code || 'INTERNAL_ERROR',
     });
   });

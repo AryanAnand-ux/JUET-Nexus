@@ -19,7 +19,6 @@ export function clearStoredSession(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem("enrollment");
   localStorage.removeItem("dob");
-  localStorage.removeItem("password");
   localStorage.removeItem("role");
   localStorage.removeItem("sessionToken");
 }

@@ -94,34 +94,13 @@ export async function registerDashboardRoutes(
       try {
         identity = await getOrRenewCampusLynxIdentity(request, reply);
       } catch (err: any) {
-        const queryEnrollment =
-          firstString(request.query.enrollment) ||
-          firstString(request.headers['x-enrollment']);
-        if (queryEnrollment) {
-          try {
-            const cached = await cache.get<any>('dashboard', queryEnrollment);
-            if (cached?.data) {
-              fastify.log.warn(`[Dashboard] Session check failed, serving fallback cached data for ${queryEnrollment}`);
-              return reply
-                .header('X-Cache', 'hit')
-                .header('X-Cache-Status', 'stale')
-                .send({
-                  success: true,
-                  data: cached.data,
-                  cached: true,
-                  stale: true,
-                });
-            }
-          } catch {
-            // ignore
-          }
-        }
         return reply.status(err.statusCode || 401).send({
           success: false,
           error: err.message || 'Unauthorized',
           code: err.code || 'UNAUTHORIZED',
         });
       }
+
 
       enrollment =
         firstString(request.query.enrollment) ||

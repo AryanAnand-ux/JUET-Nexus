@@ -5,6 +5,17 @@ import type { FeedbackPayload, FeedbackResponse } from "../../../shared/types";
 
 const TARGET_EMAIL = "juetnexus@gmail.com";
 
+/** Escape user-supplied strings before interpolating into HTML email bodies. */
+function escapeHtml(str: string | undefined | null): string {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getCategoryLabel(category: string): string {
   switch (category) {
     case "bug":
@@ -165,17 +176,17 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
                     <div class="info-grid">
                       <div class="info-item">
                         <div class="info-label">Student Enrollment</div>
-                        <div class="info-value">${enrollment || "Anonymous / Not logged in"}</div>
+                        <div class="info-value">${escapeHtml(enrollment) || "Anonymous / Not logged in"}</div>
                       </div>
                       ${body.name ? `
                       <div class="info-item">
                         <div class="info-label">Name</div>
-                        <div class="info-value">${body.name}</div>
+                        <div class="info-value">${escapeHtml(body.name)}</div>
                       </div>` : ""}
                       ${body.email ? `
                       <div class="info-item">
                         <div class="info-label">Contact Email</div>
-                        <div class="info-value"><a href="mailto:${body.email}">${body.email}</a></div>
+                        <div class="info-value"><a href="mailto:${escapeHtml(body.email)}">${escapeHtml(body.email)}</a></div>
                       </div>` : ""}
                       ${stars ? `
                       <div class="info-item">
@@ -185,11 +196,11 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
                     </div>
 
                     <div style="font-weight: 700; font-size: 16px; color: #0f172a; margin-bottom: 8px;">
-                      ${subject}
+                      ${escapeHtml(subject)}
                     </div>
 
                     <div class="message-box">
-                      ${message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+                      ${escapeHtml(message)}
                     </div>
 
                     <div class="meta">

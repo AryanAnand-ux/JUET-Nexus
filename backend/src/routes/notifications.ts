@@ -100,6 +100,34 @@ export async function registerNotificationRoutes(
       const { enrollment, subscription } = request.body;
       const uppercaseEnrollment = enrollment.toUpperCase();
 
+      // Auth check: require a valid session and verify ownership
+      const encryptedSession = request.cookies.auth;
+      if (!encryptedSession) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Unauthorized: No active authentication cookie',
+          code: 'UNAUTHORIZED',
+        });
+      }
+
+      try {
+        const session = decryptSessionData(encryptedSession);
+        const sessionEnrollment = (session.campusLynx?.enrollmentno || session.enrollment || '').toUpperCase();
+        if (sessionEnrollment !== uppercaseEnrollment) {
+          return reply.status(403).send({
+            success: false,
+            error: 'Forbidden: You cannot unsubscribe for another enrollment',
+            code: 'FORBIDDEN',
+          });
+        }
+      } catch (err) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Unauthorized: Invalid session',
+          code: 'INVALID_SESSION',
+        });
+      }
+
       await cache.sRem('push_subscriptions', uppercaseEnrollment, JSON.stringify(subscription));
 
       // If no subscriptions left, clean up credentials
@@ -117,6 +145,7 @@ export async function registerNotificationRoutes(
         message: 'Unsubscribed successfully',
       });
     }
+
   );
 }
 export default registerNotificationRoutes;
