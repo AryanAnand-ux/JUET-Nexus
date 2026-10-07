@@ -6,12 +6,12 @@
   },
   "response": {
     "studentlov": {
-      "studentid": "JUET2400386",
+      "studentid": "JUET0000001",
       "labelString": "Semester",
       "currentsemester": "5",
-      "name": "ARYAN ANAND",
+      "name": "DEMO STUDENT",
       "instituteid": "INID2603J000001",
-      "enrollmentno": "241B610"
+      "enrollmentno": "24BCS001"
     }
   }
 }

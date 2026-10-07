@@ -96,7 +96,7 @@ export const STUDENT_MODULE = "STUDENTMODULE";
  * `regdata.clientid`, `regdata.companyid`, `regdata.enrollmentno`,
  * `regdata.membertype`, `regdata.name` and `regdata.institutename`. A live
  * login additionally confirms `regdata.memberid` is a REAL member id
- * (`"JUET2400386"` for the captured account) -- it is not `membertype`, and
+ * (`"JUETXXXXXXX"` for student member IDs) -- it is not `membertype`, and
  * code must not substitute one for the other. The portal picks `instituteid`
  * out of `institutelist[0].value`, not the top level.
  */
@@ -106,9 +106,9 @@ export interface PortalRegData {
   companyid?: string;
   enrollmentno?: string;
   membertype?: string;
-  /** Real member id from a live login (e.g. `"JUET2400386"`). */
+  /** Real member id from a live login (e.g. `"JUET0000000"`). */
   memberid?: string;
-  /** Live-verified (e.g. `"USID2609A0001184"`). */
+  /** Live-verified (e.g. `"USID0000A0000000"`). */
   userid?: string;
   /** Live-verified (e.g. `"N"`); stored encrypted as `bypassValue`. */
   bypass?: string;

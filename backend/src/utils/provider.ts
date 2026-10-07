@@ -1,17 +1,12 @@
 /**
  * Data/login provider selection.
  *
- * One definition, so the auth routes and the data routes cannot disagree about
- * which backend is live. `DATA_PROVIDER` is a deploy-time switch: it is read
- * when routes are registered (server boot) and never mutated afterwards.
- *
- *   campuslynx (default) CampusLynx portal JSON API
- *   webkiosk             legacy scraped WebKiosk flow (fallback)
+ * CampusLynx (studentportal.juet.ac.in) is the sole student portal backend.
  */
 
-export type DataProvider = "webkiosk" | "campuslynx";
+export type DataProvider = "campuslynx";
 
-const PROVIDERS: readonly DataProvider[] = ["webkiosk", "campuslynx"];
+const PROVIDERS: readonly DataProvider[] = ["campuslynx"];
 
 export function resolveProvider(raw: string | undefined = process.env.DATA_PROVIDER): DataProvider {
   return (raw || "campuslynx") as DataProvider;
@@ -23,8 +18,7 @@ export function isCampusLynxProvider(): boolean {
 }
 
 /**
- * Fail fast on a typo'd provider at boot rather than silently running the wrong
- * backend -- `DATA_PROVIDER=campuslnyx` should not quietly serve WebKiosk.
+ * Fail fast on a typo'd provider at boot rather than silently running an unknown configuration.
  */
 export function assertKnownProvider(raw: string | undefined = process.env.DATA_PROVIDER): DataProvider {
   const provider = resolveProvider(raw);

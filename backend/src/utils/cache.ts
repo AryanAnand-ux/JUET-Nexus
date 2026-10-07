@@ -1,7 +1,7 @@
 /**
  * Redis Caching Utilities
  * Generic cache layer for dashboard data and temporary session tokens.
- * Prevents repeated scraping and IP bans from WebKiosk.
+ * Prevents redundant upstream requests and protects portal rate limits.
  */
 
 import Redis from 'ioredis';

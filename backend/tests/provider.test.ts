@@ -31,18 +31,12 @@ describe("provider selection", () => {
     expect(isCampusLynxProvider()).toBe(true);
   });
 
-  test("keeps the webkiosk fallback selectable", () => {
-    process.env.DATA_PROVIDER = "webkiosk";
-    expect(isCampusLynxProvider()).toBe(false);
-  });
-
-  test("rejects a typo at boot instead of silently serving WebKiosk", () => {
-    process.env.DATA_PROVIDER = "campuslnyx";
+  test("rejects unknown provider at boot", () => {
+    process.env.DATA_PROVIDER = "unknown_provider";
     expect(() => assertKnownProvider()).toThrow(/Unknown DATA_PROVIDER/);
   });
 
-  test("accepts both known providers", () => {
-    expect(assertKnownProvider("webkiosk")).toBe("webkiosk");
+  test("accepts known provider", () => {
     expect(assertKnownProvider("campuslynx")).toBe("campuslynx");
     expect(assertKnownProvider(undefined)).toBe("campuslynx");
   });

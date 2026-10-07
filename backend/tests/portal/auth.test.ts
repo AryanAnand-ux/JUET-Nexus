@@ -26,7 +26,7 @@ const PRE_TOKEN: PortalPreToken = {
   random: "PRE-TOKEN-123",
   otppwd: "PWD",
   rejectedData: "",
-  username: "241B610",
+  username: "24BCS001",
 };
 
 function transport(overrides: Partial<PortalAuthTransport> = {}): PortalAuthTransport {
@@ -38,10 +38,10 @@ function transport(overrides: Partial<PortalAuthTransport> = {}): PortalAuthTran
         regdata: {
           token: "jwt.payload.sig",
           clientid: "JAYPEE",
-          enrollmentno: "241B610",
+          enrollmentno: "24BCS001",
           membertype: "S",
-          memberid: "JUET2400386",
-          userid: "USID2609A0001184",
+          memberid: "JUET0000001",
+          userid: "USID0000A0000001",
           bypass: "N",
           name: "TEST STUDENT",
           institutelist: [
@@ -58,11 +58,11 @@ function transport(overrides: Partial<PortalAuthTransport> = {}): PortalAuthTran
 describe("verifyUser", () => {
   test("sends the whole captcha object and the enrollment as username", async () => {
     const t = transport();
-    const result = await verifyUser(t, "241B610", CAPTCHA);
+    const result = await verifyUser(t, "24BCS001", CAPTCHA);
 
     expect(t.preTokenCheck).toHaveBeenCalledTimes(1);
     expect(t.preTokenCheck).toHaveBeenCalledWith({
-      username: "241B610",
+      username: "24BCS001",
       usertype: "S",
       captcha: CAPTCHA,
     });
@@ -71,7 +71,7 @@ describe("verifyUser", () => {
 
   test("honours an explicit parent usertype", async () => {
     const t = transport();
-    await verifyUser(t, "241B610", CAPTCHA, "P");
+    await verifyUser(t, "24BCS001", CAPTCHA, "P");
     expect(t.preTokenCheck).toHaveBeenCalledWith(
       expect.objectContaining({ usertype: "P" })
     );
@@ -81,14 +81,14 @@ describe("verifyUser", () => {
     const t = transport({
       preTokenCheck: jest.fn().mockResolvedValue({ otppwd: "PWD" } as any),
     });
-    await expect(verifyUser(t, "241B610", CAPTCHA)).rejects.toThrow(PortalError);
+    await expect(verifyUser(t, "24BCS001", CAPTCHA)).rejects.toThrow(PortalError);
   });
 
   test("propagates a captcha rejection", async () => {
     const t = transport({
       preTokenCheck: jest.fn().mockRejectedValue(new PortalError("bad captcha", 401)),
     });
-    await expect(verifyUser(t, "241B610", CAPTCHA)).rejects.toMatchObject({ status: 401 });
+    await expect(verifyUser(t, "24BCS001", CAPTCHA)).rejects.toMatchObject({ status: 401 });
   });
 });
 
@@ -96,14 +96,14 @@ describe("issueSession", () => {
   test("sends the exact step-2 payload with the raw password", async () => {
     const t = transport();
     await issueSession(t, {
-      enrollment: "241B610",
+      enrollment: "24BCS001",
       password: "s3cret",
       preToken: PRE_TOKEN,
     });
 
     expect(t.generateWebToken).toHaveBeenCalledWith({
       otppwd: "PWD",
-      username: "241B610",
+      username: "24BCS001",
       passwordotpvalue: "s3cret",
       Modulename: STUDENT_MODULE,
       random: "PRE-TOKEN-123",
@@ -112,7 +112,7 @@ describe("issueSession", () => {
 
   test("builds a password-free identity", async () => {
     const identity = await issueSession(transport(), {
-      enrollment: "241B610",
+      enrollment: "24BCS001",
       password: "s3cret",
       preToken: PRE_TOKEN,
     });
@@ -121,10 +121,10 @@ describe("issueSession", () => {
       token: "jwt.payload.sig",
       clientid: "JAYPEE",
       instituteid: "INID2603J000001",
-      memberid: "JUET2400386",
-      enrollmentno: "241B610",
+      memberid: "JUET0000001",
+      enrollmentno: "24BCS001",
       membertype: "S",
-      username: "241B610",
+      username: "24BCS001",
       otppwd: "PWD",
     });
     // The password must never be carried on the identity.
@@ -136,7 +136,7 @@ describe("issueSession", () => {
       generateWebToken: jest.fn().mockResolvedValue({ status: { responseStatus: "Failure" } }),
     });
     await expect(
-      issueSession(t, { enrollment: "241B610", password: "x", preToken: PRE_TOKEN })
+      issueSession(t, { enrollment: "24BCS001", password: "x", preToken: PRE_TOKEN })
     ).rejects.toThrow(PortalError);
   });
 });
@@ -148,27 +148,27 @@ describe("buildIdentity", () => {
         token: "t",
         instituteid: "TOP-LEVEL",
         institutelist: [{ value: "FROM-LIST" }],
-        memberid: "JUET2400386",
+        memberid: "JUET0000001",
         membertype: "S",
       },
-      { username: "241B610", otppwd: "PWD" }
+      { username: "24BCS001", otppwd: "PWD" }
     );
     expect(identity.instituteid).toBe("FROM-LIST");
   });
 
   test("keeps memberid as-is and never substitutes membertype", () => {
     const identity = buildIdentity(
-      { token: "t", membertype: "S", memberid: "JUET2400386" },
-      { username: "241B610", otppwd: "PWD" }
+      { token: "t", membertype: "S", memberid: "JUET0000001" },
+      { username: "24BCS001", otppwd: "PWD" }
     );
-    expect(identity.memberid).toBe("JUET2400386");
+    expect(identity.memberid).toBe("JUET0000001");
     expect(identity.membertype).toBe("S");
   });
 
   test("does not fabricate a memberid when the portal omits one", () => {
     const identity = buildIdentity(
       { token: "t", membertype: "S" },
-      { username: "241B610", otppwd: "PWD" }
+      { username: "24BCS001", otppwd: "PWD" }
     );
     expect(identity.memberid).toBe("");
     expect(identity.memberid).not.toBe("S");
