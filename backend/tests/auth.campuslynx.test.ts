@@ -126,7 +126,7 @@ describe("CampusLynx login routes", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/auth/verify-user",
-        payload: { enrollment: "241b610", captcha: "abc12", sessionToken },
+        payload: { enrollment: "999test0", captcha: "abc12", sessionToken },
       });
 
       expect(res.statusCode).toBe(200);
@@ -137,7 +137,7 @@ describe("CampusLynx login routes", () => {
 
       // The whole captcha object must be echoed, with only the answer replaced.
       expect(mockPreTokenCheck).toHaveBeenCalledWith({
-        username: "241B610",
+        username: "999TEST0",
         usertype: "S",
         captcha: { ...CAPTCHA, captcha: "abc12" },
       });
