@@ -86,6 +86,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  verification: {
+    google: "0niLebqPCbZ9SH5BLX0uP_S53oiuwx6Zrxmmw5xAWFM",
+  },
 };
 
 const jsonLd = {
@@ -128,6 +131,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${newsreader.variable} ${nunitoSans.variable}`}>
       <head>
+        <meta
+          name="google-site-verification"
+          content="0niLebqPCbZ9SH5BLX0uP_S53oiuwx6Zrxmmw5xAWFM"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
