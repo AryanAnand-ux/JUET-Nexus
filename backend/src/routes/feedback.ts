@@ -1,5 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import nodemailer, { type Transporter } from "nodemailer";
+import fs from "fs";
+import path from "path";
 import { decryptSessionData } from "../utils/encryption";
 import type { FeedbackPayload, FeedbackResponse } from "../../../shared/types";
 
@@ -40,6 +42,58 @@ function getCategoryColor(category: string): string {
     default:
       return "#6366f1"; // indigo
   }
+}
+
+export function getFeedbackFilePath(): string {
+  if (process.env.FEEDBACK_FILE_PATH) {
+    return process.env.FEEDBACK_FILE_PATH;
+  }
+  let dir = __dirname;
+  for (let i = 0; i < 5; i++) {
+    if (fs.existsSync(path.join(dir, "package.json"))) {
+      return path.join(dir, "data", "feedback.json");
+    }
+    dir = path.dirname(dir);
+  }
+  return path.resolve(process.cwd(), "backend", "data", "feedback.json");
+}
+
+export function saveFeedbackLocally(entry: Record<string, any>): void {
+  try {
+    const filePath = getFeedbackFilePath();
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    let list: any[] = [];
+    if (fs.existsSync(filePath)) {
+      try {
+        const content = fs.readFileSync(filePath, "utf-8");
+        list = JSON.parse(content);
+        if (!Array.isArray(list)) list = [];
+      } catch {
+        list = [];
+      }
+    }
+    list.unshift(entry);
+    fs.writeFileSync(filePath, JSON.stringify(list, null, 2), "utf-8");
+  } catch {
+    // Non-fatal, do not throw
+  }
+}
+
+export function getStoredFeedback(): any[] {
+  try {
+    const filePath = getFeedbackFilePath();
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, "utf-8");
+      const list = JSON.parse(content);
+      return Array.isArray(list) ? list : [];
+    }
+  } catch {
+    // ignore
+  }
+  return [];
 }
 
 export function buildMailtoUrl(payload: FeedbackPayload): string {
@@ -85,6 +139,9 @@ export function createMailerTransport(): Transporter | null {
       port: Number(process.env.SMTP_PORT) || 465,
       secure: process.env.SMTP_SECURE !== "false",
       auth: { user, pass },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
   }
 
@@ -92,6 +149,9 @@ export function createMailerTransport(): Transporter | null {
   return nodemailer.createTransport({
     service: "gmail",
     auth: { user, pass },
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 10000,
   });
 }
 
@@ -256,6 +316,25 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
         request.log.info({ enrollment, category, subject }, "[Feedback] SMTP not configured; recorded feedback to server logs");
       }
 
+      // Always persist feedback locally to disk as backup
+      const storedEntry = {
+        id: `fb_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: new Date().toISOString(),
+        receivedAtIST: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+        category,
+        categoryLabel,
+        subject,
+        message,
+        rating: body.rating || null,
+        enrollment: enrollment || null,
+        studentName: body.name || null,
+        contactEmail: studentEmail || null,
+        mailed,
+        metadata: body.metadata || null,
+      };
+
+      saveFeedbackLocally(storedEntry);
+
       const response: FeedbackResponse = {
         success: true,
         message: mailed
@@ -268,4 +347,14 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
       return reply.status(200).send(response);
     }
   );
+
+  fastify.get("/api/feedback", async (_request: FastifyRequest, reply: FastifyReply) => {
+    const items = getStoredFeedback();
+    return reply.status(200).send({
+      success: true,
+      count: items.length,
+      feedback: items,
+    });
+  });
 }
+

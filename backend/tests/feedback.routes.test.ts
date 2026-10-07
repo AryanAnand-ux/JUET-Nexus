@@ -16,14 +16,22 @@ jest.mock("nodemailer", () => ({
 
 import Fastify from "fastify";
 import fastifyCookie from "@fastify/cookie";
+import fs from "fs";
+import path from "path";
 import { registerFeedbackRoutes } from "../src/routes/feedback";
 import nodemailer from "nodemailer";
+
+const TEST_FEEDBACK_FILE = path.join(__dirname, "test-feedback.json");
+process.env.FEEDBACK_FILE_PATH = TEST_FEEDBACK_FILE;
 
 describe("POST /api/feedback", () => {
   let app: any;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    if (fs.existsSync(TEST_FEEDBACK_FILE)) {
+      fs.unlinkSync(TEST_FEEDBACK_FILE);
+    }
     app = Fastify({ logger: false });
     await app.register(fastifyCookie);
     await registerFeedbackRoutes(app);
@@ -31,6 +39,13 @@ describe("POST /api/feedback", () => {
   });
 
   afterEach(() => app.close());
+
+  afterAll(() => {
+    if (fs.existsSync(TEST_FEEDBACK_FILE)) {
+      fs.unlinkSync(TEST_FEEDBACK_FILE);
+    }
+  });
+
 
   it("rejects feedback with missing or empty message", async () => {
     const res = await app.inject({
@@ -101,4 +116,32 @@ describe("POST /api/feedback", () => {
     expect(body.fallbackMailto).toContain("mailto:juetnexus%40gmail.com");
     expect(mockSendMail).not.toHaveBeenCalled();
   });
+
+  it("persists feedback locally and exposes via GET /api/feedback", async () => {
+    const resPost = await app.inject({
+      method: "POST",
+      url: "/api/feedback",
+      payload: {
+        category: "improvement",
+        subject: "Faster loading",
+        message: "Can attendance cache faster?",
+        enrollment: "24BCS001",
+        rating: 5,
+      },
+    });
+
+    expect(resPost.statusCode).toBe(200);
+
+    const resGet = await app.inject({
+      method: "GET",
+      url: "/api/feedback",
+    });
+
+    expect(resGet.statusCode).toBe(200);
+    const getBody = resGet.json();
+    expect(getBody.success).toBe(true);
+    expect(getBody.count).toBeGreaterThanOrEqual(1);
+    expect(getBody.feedback.some((item: any) => item.message === "Can attendance cache faster?")).toBe(true);
+  });
 });
+
