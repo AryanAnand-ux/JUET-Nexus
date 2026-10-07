@@ -143,7 +143,7 @@ export async function startServer() {
     await fastify.listen({ port: PORT, host: HOST });
 
     fastify.log.info(`JUET//SYNC backend running on http://${HOST}:${PORT}`);
-    fastify.log.info(`CORS origin: ${CORS_ORIGIN}`);
+    fastify.log.info(`CORS origins: ${CORS_ORIGINS.join(', ')}`);
     fastify.log.info(
       getRedisUrl()
         ? `Redis cache: ${getRedisUrl()}`
