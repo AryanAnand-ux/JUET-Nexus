@@ -13,6 +13,7 @@ import { PerformanceHub } from "@/components/PerformanceHub";
 import { useDashboard } from "@/hooks/useDashboard";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
+import { Typing } from "@/components/loading-ui/typing";
 
 const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
   <div className="mb-6 border border-red-200 rounded-2xl bg-red-50 p-4 flex items-start gap-3 shadow-sm">
@@ -25,6 +26,10 @@ const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
 
 const LoadingSkeleton: React.FC = () => (
   <div className="space-y-6">
+    <div className="flex flex-col items-center justify-center gap-3 py-8 text-slate-400 dark:text-slate-500">
+      <Typing size="lg" duration={0.9} className="text-accent-primary" />
+      <p className="text-sm font-semibold font-nunito tracking-wide animate-pulse">Loading performance data…</p>
+    </div>
     <div className="border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 rounded-[24px] h-[350px] animate-pulse shadow-sm" />
   </div>
 );
