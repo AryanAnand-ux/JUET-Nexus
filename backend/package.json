@@ -1,7 +1,7 @@
 {
   "name": "juet-sync-backend",
   "version": "1.0.0",
-  "description": "JUET//SYNC Backend - Fastify proxy for WebKiosk",
+  "description": "JUET Nexus Backend - Fastify client & proxy for JUET CampusLynx portal",
   "main": "dist/backend/src/index.js",
   "scripts": {
     "dev": "ts-node src/index.ts",
@@ -15,10 +15,10 @@
   },
   "keywords": [
     "fastify",
-    "webkiosk",
-    "proxy",
-    "scraper",
-    "cheerio",
+    "campuslynx",
+    "juet",
+    "portal",
+    "academic",
     "redis",
     "cache"
   ],

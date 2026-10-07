@@ -7,7 +7,7 @@
   "response": {
     "studentattendancelist": [
       {
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "LTpercantage": 88.5,
         "Lpercentage": 88.5,
         "individualsubjectcode": "PH303",
@@ -25,7 +25,7 @@
         "subjectcode": "PROBABILITY THEORY AND RANDOM PROCESSES(MA106)",
         "subjectid": "250027",
         "Lsubjectcomponentid": "JESCP06030000001",
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "Tprepercentage": 0,
         "Lpercentage": 89.7,
         "Tpercentage": 75,
@@ -34,7 +34,7 @@
         "Lprepercentage": 0
       },
       {
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "LTpercantage": 73.9,
         "Lpercentage": 73.9,
         "individualsubjectcode": "CS109",
@@ -52,7 +52,7 @@
         "subjectcode": "CONCEPTS OF ECONOMICS(HS301)",
         "subjectid": "250032",
         "Lsubjectcomponentid": "JESCP06030000001",
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "Tprepercentage": 0,
         "Lpercentage": 87.5,
         "Tpercentage": 75,
@@ -61,7 +61,7 @@
         "Lprepercentage": 0
       },
       {
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "LTpercantage": 0,
         "individualsubjectcode": "CS211",
         "registrationid": "JERUM26030000034",
@@ -73,7 +73,7 @@
         "Ppercentage": 0
       },
       {
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "LTpercantage": 75,
         "individualsubjectcode": "CS212",
         "registrationid": "JERUM26030000034",
@@ -85,7 +85,7 @@
         "Ppercentage": 75
       },
       {
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "LTpercantage": 100,
         "individualsubjectcode": "CS215",
         "registrationid": "JERUM26030000034",
@@ -97,7 +97,7 @@
         "Ppercentage": 100
       },
       {
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "LTpercantage": 0,
         "individualsubjectcode": "CS003",
         "registrationid": "JERUM26030000034",
@@ -109,7 +109,7 @@
         "Ppercentage": 0
       },
       {
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "LTpercantage": 88.9,
         "individualsubjectcode": "CS224",
         "registrationid": "JERUM26030000034",
@@ -127,7 +127,7 @@
         "subjectcode": "DEEP LEARNING(CS120)",
         "subjectid": "260048",
         "Lsubjectcomponentid": "JESCP06030000001",
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "Tprepercentage": 0,
         "Lpercentage": 73.1,
         "Tpercentage": 100,
@@ -136,7 +136,7 @@
         "Lprepercentage": 0
       },
       {
-        "studentid": "JUET2400386",
+        "studentid": "JUET0000001",
         "LTpercantage": 79.2,
         "Lpercentage": 79.2,
         "individualsubjectcode": "CS301",

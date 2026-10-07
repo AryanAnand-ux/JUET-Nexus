@@ -80,7 +80,7 @@ export function useAttendanceDetails(
         isLoading: false,
       }));
     }
-  }, [subject, link, API_URL]);
+  }, [subject, link]);
 
   return {
     ...state,

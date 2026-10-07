@@ -130,7 +130,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         isLoading: false,
       }));
     }
-  }, [enrollment, API_URL]);
+  }, [enrollment]);
 
   /**
    * Manually invalidate cache
@@ -181,10 +181,10 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
 
       const { cached, ttl } = response.data;
       setState((prev) => ({ ...prev, cached, ttl }));
-    } catch (error) {
-      console.error("[Dashboard] Cache status check error:", error);
+    } catch {
+      // Silently ignore cache status errors
     }
-  }, [enrollment, API_URL]);
+  }, [enrollment]);
 
   /**
    * Fetch on mount and enrollment change

@@ -59,7 +59,7 @@ describe("POST /api/feedback", () => {
         category: "bug",
         subject: "Exam page glitch",
         message: "The time shows up wrong on paper 2",
-        enrollment: "241B610",
+        enrollment: "24BCS001",
         email: "student@example.com",
         rating: 4,
       },
@@ -76,7 +76,7 @@ describe("POST /api/feedback", () => {
     expect(callArgs.to).toBe("juetnexus@gmail.com");
     expect(callArgs.subject).toContain("Exam page glitch");
     expect(callArgs.text).toContain("The time shows up wrong on paper 2");
-    expect(callArgs.html).toContain("241B610");
+    expect(callArgs.html).toContain("24BCS001");
   });
 
   it("handles unconfigured SMTP gracefully with fallback mailto and success true", async () => {
@@ -90,7 +90,7 @@ describe("POST /api/feedback", () => {
         category: "feature",
         subject: "Dark mode tweak",
         message: "Can we have an AMOLED pitch black theme?",
-        enrollment: "241B610",
+        enrollment: "24BCS001",
       },
     });
 

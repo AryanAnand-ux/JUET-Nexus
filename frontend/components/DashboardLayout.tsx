@@ -38,8 +38,26 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [maskEnrollment, setMaskEnrollment] = useState(false);
   const pathname = usePathname();
   const sidebarRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      setMaskEnrollment(localStorage.getItem("mask_enrollment") === "true");
+    }
+  }, []);
+
+  const toggleMask = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setMaskEnrollment((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mask_enrollment", String(next));
+      }
+      return next;
+    });
+  };
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -159,16 +177,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3">
+            <div
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={toggleMask}
+              title={maskEnrollment ? "Click to show details" : "Click to hide details (Privacy Mode)"}
+            >
               <div className="w-10 h-10 rounded-full bg-accent-light text-accent-primary font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
                 {getInitials(studentName)}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-figma-dark dark:text-slate-200 truncate" title={studentName}>
-                  {studentName}
+                  {maskEnrollment ? "Student" : studentName}
                 </p>
-                <p className="text-xs text-figma-gray dark:text-slate-400 truncate">
-                  {enrollment}
+                <p className="text-xs text-figma-gray dark:text-slate-400 truncate font-mono">
+                  {maskEnrollment && enrollment
+                    ? `${enrollment.slice(0, 2)}••••${enrollment.slice(-2)}`
+                    : enrollment}
                 </p>
               </div>
             </div>

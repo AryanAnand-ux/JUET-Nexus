@@ -3,8 +3,8 @@
     "clientid": "JAYPEE",
     "instituteid": "INID2603J000001",
     "companyid": "",
-    "memberid": "JUET2400386",
-    "enrollmentno": "241B610",
+    "memberid": "JUET0000001",
+    "enrollmentno": "24BCS001",
     "membertype": "S",
     "token": "<redacted>"
   },
@@ -12,11 +12,11 @@
     "bypass": "N",
     "clientid": "JAYPEE",
     "userDOB": "2006-06-18",
-    "name": "ARYAN ANAND",
+    "name": "DEMO STUDENT",
     "lastvisitdate": null,
     "membertype": "S",
-    "enrollmentno": "241B610",
-    "userid": "USID2609A0001184",
+    "enrollmentno": "24BCS001",
+    "userid": "USID0000A0000001",
     "expiredpassword": "Y",
     "institutelist": [
       {
@@ -24,7 +24,7 @@
         "value": "INID2603J000001"
       }
     ],
-    "memberid": "JUET2400386",
+    "memberid": "JUET0000001",
     "token": "<redacted>"
   }
 }

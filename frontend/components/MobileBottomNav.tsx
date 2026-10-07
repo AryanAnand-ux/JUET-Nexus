@@ -12,6 +12,8 @@ import {
   X,
   Copy,
   Check,
+  Eye,
+  EyeOff,
   LogOut,
   MessageSquare,
 } from "lucide-react";
@@ -33,13 +35,27 @@ export function MobileBottomNav() {
   const [enrollment, setEnrollment] = useState("");
   const [branch, setBranch] = useState("");
   const [copied, setCopied] = useState(false);
+  const [maskEnrollment, setMaskEnrollment] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setStudentName(localStorage.getItem("studentName") || "Student");
     setEnrollment(localStorage.getItem("enrollment") || "—");
     setBranch(localStorage.getItem("branch") || "—");
+    if (typeof window !== "undefined") {
+      setMaskEnrollment(localStorage.getItem("mask_enrollment") === "true");
+    }
   }, [profileOpen]);
+
+  const toggleMask = () => {
+    setMaskEnrollment((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mask_enrollment", String(next));
+      }
+      return next;
+    });
+  };
 
   // Prevent background scroll when profile sheet is open
   useEffect(() => {
@@ -219,21 +235,34 @@ export function MobileBottomNav() {
                   Enrollment No.
                 </p>
                 <p className="text-sm font-bold text-gray-900 dark:text-slate-100 font-mono">
-                  {enrollment}
+                  {maskEnrollment && enrollment !== "—"
+                    ? `${enrollment.slice(0, 2)}••••${enrollment.slice(-2)}`
+                    : enrollment}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleCopyEnrollment}
-                className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all touch-manipulation active:scale-95"
-                aria-label="Copy enrollment number"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-green-500" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={toggleMask}
+                  className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all touch-manipulation active:scale-95"
+                  title={maskEnrollment ? "Show enrollment" : "Hide enrollment"}
+                  aria-label="Toggle Privacy Mode"
+                >
+                  {maskEnrollment ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyEnrollment}
+                  className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all touch-manipulation active:scale-95"
+                  aria-label="Copy enrollment number"
+                >
+                  {copied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Branch */}

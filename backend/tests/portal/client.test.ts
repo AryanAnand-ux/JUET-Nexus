@@ -102,14 +102,14 @@ describe("PortalClient", () => {
         return {
           data: JSON.stringify({
             status: { responseStatus: "Success" },
-            response: { random: "RND==", otppwd: "PWD", username: "241B610" },
+            response: { random: "RND==", otppwd: "PWD", username: "24BCS001" },
           }),
         };
       };
 
       const captcha = { captcha: "d5wh4", hidden: "H==", image: "iVBOR" };
       const result = await client.preTokenCheck({
-        username: "241B610",
+        username: "24BCS001",
         usertype: "S",
         captcha,
       });
@@ -126,7 +126,7 @@ describe("PortalClient", () => {
       // No token exists yet, so Authorization must not be sent.
       expect(seen.headers.Authorization).toBeUndefined();
       expect(decodeBody(seen.body)).toEqual({
-        username: "241B610",
+        username: "24BCS001",
         usertype: "S",
         captcha,
       });
@@ -187,7 +187,7 @@ describe("PortalClient", () => {
                 token: "jwt.here.sig",
                 clientid: "JAYPEE",
                 companyid: "PRID1908A0000001",
-                enrollmentno: "241B610",
+                enrollmentno: "24BCS001",
                 membertype: "S",
               },
             },
@@ -197,7 +197,7 @@ describe("PortalClient", () => {
 
       const res = await client.generateWebToken({
         otppwd: "PWD",
-        username: "241B610",
+        username: "24BCS001",
         passwordotpvalue: "secret",
         Modulename: "STUDENTMODULE",
         random: "pre-token-value",
@@ -238,7 +238,7 @@ describe("PortalClient", () => {
       instituteid: "INID2603J000001",
       companyid: "CO1",
       memberid: "M1",
-      enrollmentno: "241B610",
+      enrollmentno: "24BCS001",
       membertype: "S",
       token: "jwt.here.sig",
     };
@@ -320,8 +320,8 @@ describe("PortalClient", () => {
       clientid: "JAYPEE",
       instituteid: "INID2603J000001",
       companyid: "CO1",
-      memberid: "JUET2400386",
-      enrollmentno: "241B610",
+      memberid: "JUET0000001",
+      enrollmentno: "24BCS001",
       membertype: "S",
       token: "jwt.here.sig",
     };
@@ -370,13 +370,13 @@ describe("PortalClient", () => {
         };
       };
 
-      const res = await client.refreshToken({ username: "241B610" });
+      const res = await client.refreshToken({ username: "24BCS001" });
 
       expect(res.ok).toBe(true);
       expect(res.token).toBe("jwt.new.sig");
       // Body must be plain JSON (parseable), NOT AES ciphertext
       expect(() => JSON.parse(seen.body)).not.toThrow();
-      expect(JSON.parse(seen.body).username).toBe("241B610");
+      expect(JSON.parse(seen.body).username).toBe("24BCS001");
       // No Authorization header
       expect(seen.headers.Authorization).toBeUndefined();
     });

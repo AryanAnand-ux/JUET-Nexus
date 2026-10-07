@@ -53,7 +53,7 @@ function makeJwt(expOffsetSec: number): string {
 
 const BASE_SESSION: SessionData = {
   jsessionid: "",
-  enrollment: "241B610",
+  enrollment: "24BCS001",
   password: "secret",
   dob: "01-01-2005",
   role: "Student",
@@ -62,10 +62,10 @@ const BASE_SESSION: SessionData = {
     instituteid: "INST1",
     companyid: "CO1",
     memberid: "M1",
-    enrollmentno: "241B610",
+    enrollmentno: "24BCS001",
     membertype: "S",
     token: "placeholder",
-    username: "241B610",
+    username: "24BCS001",
     otppwd: "PWD",
   },
 };
@@ -159,7 +159,7 @@ describe("getOrRenewCampusLynxIdentity — token near expiry, refresh succeeds",
     // Body must be plain JSON (parseable), NOT base64-AES ciphertext
     let parsed: any;
     expect(() => { parsed = JSON.parse(body); }).not.toThrow();
-    expect(parsed.username).toBe("241B610");
+    expect(parsed.username).toBe("24BCS001");
     // tokendate field must be present (as per lazyportal's refreshSession payload)
     expect(parsed.tokendate ?? parsed.Token ?? parsed.token ?? "").toBeTruthy();
   });

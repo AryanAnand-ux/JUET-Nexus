@@ -45,9 +45,9 @@ const CAPTCHA = { captcha: "", hidden: "HID==", image: "iVBORw0KGgoAAA" };
 const REGDATA = {
   token: "jwt.payload.sig",
   clientid: "JAYPEE",
-  enrollmentno: "241B610",
+  enrollmentno: "24BCS001",
   membertype: "S",
-  memberid: "JUET2400386",
+  memberid: "JUET0000001",
   name: "TEST STUDENT",
   institutelist: [{ label: "JUET", value: "INID2603J000001" }],
 };
@@ -70,7 +70,7 @@ async function startLogin(app: any) {
   const step1 = await app.inject({
     method: "POST",
     url: "/api/auth/verify-user",
-    payload: { enrollment: "241B610", captcha: "abc12", sessionToken },
+    payload: { enrollment: "24BCS001", captcha: "abc12", sessionToken },
   });
   return step1.json().loginToken;
 }
@@ -148,7 +148,7 @@ describe("CampusLynx login routes", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/auth/verify-user",
-        payload: { enrollment: "241B610", captcha: "abc12", sessionToken: "nope" },
+        payload: { enrollment: "24BCS001", captcha: "abc12", sessionToken: "nope" },
       });
       expect(res.statusCode).toBe(400);
       expect(mockPreTokenCheck).not.toHaveBeenCalled();
@@ -163,7 +163,7 @@ describe("CampusLynx login routes", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/auth/verify-user",
-        payload: { enrollment: "241B610", captcha: "wrong", sessionToken: init.json().sessionToken },
+        payload: { enrollment: "24BCS001", captcha: "wrong", sessionToken: init.json().sessionToken },
       });
       expect(res.statusCode).toBe(401);
     });
@@ -178,12 +178,12 @@ describe("CampusLynx login routes", () => {
       await app.inject({
         method: "POST",
         url: "/api/auth/verify-user",
-        payload: { enrollment: "241B610", captcha: "abc12", sessionToken },
+        payload: { enrollment: "24BCS001", captcha: "abc12", sessionToken },
       });
       const replay = await app.inject({
         method: "POST",
         url: "/api/auth/verify-user",
-        payload: { enrollment: "241B610", captcha: "abc12", sessionToken },
+        payload: { enrollment: "24BCS001", captcha: "abc12", sessionToken },
       });
 
       expect(replay.statusCode).toBe(400);
@@ -215,8 +215,8 @@ describe("CampusLynx login routes", () => {
       expect(session.campusLynx).toMatchObject({
         token: "jwt.payload.sig",
         instituteid: "INID2603J000001",
-        memberid: "JUET2400386",
-        username: "241B610",
+        memberid: "JUET0000001",
+        username: "24BCS001",
       });
       // The password must never be persisted.
       expect(session.password).toBe("");
@@ -224,7 +224,7 @@ describe("CampusLynx login routes", () => {
 
       expect(mockGenerateWebToken).toHaveBeenCalledWith({
         otppwd: "PWD",
-        username: "241B610",
+        username: "24BCS001",
         passwordotpvalue: "s3cret",
         Modulename: "STUDENTMODULE",
         random: "PRE-1",
@@ -318,7 +318,7 @@ describe("CampusLynx login routes", () => {
 
       const sessionWithExpiredToken = {
         jsessionid: "",
-        enrollment: "241B610",
+        enrollment: "24BCS001",
         password: "",
         dob: "",
         role: "Student",
@@ -326,11 +326,11 @@ describe("CampusLynx login routes", () => {
           clientid: "JAYPEE",
           instituteid: "INST1",
           companyid: "CO1",
-          memberid: "JUET2400386",
-          enrollmentno: "241B610",
+          memberid: "JUET0000001",
+          enrollmentno: "24BCS001",
           membertype: "S",
           token: expiredToken,
-          username: "241B610",
+          username: "24BCS001",
           otppwd: "PWD",
         },
       };
@@ -353,9 +353,9 @@ describe("CampusLynx login routes", () => {
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body.success).toBe(true);
-      expect(body.enrollment).toBe("241B610");
+      expect(body.enrollment).toBe("24BCS001");
       expect(mockRefreshToken).toHaveBeenCalledWith({
-        username: "241B610",
+        username: "24BCS001",
         tokendate: undefined,
       });
 

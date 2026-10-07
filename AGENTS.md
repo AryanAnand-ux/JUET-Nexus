@@ -1,88 +1,72 @@
 # AGENTS.md
 
-JUET//SYNC — a Next.js 15 + Fastify proxy that scrapes the JUET WebKiosk ERP (attendance, marks, CGPA, notices) and re-exposes it as a dashboard. TypeScript npm-workspaces monorepo.
+JUET Nexus — a modern, high-speed Next.js 15 + Fastify client and proxy for the JUET Student Portal (CampusLynx JSON API at `studentportal.juet.ac.in`). TypeScript npm-workspaces monorepo.
 
 ## Layout & boundaries
 
-- `backend/` — Fastify server. Entrypoint `src/index.ts`; `src/routes/` HTTP handlers, `src/parsers/` WebKiosk HTML scrapers, `src/utils/` singletons (cache, crypto, axios).
-- `frontend/` — Next.js App Router (`app/`), components in `components/`, data fetching in `hooks/`, PWA assets in `public/`.
-- `shared/types/index.ts` — the shared contract. **Not a workspace**; it's pulled in by relative path (`../shared/types`) from both tsconfigs.
+- `backend/` — Fastify server.
+  - Entrypoint: `src/index.ts`
+  - HTTP handlers: `src/routes/` (`auth.ts`, `dashboard.ts`, `attendance.ts`, `grades.ts`, `exam.ts`, `feedback.ts`, `notifications.ts`, `session.ts`)
+  - Portal integration: `src/portal/` (`client.ts`, `crypto.ts`, `auth.ts`, `dashboard.ts`, `attendance.ts`, `types.ts`)
+  - Utilities: `src/utils/` (cache, encryption, axios, vapid, provider)
+- `frontend/` — Next.js 15 App Router (`app/`), UI components in `components/`, data hooks in `hooks/`, PWA assets in `public/`.
+- `shared/types/index.ts` — Shared TypeScript contract. Not a workspace; imported by relative path (`../shared/types`) in both tsconfigs.
 
 ## Commands
 
 ```bash
-npm install                    # installs all workspaces from root; node_modules is absent on a fresh clone
+npm install                    # installs all workspaces from root
 npm run dev                    # frontend :3000 + backend :3001 (concurrently)
-npm run dev:frontend           # or dev:backend for one side
+npm run dev:frontend           # frontend only
+npm run dev:backend            # backend only
 npm run type-check             # frontend tsc --noEmit, then backend tsc --noEmit
 npm run lint                   # frontend eslint, then backend eslint
-npm test                       # backend jest only -- there is no frontend test runner
+npm test                       # backend jest only -- hermetic unit/integration tests
 npm run build                  # frontend, then backend
 ```
 
 Focused verification:
 ```bash
 npm test --workspace backend -- tests/cache.test.ts        # one suite
-npm test --workspace backend -- -t "AES"                  # one test name
+npm test --workspace backend -- -t "AES"                  # test by name pattern
 npm run test:coverage --workspace backend
 npm run type-check --workspace backend
 ```
 
-Gotchas:
-- Root `npm test` appends `--runInBand`; jest is configured in `backend/jest.config.js` (roots `src` + `tests`, `@/*` → `src/*`).
-- Backend dev runs through `ts-node src/index.ts`, not the build output.
-- `backend/tsconfig.json` sets `rootDir: ".."`, so `npm run build` emits to `backend/dist/backend/src/index.js` — that's what `main`/`start` point at.
-- Backend uses `module`/`moduleResolution: node16` (CommonJS) and imports with plain relative paths. The `@/*` alias exists in tsconfig + jest but backend source does not use it — don't start.
-- No CI (`.github/` does not exist). Local `lint -> type-check -> test` is the only gate.
+Key Details:
+- Root `npm test` runs with `--runInBand`; jest is configured in `backend/jest.config.js`.
+- Backend dev runs through `ts-node src/index.ts`.
+- `backend/tsconfig.json` sets `rootDir: ".."`, emitting to `backend/dist/backend/src/index.js` on build.
+- Backend uses CommonJS (`module`/`moduleResolution: node16`) and standard relative imports.
 
-## Env
+## Env Configuration
 
-- `backend/.env` is required. The server **hard-exits at boot** unless `ENCRYPTION_KEY` is exactly 64 hex chars (`src/index.ts:28` → `validateKey` in `src/utils/encryption.ts:17`). Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
-- `frontend/.env.local`: `NEXT_PUBLIC_API_URL`.
-- `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` are read by `src/utils/vapid.ts` but are **absent from `backend/.env.example`**. If missing, a throwaway pair is generated at boot and logged — push notifications silently won't work until you set real keys.
+- `backend/.env` is required. The server hard-exits at boot unless `ENCRYPTION_KEY` is exactly 64 hex characters (`src/utils/encryption.ts`).
+  Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+- `PORTAL_BASE_URL`: CampusLynx API base (`https://studentportal.juet.ac.in/StudentPortalAPI`).
+- `PORTAL_TIMEZONE`: `Asia/Kolkata` (portal encryption keys are keyed to IST calendar dates).
+- `SMTP_USER` & `GMAIL_APP_PASSWORD`: For feedback email delivery to `juetnexus@gmail.com`. Spaces in app passwords are automatically trimmed.
+- `VAPID_PUBLIC_KEY` & `VAPID_PRIVATE_KEY`: Web push notifications keys. If unset, a throwaway pair is generated at boot.
+- `frontend/.env.local`: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:3001`).
 
-## Trust the code, not the docs
+## Architecture & Current Behavior
 
-`README.md` and `ARCHITECTURE.md` have drifted. Verified current behavior:
+- **CampusLynx Protocol**: The backend interacts directly with the CampusLynx JSON API at `studentportal.juet.ac.in`. Outgoing requests are encrypted with AES-128-CBC using a calendar-derived daily key and a fixed IV (`src/portal/crypto.ts`).
+- **Session Cookie (`auth`)**: Encrypted with AES-256-GCM using a 16-byte IV in format `hex(iv)+hex(authTag)+hex(ciphertext)`. Stored for 30 days (`secure` + `sameSite: none` in production, `lax` in development). Contains the session token and encrypted credentials for automatic silent token renewal.
+- **Cache Strategy**: Dashboard and attendance responses use stale-while-revalidate caching (5 min fresh / 2 h stale) with in-memory fallback when Redis is absent.
+- **Student Privacy**:
+  - UI includes a Privacy Mode toggle (`Eye`/`EyeOff`) in the dashboard header, desktop sidebar, and mobile navigation, persisted via `mask_enrollment` in `localStorage`.
+  - Passwords are never stored in `localStorage` and never logged.
+  - Feedback forms auto-route replies to `<enrollment>@juetguna.in` without exposing the student's email on screen.
 
-- Cookie `auth` is AES-256-GCM with a **16-byte IV** and the format `hex(iv)+hex(authTag)+hex(ciphertext)` — no `:` separators, not the `hex(iv):hex(tag):hex(ct)` in ARCHITECTURE.md (`src/utils/encryption.ts:52`).
-- Cookie is 30 days and only `secure` + `sameSite: none` when `NODE_ENV=production`; otherwise `lax` (`src/routes/auth.ts:287`).
-- Data-page parsers use **cheerio** (`src/parsers/dashboard.ts`, `src/parsers/attendanceDetails.ts`); JSDOM is used only for captcha extraction (`src/parsers/auth.ts`). ARCHITECTURE.md says JSDOM everywhere.
-- Dashboard cache is stale-while-revalidate: 5 min fresh / 2 h stale, with background refresh (`src/routes/dashboard.ts:72`). Responses carry `X-Cache-Status` / `X-Cache-TTL`. Not the 60/30/15 min table in ARCHITECTURE.md.
-- Theme is the "Generations She" palette (`brutal-*` / `figma-*` tokens), not Indigo/Violet/Slate.
+## Frontend Conventions
 
-## Auth & session invariants (break these and you break login)
+- Next.js 15 App Router (`app/dashboard/*`). Client-side route guards use `localStorage` session state + httpOnly auth cookie.
+- Service Worker (`public/sw.js`) never intercepts or caches `/api/*`.
+- Styling: Tailwind CSS with dark mode class (`darkMode: "class"`).
+- Global styles live at `frontend/globals.css`.
 
-- WebKiosk returns **HTTP 200 on failed logins**. Success is only inferable by fetching a protected page and checking for `session timeout` / `please login` / `< 200` bytes (`src/routes/auth.ts:240`). Don't "simplify" this into a status-code check.
-- The `auth` cookie payload (`SessionData`) intentionally contains the **cleartext password and DOB** so the backend can silently re-login when WebKiosk's `JSESSIONID` expires. It is httpOnly + encrypted, but treat it as a secret: never log credentials or the decrypted session.
-- Silent re-login in `src/routes/session.ts` retries 3× and re-solves the captcha. It must **never** clear the `auth` cookie on failure — only explicit `POST /api/logout` clears it (`src/routes/session.ts:186`).
-- `src/routes/session.ts` is not a route module despite the path; it exports `getValidSession(request, reply)` for use inside other handlers.
-- `registerAuthRoutes` attaches the cache via `fastify.decorateRequest('globalCache')` + an `onRequest` hook; handlers reach it with `(request as any).globalCache`.
-- `CacheService` (`src/utils/cache.ts`) keys everything as `prefix:key` and must stay best-effort — every method swallows errors and returns a null/empty fallback. It falls back to an in-memory `Map` when no `REDIS_URL`/`REDIS_HOST` is set. Set ops (`sAdd`/`sMembers`/`sCard`) back the push-subscription store.
+## Testing Conventions
 
-## Frontend conventions
-
-- **No `middleware.ts`** — `/dashboard/*` has no server-side route protection. Guards are client-side (`localStorage` + the httpOnly cookie). Don't assume a server check exists.
-- `public/sw.js` is hand-written vanilla JS, not generated. Two hard rules: never intercept or cache `/api/*`, and bump `CACHE_NAME` when you change `PRECACHE_ASSETS`, or returning users get stale shells.
-- Tailwind tokens are non-obvious and misleadingly named: `figma-maroon` is indigo `#6366F1`, `figma-orange` is a light indigo overlay. Runtime accents come from CSS vars (`accent-primary*`) set by `context/ThemeContext.tsx`, which also toggles the `dark` class on `<html>` by hand (`darkMode: "class"`).
-- `globals.css` lives at `frontend/globals.css` (imported as `../globals.css` from `app/layout.tsx`), not under `app/`.
-- API access goes through `hooks/` (`useAuthFlow`, `useDashboard`, `useAttendanceDetails`); login posts with `withCredentials: true`. Shared base components are re-exported from `components/base.ts` (`FigmaButton`, `FigmaCard`).
-
-## Testing
-
-- Backend tests are hermetic — no network, no Redis. Suites set `process.env.ENCRYPTION_KEY = "0".repeat(64)` themselves and `jest.mock("../src/utils/axios")`. Keep new tests that way; never hit WebKiosk from a test.
-- `backend/tsconfig.json` excludes `**/*.test.ts`, so `npm run type-check` does **not** cover test files.
-- TDD is the established practice here (`.agent/skills/test-driven-development`, commit messages cite it).
-
-## Ad-hoc scripts
-
-`backend/scripts/*.ts` are manual debug tools, not wired to npm scripts — run them with `npx ts-node scripts/<file>.ts` from `backend/`.
-
-- `inspect-webkiosk.ts <enrollment> <dob> <password>` takes **real credentials as argv**, which leaks them into shell history and the process list. Don't run it with real creds casually.
-- `test-parser.ts`, `test-attendance.ts`, `test-parser-integration.ts` read `dump_*.html` fixtures from the CWD. Those dumps are not in the repo — generate them first or the scripts throw.
-
-## Conventions
-
-- Conventional Commits with scopes: `feat(frontend):`, `fix(backend):`, `docs:`.
-- Non-trivial work is planned first: `docs/superpowers/plans/YYYY-MM-DD-<slug>.md` with a matching `docs/superpowers/specs/<slug>-design.md`.
-- `.agent/skills/` (superpowers skill library), `mcp.json`, and `figma_design.json` are gitignored local tooling — don't try to commit them and don't treat them as app code.
+- Backend tests are hermetic — no real network calls to CampusLynx or Redis. Tests mock `axios` and set `process.env.ENCRYPTION_KEY`.
+- Test fixtures in `backend/tests/fixtures/` use anonymized mock student data (`24BCS001`, `DEMO STUDENT`, `JUET0000001`).

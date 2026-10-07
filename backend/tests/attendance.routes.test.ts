@@ -2,10 +2,8 @@
  * Route-level guard for the CampusLynx attendance branch.
  *
  * Regression test for a real bug: the CampusLynx branch was originally placed
- * AFTER `getValidSession`, which is WebKiosk-specific and rejects a CampusLynx
- * cookie (no `jsessionid`). The branch was therefore unreachable -- every
- * request died at the session gate, so the 401 the developer saw was the
- * WebKiosk gate, not the portal. These tests pin the ordering.
+ * after the session guard and was therefore unreachable — every request was
+ * rejected before reaching the portal client. These tests pin the call ordering.
  */
 
 import Fastify from "fastify";
@@ -39,7 +37,7 @@ const REF =
 
 const campusLynxSession: SessionData = {
   jsessionid: "",
-  enrollment: "241B610",
+  enrollment: "24BCS001",
   password: "",
   dob: "01-01-2005",
   role: "Student",
@@ -47,11 +45,11 @@ const campusLynxSession: SessionData = {
     clientid: "JAYPEE",
     instituteid: "INST1",
     companyid: "CO1",
-    memberid: "JUET2400386",
-    enrollmentno: "241B610",
+    memberid: "JUET0000001",
+    enrollmentno: "24BCS001",
     membertype: "S",
     token: "jwt.test.sig",
-    username: "241B610",
+    username: "24BCS001",
     otppwd: "PWD",
   },
 };
@@ -107,7 +105,7 @@ describe("attendance details route - provider dispatch", () => {
     expect(body.data.classesHeld).toBe(2);
     expect(body.data.classesAttended).toBe(1);
     expect(body.data.percentage).toBe(50);
-    // The branch must reach the portal -- NOT stop at the WebKiosk session gate.
+    // The branch must reach the portal — NOT stop at the session guard.
     expect(mockPostEncrypted).toHaveBeenCalledTimes(1);
     expect(mockPostEncrypted.mock.calls[0][0]).toContain("getstudentsubjectpersentage");
     expect(mockPostEncrypted.mock.calls[0][1]).toMatchObject({
@@ -183,7 +181,7 @@ describe("attendance details route - provider dispatch", () => {
       cookies: {
         auth: encryptSessionData({
           jsessionid: "J",
-          enrollment: "241B610",
+          enrollment: "24BCS001",
           password: "p",
           dob: "01-01-2005",
           role: "Student",

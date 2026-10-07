@@ -69,12 +69,12 @@ describe("fetchStudentProfile", () => {
     const profile = await fetchStudentProfile(transport, INSTITUTE);
 
     expect(profile).toMatchObject({
-      name: "ARYAN ANAND",
-      enrollment: "241B610",
+      name: "DEMO STUDENT",
+      enrollment: "24BCS001",
       branch: "COMPUTER SCIENCE AND ENGINEERING (AI & ML)",
       branchcode: "CSAIML",
       stynumber: "5",
-      studentid: "JUET2400386",
+      studentid: "JUET0000001",
     });
     expect(transport.postCalls[0].payload).toEqual({ instituteid: INSTITUTE });
   });
@@ -92,9 +92,9 @@ describe("fetchStudentProfile", () => {
 describe("fetchSemesters", () => {
   const args = {
     instituteid: INSTITUTE,
-    studentid: "JUET2400386",
-    name: "ARYAN ANAND",
-    enrollmentno: "241B610",
+    studentid: "JUET0000001",
+    name: "DEMO STUDENT",
+    enrollmentno: "24BCS001",
   };
 
   // Shaped like the bundle's consumer expects: getSemDetail reads
@@ -110,7 +110,7 @@ describe("fetchSemesters", () => {
   };
   const master = {
     status: { responseStatus: "Success" },
-    response: { studentlov: { currentsemester: 5, studentid: "JUET2400386" } },
+    response: { studentlov: { currentsemester: 5, studentid: "JUET0000001" } },
   };
 
   test("checks the master, then lists semesters with the current one", async () => {
@@ -130,11 +130,11 @@ describe("fetchSemesters", () => {
     // carries stynumber (not currentsem).
     expect(transport.postCalls[0]).toMatchObject({
       path: "/studentsgpacgpa/checkIfstudentmasterexist",
-      payload: { instituteid: INSTITUTE, studentid: "JUET2400386", name: "ARYAN ANAND", enrollmentno: "241B610" },
+      payload: { instituteid: INSTITUTE, studentid: "JUET0000001", name: "DEMO STUDENT", enrollmentno: "24BCS001" },
     });
     expect(transport.postCalls[1]).toMatchObject({
       path: "/studentsgpacgpa/getallsemesterdata",
-      payload: { instituteid: INSTITUTE, studentid: "JUET2400386", stynumber: "5" },
+      payload: { instituteid: INSTITUTE, studentid: "JUET0000001", stynumber: "5" },
     });
   });
 
@@ -301,10 +301,10 @@ describe("fetchCampusLynxDashboard", () => {
     const dashboard = await fetchCampusLynxDashboard(fullTransport(), {
       instituteid: INSTITUTE,
       companyid: "",
-      username: "241B610",
+      username: "24BCS001",
     });
 
-    expect(dashboard.student).toMatchObject({ name: "ARYAN ANAND", enrollment: "241B610" });
+    expect(dashboard.student).toMatchObject({ name: "DEMO STUDENT", enrollment: "24BCS001" });
     expect(dashboard.attendance).toHaveLength(11);
     expect(dashboard.attendance[0].subject).toBe("NANO SCIENCE");
     expect(dashboard.performance).toMatchObject({ currentSgpa: 8.6, cgpa: 8.2 });
@@ -336,11 +336,11 @@ describe("fetchCampusLynxDashboard", () => {
     const dashboard = await fetchCampusLynxDashboard(transport, {
       instituteid: INSTITUTE,
       companyid: "",
-      username: "241B610",
+      username: "24BCS001",
     });
 
     // Required sections still served...
-    expect(dashboard.student.enrollment).toBe("241B610");
+    expect(dashboard.student.enrollment).toBe("24BCS001");
     expect(dashboard.attendance).toHaveLength(11);
     // ...tolerant sections empty rather than failing the whole dashboard.
     expect(dashboard.detailedMarks).toEqual([]);

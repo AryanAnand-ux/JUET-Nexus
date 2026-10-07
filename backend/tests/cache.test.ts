@@ -33,7 +33,7 @@ describe('CacheService', () => {
 
   const mockDashboardData: DashboardResponse = {
     student: {
-      name: 'Aryan Anand',
+      name: 'DEMO STUDENT',
       enrollment: '24BCS100',
       branch: 'CSE',
     },

@@ -32,10 +32,10 @@ const identity = {
   instituteid: "INST1",
   companyid: "CO1",
   memberid: "M1",
-  enrollmentno: "241B610",
+  enrollmentno: "24BCS001",
   membertype: "S",
   token: "tok",
-  username: "241B610",
+  username: "24BCS001",
   otppwd: "pw",
 };
 

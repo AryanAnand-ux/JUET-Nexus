@@ -13,7 +13,7 @@ import { AttendanceTracker } from "@/components/AttendanceTracker";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { performLogout } from "@/utils/logout";
-import { AlertTriangle, MapPin, Copy, Check } from "lucide-react";
+import { AlertTriangle, MapPin, Copy, Check, Eye, EyeOff } from "lucide-react";
 
 /**
  * Error Display Component
@@ -45,6 +45,24 @@ export default function DashboardPage() {
   const router = useRouter();
   const [enrollment, setEnrollment] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [maskEnrollment, setMaskEnrollment] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("mask_enrollment");
+      if (saved === "true") setMaskEnrollment(true);
+    }
+  }, []);
+
+  const toggleMask = () => {
+    setMaskEnrollment((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mask_enrollment", String(next));
+      }
+      return next;
+    });
+  };
 
   const {
     data,
@@ -124,7 +142,11 @@ export default function DashboardPage() {
               Academic Portal
             </p>
             <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-2 tracking-tight font-nunito leading-tight">
-              {data?.student.name ? `Welcome back, ${data.student.name}.` : "Welcome back."}
+              {data?.student.name
+                ? maskEnrollment
+                  ? "Welcome back."
+                  : `Welcome back, ${data.student.name}.`
+                : "Welcome back."}
             </h2>
             <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300 font-medium">
               <span className="flex items-center">
@@ -134,18 +156,33 @@ export default function DashboardPage() {
               {data?.student.enrollment && (
                 <>
                   <span className="text-slate-600">•</span>
-                  <button
-                    onClick={() => handleCopyEnrollment(data.student.enrollment)}
-                    title="Click to copy enrollment number"
-                    className="group bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 hover:border-indigo-500/60 px-3 py-1 rounded-full text-xs font-bold text-slate-300 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                  >
-                    <span>{data.student.enrollment}</span>
-                    {copied ? (
-                      <Check className="w-3.5 h-3.5 text-green-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
-                    )}
-                  </button>
+                  <div className="inline-flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleCopyEnrollment(data.student.enrollment)}
+                      title="Click to copy enrollment number"
+                      className="group bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 hover:border-indigo-500/60 px-3 py-1 rounded-full text-xs font-bold text-slate-300 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer font-mono"
+                    >
+                      <span>
+                        {maskEnrollment
+                          ? `${data.student.enrollment.slice(0, 2)}••••${data.student.enrollment.slice(-2)}`
+                          : data.student.enrollment}
+                      </span>
+                      {copied ? (
+                        <Check className="w-3.5 h-3.5 text-green-400" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleMask}
+                      title={maskEnrollment ? "Show enrollment & name" : "Hide enrollment & name (Privacy Mode)"}
+                      aria-label="Toggle Privacy Mode"
+                      className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-all cursor-pointer"
+                    >
+                      {maskEnrollment ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </>
               )}
             </div>

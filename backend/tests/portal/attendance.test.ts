@@ -56,8 +56,7 @@ describe("mapAttendanceSummary", () => {
   test("maps all 11 subjects from the live fixture", () => {
     const records = mapAttendanceSummary(rows(), ctx);
     expect(records).toHaveLength(11);
-    // The dashboard contract keeps raw counts at zero -- WebKiosk never
-    // supplied them on the summary page either.
+    // The dashboard contract keeps raw counts at zero on the summary page.
     for (const record of records) {
       expect(record.classesHeld).toBe(0);
       expect(record.classesAttended).toBe(0);
@@ -66,9 +65,9 @@ describe("mapAttendanceSummary", () => {
     }
   });
 
-  test("normalises the portal's NAME(CODE) label to the bare WebKiosk-style name", () => {
-    // The WebKiosk parser emits bare names ("Data Structures"), so the portal
-    // provider strips the trailing "(CODE)" for the same shape. The code itself
+  test("normalises the portal's NAME(CODE) label to the bare subject name", () => {
+    // The CampusLynx portal emits "NANO SCIENCE(PH303)" labels; the mapper
+    // strips the trailing "(CODE)" to produce a clean subject name.
     // still rides in the record's detailLink ref.
     const records = mapAttendanceSummary(rows(), ctx);
     expect(records[0].subject).toBe("NANO SCIENCE");
@@ -128,7 +127,7 @@ describe("mapAttendanceSummary", () => {
     expect(ref.individualsubjectcode).toBe("MA106");
   });
 
-  test("rejects WebKiosk links and garbage", () => {
+  test("rejects non-CampusLynx links and garbage", () => {
     expect(parseDetailLink("ViewDatewiseLecAttendance.jsp?x=1")).toBeNull();
     expect(parseDetailLink("")).toBeNull();
     expect(parseDetailLink("campuslynx://attendance/detail?subjectid=")).toBeNull();

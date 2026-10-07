@@ -24,7 +24,7 @@ import { PortalError } from "../src/portal/types";
 
 const campusLynxSession: SessionData = {
   jsessionid: "",
-  enrollment: "241B610",
+  enrollment: "24BCS001",
   password: "",
   dob: "01-01-2005",
   role: "Student",
@@ -32,18 +32,18 @@ const campusLynxSession: SessionData = {
     clientid: "JAYPEE",
     instituteid: "INST1",
     companyid: "CO1",
-    memberid: "JUET2400386",
-    enrollmentno: "241B610",
+    memberid: "JUET0000001",
+    enrollmentno: "24BCS001",
     membertype: "S",
     token: "jwt.test.sig",
-    username: "241B610",
+    username: "24BCS001",
     otppwd: "PWD",
   },
 };
 
-const webkioskOnlySession: SessionData = {
-  jsessionid: "WEBKIOSK123",
-  enrollment: "241B610",
+const noCampusLynxSession: SessionData = {
+  jsessionid: "SESS123",
+  enrollment: "24BCS001",
   password: "pass",
   dob: "01-01-2005",
   role: "Student",
@@ -79,8 +79,8 @@ describe("GET /api/exam", () => {
     expect(res.json().code).toBe("NO_SESSION");
   });
 
-  it("returns 401 with webkiosk-only cookie (no campusLynx)", async () => {
-    const cookie = encryptSessionData(webkioskOnlySession);
+  it("returns 401 with no CampusLynx identity in cookie", async () => {
+    const cookie = encryptSessionData(noCampusLynxSession);
     const res = await app.inject({
       method: "GET",
       url: "/api/exam",

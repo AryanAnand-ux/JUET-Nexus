@@ -71,7 +71,7 @@ export function useExamSchedule() {
         isLoading: false,
       }));
     }
-  }, [API_URL, selectedEventId]);
+  }, [selectedEventId]);
 
   useEffect(() => {
     fetchSchedule(selectedEventId);

@@ -7,9 +7,11 @@
 ## Key Features
 
 - **Unified Single-Screen Login**: Clean, accessible login card presenting Enrollment Number, Password, and Captcha code simultaneously with password visibility toggle and instant captcha reload.
+- **Privacy Mode**: One-tap toggle to mask enrollment numbers and student names across dashboard and mobile views for privacy in public spaces.
 - **Permanent Session Persistence**: Transparent sliding token renewal extends encrypted HTTP-only session cookies on every request, paired with a proactive client-side keepalive heartbeat (`useSessionHeartbeat`). Users stay logged in until explicit logout.
 - **Attendance Tracker**: Comprehensive subject-wise breakdown of lectures, tutorials, and practicals, complete with interactive safe-skip / target-attainment calculations and an overall attendance summary ring.
 - **Academic Performance & Results**: Fast viewing of SGPA, cumulative CGPA, semester transcripts, and exam schedules.
+- **Direct Feedback System**: Integrated in-app feedback that routes directly to developer email with automatic student college email resolution.
 - **Mobile Bottom Navigation**: Fixed, thumb-accessible bottom navigation bar for quick routing across Attendance, GPA Hub, Courses, Exams, and Grades.
 - **Light & Dark Mode**: Streamlined theme toggle with smooth system and user preference switching.
 - **Resilient Offline & Outage Handling**: Stale-while-revalidate caching (Redis or in-memory fallback) ensures academic data remains readable even during upstream portal maintenance.
@@ -129,4 +131,5 @@ npm run build          # Production Next.js build + Fastify build
 | `GET` | `/api/grades` | SGPA/CGPA semester transcript |
 | `POST` | `/api/feedback` | Submit feedback email to juetnexus@gmail.com |
 | `POST` | `/api/notifications/subscribe` | Subscribe to push notifications |
+| `POST` | `/api/notifications/unsubscribe` | Unsubscribe and revoke push subscription |
 

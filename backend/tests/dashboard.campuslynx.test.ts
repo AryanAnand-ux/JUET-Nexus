@@ -2,7 +2,7 @@
  * Route-level tests for the CampusLynx dashboard branch.
  *
  * Pins the wiring, not the mapping (that's `tests/portal/dashboard.test.ts`):
- * the CampusLynx identity is read ahead of the WebKiosk session gate, the SWR
+ * the CampusLynx identity is validated before the session guard, the SWR
  * envelope and cache headers are identical across providers, and a forged
  * enrollment is still rejected.
  */
@@ -43,7 +43,7 @@ const noticesFixture = require("./fixtures/22-notices.json");
 
 const campusLynxSession: SessionData = {
   jsessionid: "",
-  enrollment: "241B610",
+  enrollment: "24BCS001",
   password: "",
   dob: "",
   role: "Student",
@@ -51,9 +51,9 @@ const campusLynxSession: SessionData = {
     clientid: "JAYPEE",
     instituteid: "INID2603J000001",
     companyid: "",
-    memberid: "JUET2400386",
+    memberid: "JUET0000001",
     membertype: "S",
-    username: "241B610",
+    username: "24BCS001",
     token: "jwt.payload.sig",
   },
 };
@@ -85,7 +85,7 @@ async function buildApp() {
   return app;
 }
 
-const dashUrl = (enrollment = "241B610") => `/api/dashboard?enrollment=${enrollment}`;
+const dashUrl = (enrollment = "24BCS001") => `/api/dashboard?enrollment=${enrollment}`;
 const cookie = () => ({ auth: encryptSessionData(campusLynxSession) });
 
 describe("GET /api/dashboard under campuslynx", () => {
@@ -110,7 +110,7 @@ describe("GET /api/dashboard under campuslynx", () => {
     const body = res.json();
     expect(body.success).toBe(true);
     expect(body.cached).toBe(false);
-    expect(body.data.student).toMatchObject({ name: "ARYAN ANAND", enrollment: "241B610" });
+    expect(body.data.student).toMatchObject({ name: "DEMO STUDENT", enrollment: "24BCS001" });
     expect(body.data.attendance).toHaveLength(11);
     expect(body.data.detailedMarks).toHaveLength(6);
     expect(body.data.notices).toHaveLength(4);
@@ -157,13 +157,13 @@ describe("GET /api/dashboard under campuslynx", () => {
     expect(mockPostEncrypted).not.toHaveBeenCalled();
   });
 
-  it("returns 401 for a WebKiosk cookie with no CampusLynx identity", async () => {
+  it("returns 401 for a cookie with no CampusLynx identity", async () => {
     app = await buildApp();
-    const webkioskOnly: SessionData = { ...campusLynxSession, campusLynx: undefined };
+    const noCampusLynxSession: SessionData = { ...campusLynxSession, campusLynx: undefined };
     const res = await app.inject({
       method: "GET",
       url: dashUrl(),
-      cookies: { auth: encryptSessionData(webkioskOnly) },
+      cookies: { auth: encryptSessionData(noCampusLynxSession) },
     });
 
     expect(res.statusCode).toBe(401);
@@ -176,7 +176,7 @@ describe("GET /api/dashboard under campuslynx", () => {
 
     const inv = await app.inject({
       method: "GET",
-      url: "/api/dashboard/invalidate?enrollment=241B610",
+      url: "/api/dashboard/invalidate?enrollment=24BCS001",
       cookies: cookie(),
     });
     expect(inv.statusCode).toBe(200);
