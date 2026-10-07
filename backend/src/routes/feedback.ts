@@ -45,11 +45,14 @@ function getCategoryColor(category: string): string {
 export function buildMailtoUrl(payload: FeedbackPayload): string {
   const categoryLabel = getCategoryLabel(payload.category);
   const subject = `[JUET Nexus - ${categoryLabel}] ${payload.subject || "Student Feedback"}`;
+  const studentEmail =
+    payload.email?.trim() ||
+    (payload.enrollment ? `${payload.enrollment.toLowerCase()}@juetguna.in` : "");
   const lines = [
     `Category: ${categoryLabel}`,
     payload.enrollment ? `Enrollment: ${payload.enrollment}` : "",
     payload.name ? `Name: ${payload.name}` : "",
-    payload.email ? `Email: ${payload.email}` : "",
+    studentEmail ? `Email: ${studentEmail}` : "",
     payload.rating ? `Rating: ${payload.rating}/5` : "",
     "",
     "--- Message ---",
@@ -131,12 +134,18 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
       const subject = body.subject?.trim() || `${categoryLabel} from ${enrollment || "Student"}`;
       const emailSubject = `[JUET Nexus - ${categoryLabel}] ${subject}`;
 
+      // Auto-infer student's college email if not provided
+      const studentEmail =
+        body.email?.trim() ||
+        (enrollment ? `${enrollment.toLowerCase()}@juetguna.in` : undefined);
+
       const payloadWithEnrollment: FeedbackPayload = {
         ...body,
         category,
         subject,
         message,
         enrollment,
+        email: studentEmail,
       };
 
       const fallbackMailto = buildMailtoUrl(payloadWithEnrollment);
@@ -184,10 +193,10 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
                         <div class="info-label">Name</div>
                         <div class="info-value">${escapeHtml(body.name)}</div>
                       </div>` : ""}
-                      ${body.email ? `
+                      ${studentEmail ? `
                       <div class="info-item">
                         <div class="info-label">Contact Email</div>
-                        <div class="info-value"><a href="mailto:${escapeHtml(body.email)}">${escapeHtml(body.email)}</a></div>
+                        <div class="info-value"><a href="mailto:${escapeHtml(studentEmail)}">${escapeHtml(studentEmail)}</a></div>
                       </div>` : ""}
                       ${stars ? `
                       <div class="info-item">
@@ -220,7 +229,7 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
             `Category: ${categoryLabel}\n` +
             `Enrollment: ${enrollment || "N/A"}\n` +
             `Name: ${body.name || "N/A"}\n` +
-            `Contact Email: ${body.email || "N/A"}\n` +
+            `Contact Email: ${studentEmail || "N/A"}\n` +
             (body.rating ? `Rating: ${body.rating}/5\n` : "") +
             `Subject: ${subject}\n\n` +
             `--- Message ---\n${message}\n\n` +
@@ -232,7 +241,7 @@ export async function registerFeedbackRoutes(fastify: FastifyInstance): Promise<
           await transporter.sendMail({
             from: `"JUET Nexus Feedback" <${process.env.SMTP_USER || TARGET_EMAIL}>`,
             to: TARGET_EMAIL,
-            replyTo: body.email || undefined,
+            replyTo: studentEmail || undefined,
             subject: emailSubject,
             text: textContent,
             html: htmlContent,

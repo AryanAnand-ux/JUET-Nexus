@@ -88,6 +88,12 @@ export default function FeedbackPage() {
 
   const { submitFeedback, isSubmitting, result, error, reset } = useFeedback();
 
+  useEffect(() => {
+    if (enrollment && !email) {
+      setEmail(`${enrollment.toLowerCase()}@juetguna.in`);
+    }
+  }, [enrollment, email]);
+
   const handleLogout = async () => {
     await performLogout();
     router.push("/login");
@@ -318,7 +324,7 @@ export default function FeedbackPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="student@juet.ac.in"
+                    placeholder="241b610@juetguna.in"
                     className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                   />
                 </div>

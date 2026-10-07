@@ -87,6 +87,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     if (isOpen) {
       reset();
       setCategory(defaultCategory);
+      if (typeof window !== "undefined") {
+        const savedEnrollment = localStorage.getItem("enrollment");
+        if (savedEnrollment && !email) {
+          setEmail(`${savedEnrollment.toLowerCase()}@juetguna.in`);
+        }
+      }
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -94,7 +100,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen, defaultCategory, reset]);
+  }, [isOpen, defaultCategory, reset, email]);
 
   if (!isOpen) return null;
 
@@ -320,7 +326,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="student@juet.ac.in"
+                    placeholder="241b610@juetguna.in"
                     className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all touch-manipulation"
                   />
                 </div>
