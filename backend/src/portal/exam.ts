@@ -107,7 +107,15 @@ function parseExamDateTime(str: string): Date | null {
 
   const dmyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(.*)$/);
   if (dmyMatch) {
-    const [, d, m, y, rest] = dmyMatch;
+    let [, dStr, mStr, yStr, rest] = dmyMatch;
+    let d = parseInt(dStr, 10);
+    let m = parseInt(mStr, 10);
+    const y = parseInt(yStr, 10);
+    if (m > 12 && d <= 12) {
+      const temp = d;
+      d = m;
+      m = temp;
+    }
     const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
     if (timeMatch) {
       let hr = parseInt(timeMatch[1], 10);
@@ -116,9 +124,9 @@ function parseExamDateTime(str: string): Date | null {
       const mer = timeMatch[4] ? timeMatch[4].toUpperCase() : null;
       if (mer === "PM" && hr < 12) hr += 12;
       if (mer === "AM" && hr === 12) hr = 0;
-      return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), hr, min, sec);
+      return new Date(y, m - 1, d, hr, min, sec);
     }
-    return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+    return new Date(y, m - 1, d);
   }
   const parsed = new Date(s);
   return isNaN(parsed.getTime()) ? null : parsed;
@@ -293,12 +301,19 @@ export async function fetchExamSchedule(
         getFieldCI(raw, "seatno", "seatnumber", "seat") ?? ""
       ).trim();
 
-      // Normalize date: if rawDate is DD/MM/YYYY, convert to ISO YYYY-MM-DD
       let normalizedDate = rawDate;
       const dmyMatch = rawDate.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(.*)$/);
       if (dmyMatch) {
-        const [, d, m, y, rest] = dmyMatch;
-        const pad = (n: string) => n.padStart(2, "0");
+        let [, dStr, mStr, yStr, rest] = dmyMatch;
+        let d = parseInt(dStr, 10);
+        let m = parseInt(mStr, 10);
+        const y = parseInt(yStr, 10);
+        if (m > 12 && d <= 12) {
+          const temp = d;
+          d = m;
+          m = temp;
+        }
+        const pad = (n: number) => String(n).padStart(2, "0");
         normalizedDate = `${y}-${pad(m)}-${pad(d)}${rest ? rest.trim() : ""}`;
       }
 

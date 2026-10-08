@@ -14,7 +14,6 @@ import { registerAttendanceRoutes } from './routes/attendance';
 import { registerExamRoutes } from './routes/exam';
 import { registerGradesRoutes } from './routes/grades';
 import { registerNotificationRoutes } from './routes/notifications';
-import { registerFeedbackRoutes } from './routes/feedback';
 import { CacheService } from './utils/cache';
 import { validateKey } from './utils/encryption';
 import { assertKnownProvider } from './utils/provider';
@@ -73,13 +72,21 @@ export async function createServer() {
   await fastify.register(fastifyCookie);
   await fastify.register(fastifyCors, {
     origin: (origin, cb) => {
-      if (!origin || process.env.NODE_ENV !== 'production') {
+      if (!origin) {
         return cb(null, true);
       }
-      if (CORS_ORIGINS.includes(origin) || origin.startsWith('http://localhost:')) {
+      if (
+        CORS_ORIGINS.includes(origin) ||
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+      ) {
         return cb(null, true);
       }
-      return cb(new Error(`Origin ${origin} not allowed by CORS`), false);
+      if (process.env.NODE_ENV !== 'production') {
+        if (/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+          return cb(null, true);
+        }
+      }
+      return cb(new Error('Origin not allowed by CORS policy'), false);
     },
     credentials: true,
     exposedHeaders: ['x-cache', 'x-cache-status', 'x-cache-ttl', 'x-session-token'],
@@ -103,7 +110,6 @@ export async function createServer() {
   await registerExamRoutes(fastify);
   await registerGradesRoutes(fastify, globalCache);
   await registerNotificationRoutes(fastify, globalCache);
-  await registerFeedbackRoutes(fastify);
 
   fastify.get('/health', async () => ({
     status: 'ok',

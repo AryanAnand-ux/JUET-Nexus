@@ -39,11 +39,14 @@ const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT || "60000", 10);
  * that has never seen the captcha.
  */
 function createAgent(): https.Agent {
+  // Portal certificate chains on university infrastructure may lack intermediate
+  // root certs or require custom validation. Allow strict rejection when configured.
+  const rejectUnauthorized = process.env.PORTAL_REJECT_UNAUTHORIZED === "true";
   return new https.Agent({
     keepAlive: true,
     maxSockets: 1,
     keepAliveMsecs: 30000,
-    rejectUnauthorized: false,
+    rejectUnauthorized,
   });
 }
 

@@ -33,13 +33,26 @@ function text(val: unknown): string {
 }
 
 function parseGradeSubject(raw: any): GradeSubject {
+  const grade = text(raw.grade || raw.grades || raw.gradeobtained || "");
+  const rawStatus = text(raw.status || raw.resultstatus || raw.result || "");
+  let status = rawStatus;
+  if (!status) {
+    if (["F", "FAIL", "AB"].includes(grade.toUpperCase())) {
+      status = "Fail";
+    } else if (grade) {
+      status = "Pass";
+    } else {
+      status = "";
+    }
+  }
+
   return {
     subjectdesc: text(raw.subjectdesc || raw.subjectname || raw.subject || ""),
     subjectcode: text(raw.subjectcode || raw.subjectid || raw.code || ""),
-    grade: text(raw.grade || raw.grades || raw.gradeobtained || ""),
+    grade,
     gradepoint: num(raw.gradepoint ?? raw.grade_point ?? raw.gp),
     credits: num(raw.credits ?? raw.course_credits ?? raw.coursecredits ?? raw.credit),
-    status: text(raw.status || raw.resultstatus || raw.result || "Pass"),
+    status,
   };
 }
 

@@ -10,14 +10,25 @@ import Link from "next/link";
 import { FigmaCard } from "./base";
 import type { AttendanceRecord } from "@/types";
 import { calculateBunkStatus } from "@/utils/bunkHelpers";
-import { CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, HelpCircle } from "lucide-react";
 
 export interface AttendanceTrackerProps {
   attendanceRecords: AttendanceRecord[];
 }
 
 export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendanceRecords }) => {
-  const getAttendanceStatus = (percentage: number): { text: string; icon: React.ReactNode; badgeClass: string; ringColor: string } => {
+  const getAttendanceStatus = (
+    percentage: number,
+    classesHeld?: number
+  ): { text: string; icon: React.ReactNode; badgeClass: string; ringColor: string } => {
+    if (classesHeld === 0 && percentage === 0) {
+      return {
+        text: "NO CLASSES",
+        icon: <HelpCircle className="w-3.5 h-3.5 text-slate-400 mr-1" />,
+        badgeClass: "bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700",
+        ringColor: "text-slate-300 dark:text-slate-700",
+      };
+    }
     if (percentage >= 85) {
       return { 
         text: "SAFE", 
@@ -47,10 +58,12 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
       return { subjectCount: 0, avgPercentage: 0, belowThreshold: 0 };
     }
 
+    const activeRecords = attendanceRecords.filter((r) => !(r.classesHeld === 0 && r.percentage === 0));
     const avgPercentage =
-      attendanceRecords.reduce((sum, r) => sum + r.percentage, 0) /
-      attendanceRecords.length;
-    const belowThreshold = attendanceRecords.filter((r) => r.percentage < 75).length;
+      activeRecords.length > 0
+        ? activeRecords.reduce((sum, r) => sum + r.percentage, 0) / activeRecords.length
+        : 0;
+    const belowThreshold = activeRecords.filter((r) => r.percentage < 75).length;
 
     return { subjectCount: attendanceRecords.length, avgPercentage, belowThreshold };
   };
@@ -96,13 +109,13 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
 
           {/* Subject-wise Attendance */}
           <div className="space-y-4">
-            {attendanceRecords.map((record) => {
+            {attendanceRecords.map((record, index) => {
               const radius = 34;
               const circumference = 2 * Math.PI * radius;
               const strokeDashoffset =
                 circumference - (Math.min(100, record.percentage) / 100) * circumference;
               
-              const status = getAttendanceStatus(record.percentage);
+              const status = getAttendanceStatus(record.percentage, record.classesHeld);
 
               const skipInfo = (() => {
                 if (record.classesHeld <= 0) {
@@ -195,15 +208,21 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                       <div className="grid grid-cols-3 gap-2 sm:gap-3">
                         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
                           <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Lectures</p>
-                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">{record.lecturePercent.toFixed(0)}%</p>
+                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">
+                            {record.lecturePercent > 0 ? `${record.lecturePercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
+                          </p>
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
                           <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Tutorials</p>
-                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">{record.tutorialPercent.toFixed(0)}%</p>
+                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">
+                            {record.tutorialPercent > 0 ? `${record.tutorialPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
+                          </p>
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
                           <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Practicals</p>
-                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">{record.practicalPercent.toFixed(0)}%</p>
+                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">
+                            {record.practicalPercent > 0 ? `${record.practicalPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
+                          </p>
                         </div>
                       </div>
                     </div>

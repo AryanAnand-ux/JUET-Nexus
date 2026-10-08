@@ -61,9 +61,21 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
   );
 
   const totalCredits = subjects.reduce((sum, s) => sum + (s.credits || 0), 0);
-  const passedSubjects = subjects.filter(
-    (s) => s.status?.toLowerCase() === "pass" || !["F", "FAIL", "AB"].includes(s.grade?.toUpperCase())
-  ).length;
+
+  const isSubjectFailed = (status?: string, grade?: string) => {
+    const g = grade?.toUpperCase().trim() || "";
+    const s = status?.toLowerCase().trim() || "";
+    return ["F", "FAIL", "AB"].includes(g) || s === "fail";
+  };
+
+  const isSubjectPassed = (status?: string, grade?: string) => {
+    if (isSubjectFailed(status, grade)) return false;
+    const s = status?.toLowerCase().trim() || "";
+    const g = grade?.toUpperCase().trim() || "";
+    return s === "pass" || (g !== "" && !["F", "FAIL", "AB"].includes(g));
+  };
+
+  const passedSubjects = subjects.filter((s) => isSubjectPassed(s.status, s.grade)).length;
 
   return (
     <div className="space-y-6">
@@ -207,10 +219,10 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
                       </span>
                     </td>
                     <td className="py-4 px-5 text-center font-semibold text-gray-700 dark:text-slate-300">
-                      {sub.gradepoint ?? "—"}
+                      {sub.gradepoint > 0 ? sub.gradepoint : (isSubjectFailed(sub.status, sub.grade) ? "0" : "—")}
                     </td>
                     <td className="py-4 px-5 text-center">
-                      {sub.status?.toLowerCase() === "pass" || !["F", "FAIL", "AB"].includes(sub.grade?.toUpperCase()) ? (
+                      {isSubjectPassed(sub.status, sub.grade) ? (
                         <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           Pass
@@ -252,9 +264,9 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
 
                 <div className="flex items-center justify-between text-xs text-gray-600 dark:text-slate-400 pt-1">
                   <span>Credits: <strong className="text-gray-900 dark:text-slate-200">{sub.credits}</strong></span>
-                  <span>Point: <strong className="text-gray-900 dark:text-slate-200">{sub.gradepoint}</strong></span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    {sub.status || "Pass"}
+                  <span>Point: <strong className="text-gray-900 dark:text-slate-200">{sub.gradepoint > 0 ? sub.gradepoint : (isSubjectFailed(sub.status, sub.grade) ? "0" : "—")}</strong></span>
+                  <span className={`font-semibold ${isSubjectPassed(sub.status, sub.grade) ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                    {isSubjectPassed(sub.status, sub.grade) ? "Pass" : "Fail"}
                   </span>
                 </div>
               </div>

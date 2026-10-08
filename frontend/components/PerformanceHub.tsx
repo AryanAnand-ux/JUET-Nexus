@@ -37,13 +37,26 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
   }, [isModalOpen]);
 
   const handleMarkClick = (subjectName: string) => {
-    if (!detailedMarks) return;
-    const match = detailedMarks.find(
-      (m) =>
-        m.subject.toLowerCase() === subjectName.toLowerCase() ||
-        subjectName.toLowerCase().includes(m.subject.toLowerCase()) ||
-        m.subject.toLowerCase().includes(subjectName.toLowerCase())
+    if (!detailedMarks || detailedMarks.length === 0) return;
+    const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const targetClean = clean(subjectName);
+
+    // 1. Exact match (case insensitive)
+    let match = detailedMarks.find(
+      (m) => m.subject.trim().toLowerCase() === subjectName.trim().toLowerCase()
     );
+    // 2. Normalized alphanumeric match
+    if (!match) {
+      match = detailedMarks.find((m) => clean(m.subject) === targetClean);
+    }
+    // 3. Fallback: prefix match
+    if (!match) {
+      match = detailedMarks.find((m) => {
+        const mc = clean(m.subject);
+        return mc.startsWith(targetClean) || targetClean.startsWith(mc);
+      });
+    }
+
     if (match) {
       setSelectedCourseMarks(match);
       setIsSimulating(false);
@@ -69,14 +82,16 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
     return Object.values(simulatedMarks).reduce((acc, val) => acc + val, 0);
   };
 
-  const getProjectedGrade = (marks: number): string => {
-    if (marks >= 80) return "A+";
-    if (marks >= 75) return "A";
-    if (marks >= 70) return "B+";
-    if (marks >= 65) return "B";
-    if (marks >= 60) return "C+";
-    if (marks >= 50) return "C";
-    if (marks >= 40) return "D";
+  const getProjectedGrade = (obtained: number, maxMarks: number = 100): string => {
+    if (!maxMarks || maxMarks <= 0) return "—";
+    const percent = (obtained / maxMarks) * 100;
+    if (percent >= 80) return "A+";
+    if (percent >= 75) return "A";
+    if (percent >= 70) return "B+";
+    if (percent >= 65) return "B";
+    if (percent >= 60) return "C+";
+    if (percent >= 50) return "C";
+    if (percent >= 40) return "D";
     return "F";
   };
   const getGradeTheme = (gpa: number): { cardBg: string; textClass: string; labelClass: string; badge: string } => {
@@ -194,12 +209,15 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {performance.recentMarks.map((mark, idx) => {
-              const hasDetails = detailedMarks.some(
+              const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+              const targetClean = clean(mark.subject);
+              const matchingCourse = detailedMarks?.find(
                 (m) =>
-                  m.subject.toLowerCase() === mark.subject.toLowerCase() ||
-                  mark.subject.toLowerCase().includes(m.subject.toLowerCase()) ||
-                  m.subject.toLowerCase().includes(mark.subject.toLowerCase())
+                  m.subject.trim().toLowerCase() === mark.subject.trim().toLowerCase() ||
+                  clean(m.subject) === targetClean
               );
+              const maxForMark = matchingCourse?.components?.reduce((sum, c) => sum + (c.max || 0), 0);
+              const hasDetails = Boolean(matchingCourse);
 
               return (
                 <button
@@ -225,6 +243,11 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                       <span className="font-extrabold text-sm text-slate-800 dark:text-slate-200 font-nunito">
                         {mark.marks.toFixed(1)}
                       </span>
+                      {maxForMark && maxForMark > 0 ? (
+                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 font-nunito ml-1">
+                          / {maxForMark}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </button>
@@ -370,41 +393,51 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
             </div>
 
             {/* Total Marks Footer */}
-            <div className="bg-slate-50 dark:bg-slate-950/40 px-4 py-4 sm:px-6 sm:py-5 border-t border-slate-100 dark:border-slate-850 flex items-center justify-between transition-colors duration-200 shrink-0">
-              <div className="flex flex-col gap-1 min-w-0 pr-2">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  {isSimulating ? "Simulated Total" : "Aggregated Score"}
-                </p>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-nunito whitespace-nowrap">
-                    Grade projection: <span className="font-extrabold text-accent-primary">{getProjectedGrade(isSimulating ? getSimulatedTotal() : selectedCourseMarks.total)}</span>
-                  </span>
-                  {isSimulating && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const initial: Record<string, number> = {};
-                        selectedCourseMarks.components.forEach((c) => {
-                          initial[c.name] = c.obtained;
-                        });
-                        setSimulatedMarks(initial);
-                      }}
-                      className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline transition-all font-nunito"
-                    >
-                      Reset
-                    </button>
-                  )}
+            {(() => {
+              const totalMaxMarks = selectedCourseMarks?.components?.reduce((sum, c) => sum + (c.max || 0), 0) || 0;
+              const currentTotal = isSimulating ? getSimulatedTotal() : selectedCourseMarks.total;
+              const displayMax = totalMaxMarks > 0 ? totalMaxMarks : 100;
+
+              return (
+                <div className="bg-slate-50 dark:bg-slate-950/40 px-4 py-4 sm:px-6 sm:py-5 border-t border-slate-100 dark:border-slate-850 flex items-center justify-between transition-colors duration-200 shrink-0">
+                  <div className="flex flex-col gap-1 min-w-0 pr-2">
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      {isSimulating ? "Simulated Total" : "Aggregated Score"}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-nunito whitespace-nowrap">
+                        Grade projection: <span className="font-extrabold text-accent-primary">{getProjectedGrade(currentTotal, displayMax)}</span>
+                      </span>
+                      {isSimulating && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const initial: Record<string, number> = {};
+                            selectedCourseMarks.components.forEach((c) => {
+                              initial[c.name] = c.obtained;
+                            });
+                            setSimulatedMarks(initial);
+                          }}
+                          className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline transition-all font-nunito"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 shadow-sm text-right shrink-0">
+                    <span className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 font-nunito tracking-tight">
+                      {currentTotal.toFixed(1)}
+                    </span>
+                    {totalMaxMarks > 0 && (
+                      <span className="text-xs sm:text-sm font-bold text-slate-400 dark:text-slate-550 font-nunito ml-0.5">
+                        / {totalMaxMarks}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 shadow-sm text-right shrink-0">
-                <span className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 font-nunito tracking-tight">
-                  {(isSimulating ? getSimulatedTotal() : selectedCourseMarks.total).toFixed(1)}
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-slate-400 dark:text-slate-550 font-nunito ml-0.5">
-                  / 100
-                </span>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
       )}

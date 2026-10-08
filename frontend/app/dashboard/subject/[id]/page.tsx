@@ -52,10 +52,10 @@ function SubjectDetailContent() {
     if (enrollment && detailLink) fetchDetails();
   }, [enrollment, detailLink, fetchDetails]);
 
-  // Official baseline percentage from portal (via URL or API)
-  const officialPct = urlPct > 0 ? urlPct : (data?.percentage ?? 0);
+  // Official baseline percentage from portal (authoritative API response takes precedence over URL param)
+  const officialPct = data?.percentage !== undefined && data.percentage > 0 ? data.percentage : urlPct;
 
-  // Sync simulator state when detail data loads or officialPct is available
+  // Sync simulator state when detail data loads
   useEffect(() => {
     if (data && data.classesHeld > 0) {
       const baseHeld =
@@ -65,14 +65,8 @@ function SubjectDetailContent() {
       setSimulatedAttended(data.classesAttended);
       setSimulatedTotal(baseHeld);
       setHasDetailData(true);
-    } else if (officialPct > 0 && !hasDetailData) {
-      // Estimate baseline so calculator functions even before logs load
-      const estHeld = 20;
-      const estAttended = Math.round((officialPct / 100) * estHeld);
-      setSimulatedAttended(estAttended);
-      setSimulatedTotal(estHeld);
     }
-  }, [data, officialPct, hasDetailData]);
+  }, [data, officialPct]);
 
   const handleLogout = async () => {
     await performLogout();
@@ -100,10 +94,9 @@ function SubjectDetailContent() {
           : data.classesHeld;
       setSimulatedAttended(data.classesAttended);
       setSimulatedTotal(baseHeld);
-    } else if (officialPct > 0) {
-      const estHeld = 20;
-      setSimulatedAttended(Math.round((officialPct / 100) * estHeld));
-      setSimulatedTotal(estHeld);
+    } else {
+      setSimulatedAttended(0);
+      setSimulatedTotal(0);
     }
     setExtraAttends(0);
     setExtraBunks(0);
@@ -119,17 +112,15 @@ function SubjectDetailContent() {
   const isMeetingTarget = displayPercent >= targetPercentage;
 
   const getRingColor = (percent: number) => {
-    if (percent >= 91) return "text-green-500";
-    if (percent >= 81) return "text-blue-500";
-    if (percent >= 71) return "text-orange-500";
-    return "text-red-800";
+    if (percent >= 85) return "text-green-500";
+    if (percent >= 75) return "text-amber-500";
+    return "text-red-500";
   };
 
   const getStatusBadgeColor = (percent: number) => {
-    if (percent >= 91) return "bg-green-100 text-green-700 border-green-200";
-    if (percent >= 81) return "bg-blue-100 text-blue-700 border-blue-200";
-    if (percent >= 71) return "bg-orange-100 text-orange-700 border-orange-200";
-    return "bg-red-100 text-red-700 border-red-200";
+    if (percent >= 85) return "bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800";
+    if (percent >= 75) return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800";
+    return "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800";
   };
 
   const radius = 68;

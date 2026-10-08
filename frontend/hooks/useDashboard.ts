@@ -80,7 +80,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         data,
         cached: cacheHeader === "hit",
         ttl: ttl || 0,
-        cachedAt: new Date(),
+        cachedAt: response.data?.fetchedAt ? new Date(response.data.fetchedAt) : new Date(),
         isLoading: false,
         error: null,
       }));
