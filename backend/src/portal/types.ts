@@ -117,6 +117,11 @@ export interface PortalRegData {
   instituteid?: string;
   /** The portal reads instituteid from the first entry here, not the top level. */
   institutelist?: Array<{ value?: string; label?: string; [key: string]: unknown }>;
+  /**
+   * Token issue timestamp returned by the portal (used by `/token/refreshTokenRequest`).
+   * Field name may vary; captured verbatim from the login response.
+   */
+  tokendate?: string;
   [key: string]: unknown;
 }
 
@@ -158,6 +163,12 @@ export interface PortalSessionIdentity extends PortalIdentity {
   username: string;
   /** Login mode from the pre-token response (`"PWD"` / `"otp"`). */
   otppwd: string;
+  /**
+   * Token issue timestamp from the login response, forwarded verbatim to
+   * `/token/refreshTokenRequest`. Absent on sessions created before this field
+   * was added — refresh will still be attempted with a current timestamp.
+   */
+  tokendate?: string;
 }
 
 /** How a request failure should be surfaced to the caller. */
