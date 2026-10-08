@@ -140,12 +140,5 @@ export function buildIdentity(
     name: regdata.name ? String(regdata.name) : undefined,
     bypass: regdata.bypass ? String(regdata.bypass) : undefined,
     institutename: regdata.institutename ? String(regdata.institutename) : undefined,
-    // Capture token issue timestamp for refresh calls — try all known field name variants.
-    // The portal uses this in /token/refreshTokenRequest. Without it, refresh sends
-    // the current time which the portal may reject, causing silent refresh failures.
-    tokendate: String(
-      regdata.tokendate || regdata.TokenDate || regdata.tokenDate ||
-      regdata.token_date || regdata.issuedate || regdata.issuedAt || ""
-    ) || undefined,
   } as PortalSessionIdentity;
 }
