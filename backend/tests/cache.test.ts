@@ -279,5 +279,14 @@ describe('CacheService', () => {
       await expect(cache.isValid('dashboard', '24BCS100')).resolves.toBe(false);
       await expect(cache.getTTL('dashboard', '24BCS100')).resolves.toBe(0);
     });
+
+    it('should fall back to in-memory cache when Redis is disconnected', async () => {
+      mockRedis.setex.mockRejectedValue(new Error('Connection is closed'));
+      mockRedis.get.mockRejectedValue(new Error('Connection is closed'));
+
+      await cache.set('portal_captcha', 'session-123', { captcha: '12345' }, 300);
+      const result = await cache.get<{ captcha: string }>('portal_captcha', 'session-123');
+      expect(result).toEqual({ captcha: '12345' });
+    });
   });
 });

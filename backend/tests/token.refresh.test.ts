@@ -164,6 +164,35 @@ describe("getOrRenewCampusLynxIdentity — token near expiry, refresh succeeds",
     expect(parsed.tokendate ?? parsed.Token ?? parsed.token ?? "").toBeTruthy();
   });
 
+  it("triggers refresh when token expires within 600s (e.g. 500s remaining)", async () => {
+    const oldToken = makeJwt(500); // 500s left: triggers under 600s window, would have failed under old 300s window
+    const newToken = makeJwt(3600);
+
+    mockAxiosPost.mockResolvedValueOnce({
+      data: JSON.stringify({
+        status: { responseStatus: "Success" },
+        response: { msg: "Success", token: newToken },
+      }),
+    });
+
+    const session = {
+      ...BASE_SESSION,
+      campusLynx: {
+        ...BASE_SESSION.campusLynx!,
+        token: oldToken,
+        tokendate: "2026-10-08 09:00:00",
+      },
+    };
+    const cookie = encryptSessionData(session);
+    const res = await app.inject({ method: "GET", url: "/renew", cookies: { auth: cookie } });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockAxiosPost).toHaveBeenCalledTimes(1);
+    const [, body] = mockAxiosPost.mock.calls[0];
+    const parsed = JSON.parse(body);
+    expect(parsed.tokendate).toBe("2026-10-08 09:00:00");
+  });
+
   it("updates the cookie with the new token when refresh succeeds", async () => {
     const oldToken = makeJwt(60);
     const newToken = makeJwt(3600);
