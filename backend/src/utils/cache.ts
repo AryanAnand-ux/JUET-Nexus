@@ -39,30 +39,26 @@ export class CacheService {
    * @returns Cached data or null if expired/missing
    */
   async get<T>(prefix: string, key: string): Promise<T | null> {
-    try {
-      const cacheKey = this.getCacheKey(prefix, key);
+    const cacheKey = this.getCacheKey(prefix, key);
 
-      if (!this.redis) {
-        const cached = this.memoryCache.get(cacheKey);
-        if (!cached || cached.expiresAt <= Date.now()) {
-          this.memoryCache.delete(cacheKey);
-          return null;
+    if (this.redis) {
+      try {
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+          return JSON.parse(cached) as T;
         }
-
-        return cached.data as T;
+      } catch (error) {
+        console.error(`[Cache] Get failed for ${prefix}:${key}:`, error);
       }
+    }
 
-      const cached = await this.redis.get(cacheKey);
-
-      if (!cached) {
-        return null;
-      }
-
-      return JSON.parse(cached) as T;
-    } catch (error) {
-      console.error(`[Cache] Get failed for ${prefix}:${key}:`, error);
+    const cached = this.memoryCache.get(cacheKey);
+    if (!cached || cached.expiresAt <= Date.now()) {
+      this.memoryCache.delete(cacheKey);
       return null;
     }
+
+    return cached.data as T;
   }
 
   /**
@@ -73,20 +69,20 @@ export class CacheService {
    * @param ttlSeconds - Time to live in seconds
    */
   async set<T>(prefix: string, key: string, data: T, ttlSeconds: number): Promise<void> {
-    try {
-      const cacheKey = this.getCacheKey(prefix, key);
+    const cacheKey = this.getCacheKey(prefix, key);
 
-      if (!this.redis) {
-        this.memoryCache.set(cacheKey, {
-          data,
-          expiresAt: Date.now() + ttlSeconds * 1000,
-        });
-        return;
+    // Always populate in-memory cache as reliable fallback if Redis is down/unreachable
+    this.memoryCache.set(cacheKey, {
+      data,
+      expiresAt: Date.now() + ttlSeconds * 1000,
+    });
+
+    if (this.redis) {
+      try {
+        await this.redis.setex(cacheKey, ttlSeconds, JSON.stringify(data));
+      } catch (error) {
+        console.error(`[Cache] Set failed for ${prefix}:${key}:`, error);
       }
-
-      await this.redis.setex(cacheKey, ttlSeconds, JSON.stringify(data));
-    } catch (error) {
-      console.error(`[Cache] Set failed for ${prefix}:${key}:`, error);
     }
   }
 
@@ -94,17 +90,15 @@ export class CacheService {
    * Invalidate cache for specific key
    */
   async invalidate(prefix: string, key: string): Promise<void> {
-    try {
-      const cacheKey = this.getCacheKey(prefix, key);
+    const cacheKey = this.getCacheKey(prefix, key);
+    this.memoryCache.delete(cacheKey);
 
-      if (!this.redis) {
-        this.memoryCache.delete(cacheKey);
-        return;
+    if (this.redis) {
+      try {
+        await this.redis.del(cacheKey);
+      } catch (error) {
+        console.error(`[Cache] Invalidate failed for ${prefix}:${key}:`, error);
       }
-
-      await this.redis.del(cacheKey);
-    } catch (error) {
-      console.error(`[Cache] Invalidate failed for ${prefix}:${key}:`, error);
     }
   }
 
@@ -112,53 +106,55 @@ export class CacheService {
    * Check if cache is valid (not expired)
    */
   async isValid(prefix: string, key: string): Promise<boolean> {
-    try {
-      const cacheKey = this.getCacheKey(prefix, key);
+    const cacheKey = this.getCacheKey(prefix, key);
 
-      if (!this.redis) {
-        const cached = this.memoryCache.get(cacheKey);
-        if (!cached || cached.expiresAt <= Date.now()) {
-          this.memoryCache.delete(cacheKey);
-          return false;
+    if (this.redis) {
+      try {
+        const ttl = await this.redis.ttl(cacheKey);
+        if (ttl > 0) return true;
+        if (ttl === -2) {
+          const cached = this.memoryCache.get(cacheKey);
+          return !!cached && cached.expiresAt > Date.now();
         }
-
-        return true;
+      } catch (error) {
+        console.error(`[Cache] TTL check failed for ${prefix}:${key}:`, error);
       }
+    }
 
-      const ttl = await this.redis.ttl(cacheKey);
-      return ttl > 0;
-    } catch (error) {
-      console.error(`[Cache] TTL check failed for ${prefix}:${key}:`, error);
+    const cached = this.memoryCache.get(cacheKey);
+    if (!cached || cached.expiresAt <= Date.now()) {
+      this.memoryCache.delete(cacheKey);
       return false;
     }
+
+    return true;
   }
 
   /**
    * Get remaining TTL in seconds
    */
   async getTTL(prefix: string, key: string): Promise<number> {
-    try {
-      const cacheKey = this.getCacheKey(prefix, key);
+    const cacheKey = this.getCacheKey(prefix, key);
 
-      if (!this.redis) {
-        const cached = this.memoryCache.get(cacheKey);
-        if (!cached) return 0;
-
-        const ttl = Math.ceil((cached.expiresAt - Date.now()) / 1000);
-        if (ttl <= 0) {
-          this.memoryCache.delete(cacheKey);
-          return 0;
-        }
-
-        return ttl;
+    if (this.redis) {
+      try {
+        const ttl = await this.redis.ttl(cacheKey);
+        if (ttl > 0) return ttl;
+      } catch (error) {
+        console.error(`[Cache] TTL retrieval failed for ${prefix}:${key}:`, error);
       }
+    }
 
-      const ttl = await this.redis.ttl(cacheKey);
-      return ttl > 0 ? ttl : 0;
-    } catch (error) {
-      console.error(`[Cache] TTL retrieval failed for ${prefix}:${key}:`, error);
+    const cached = this.memoryCache.get(cacheKey);
+    if (!cached) return 0;
+
+    const ttl = Math.ceil((cached.expiresAt - Date.now()) / 1000);
+    if (ttl <= 0) {
+      this.memoryCache.delete(cacheKey);
       return 0;
     }
+
+    return ttl;
   }
 
   /**

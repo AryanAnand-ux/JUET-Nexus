@@ -179,4 +179,20 @@ describe("buildIdentity", () => {
       PortalError
     );
   });
+
+  test("captures tokendate from regdata when present", () => {
+    const identity = buildIdentity(
+      { token: "t", membertype: "S", tokendate: "2026-10-08 09:30:00" },
+      { username: "x", otppwd: "PWD" }
+    );
+    expect(identity.tokendate).toBe("2026-10-08 09:30:00");
+  });
+
+  test("captures alternative casing of TokenDate from regdata", () => {
+    const identity = buildIdentity(
+      { token: "t", membertype: "S", TokenDate: "2026-10-08 09:30:00" },
+      { username: "x", otppwd: "PWD" }
+    );
+    expect(identity.tokendate).toBe("2026-10-08 09:30:00");
+  });
 });

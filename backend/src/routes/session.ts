@@ -95,9 +95,11 @@ export async function getOrRenewCampusLynxIdentity(
     };
   }
 
-  // Check if token has an exp claim and expires within 5 minutes (300 seconds)
+  // Refresh pre-emptively when token is within 10 minutes of expiry (600 seconds).
+  // useSessionKeepAlive pings every 5 minutes, so this window guarantees at least
+  // one overlap — the token can never expire between pings.
   const exp = jwtExpiry(session.campusLynx.token);
-  if (exp !== null && isTokenExpired(session.campusLynx.token, 300)) {
+  if (exp !== null && isTokenExpired(session.campusLynx.token, 600)) {
     const client = createPortalClient({ timeout: 8000 });
     try {
       // Tier-1 lightweight refresh: plain JSON, no captcha, sub-100 ms.
@@ -105,7 +107,7 @@ export async function getOrRenewCampusLynxIdentity(
       // with { username, tokendate }. Falls back gracefully if portal refuses.
       const refreshed = await client.refreshToken({
         username: session.campusLynx.username,
-        tokendate: (session.campusLynx as any).tokendate,
+        tokendate: session.campusLynx.tokendate,
       });
 
       if (refreshed.ok && refreshed.token) {
