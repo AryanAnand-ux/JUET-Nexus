@@ -93,7 +93,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     return parts[0].substring(0, 2).toUpperCase();
   };
 
-  const navItems = [
+  const navItems: Array<{
+    href?: string;
+    onClick?: () => void;
+    label: string;
+    icon: React.ReactNode;
+  }> = [
     {
       href: "/dashboard",
       label: "Attendance",
@@ -131,9 +136,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       ),
     },
     {
-      href: "/dashboard/feedback",
       label: "Feedback",
       icon: <MessageSquare className="w-5 h-5 shrink-0" />,
+      onClick: () => setFeedbackOpen(true),
     },
   ];
 
@@ -208,11 +213,35 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </p>
           )}
           {navItems.map((item) => {
+            if (item.onClick) {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    item.onClick?.();
+                    setSidebarOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium tracking-wide transition-all font-nunito text-left cursor-pointer",
+                    feedbackOpen
+                      ? "bg-accent-primary text-white shadow-md shadow-accent-primary/20"
+                      : "text-figma-gray dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-figma-dark dark:hover:text-slate-100",
+                    sidebarCollapsed && "justify-center"
+                  )}
+                  title={sidebarCollapsed ? item.label : undefined}
+                >
+                  {item.icon}
+                  {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                </button>
+              );
+            }
+
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href!}
                 className={clsx(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium tracking-wide transition-all font-nunito",
                   isActive
@@ -265,8 +294,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 ? "Registered Courses"
                 : pathname === "/dashboard/exam"
                 ? "Exam Schedule"
-                : pathname === "/dashboard/feedback"
-                ? "Feedback & Suggestions"
                 : "Attendance Tracker"}
             </h1>
           </div>
@@ -306,19 +333,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {/* Content body */}
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-gray-50 dark:bg-[#09090b] p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 touch-scroll-momentum transition-colors duration-200">
           <div className="max-w-7xl mx-auto">
-            {pathname !== "/dashboard/feedback" && (
-              <DevelopmentBanner
-                onOpenFeedback={() => setFeedbackOpen(true)}
-                className="mb-6"
-              />
-            )}
+            <DevelopmentBanner
+              onOpenFeedback={() => setFeedbackOpen(true)}
+              className="mb-6"
+            />
             {children}
           </div>
         </main>
       </div>
 
       {/* Fixed bottom navigation for mobile */}
-      <MobileBottomNav />
+      <MobileBottomNav onOpenFeedback={() => setFeedbackOpen(true)} />
 
       {/* Feedback Modal */}
       <FeedbackModal

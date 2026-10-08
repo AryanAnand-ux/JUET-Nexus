@@ -226,39 +226,11 @@ export type FeedbackCategory = "bug" | "feature" | "improvement" | "general";
 
 export interface FeedbackPayload {
   category: FeedbackCategory;
-  subject: string;
+  subject?: string;
   message: string;
   email?: string;
   enrollment?: string;
   name?: string;
   rating?: number;
-  website?: string; // honeypot field for anti-spam
-  metadata?: {
-    device?: string;
-    url?: string;
-    userAgent?: string;
-    screen?: string;
-  };
-}
-
-export interface FeedbackRecord {
-  id: string;
-  category: FeedbackCategory;
-  subject?: string | null;
-  message: string;
-  rating?: number | null;
-  name?: string | null;
-  email?: string | null;
-  enrollment?: string | null;
-  metadata?: Record<string, any> | null;
-  created_at: string;
-}
-
-export interface FeedbackResponse {
-  success: boolean;
-  message: string;
-  mailed?: boolean;
-  storedInDb?: boolean;
-  fallbackMailto?: string;
 }
 

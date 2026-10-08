@@ -143,6 +143,7 @@ export async function registerDashboardRoutes(
               data,
               cached: true,
               ttl,
+              fetchedAt: cachedWrapper.fetchedAt || Date.now(),
             });
         }
 
@@ -162,15 +163,17 @@ export async function registerDashboardRoutes(
               data,
               cached: true,
               ttl,
+              fetchedAt: cachedWrapper.fetchedAt || Date.now(),
             });
         }
       }
 
       fastify.log.info(`[Dashboard] Cache miss/expired for ${enrollment}, fetching from CampusLynx portal...`);
+      const now = Date.now();
       const dashboardData = await fetchDashboardForIdentity(identity, fastify.log);
 
       try {
-        await cache.set('dashboard', enrollment, { data: dashboardData, fetchedAt: Date.now() }, STALE_TTL_SEC);
+        await cache.set('dashboard', enrollment, { data: dashboardData, fetchedAt: now }, STALE_TTL_SEC);
       } catch (error) {
         fastify.log.warn(error, '[Dashboard] Cache write failed');
       }
@@ -181,8 +184,17 @@ export async function registerDashboardRoutes(
           success: true,
           data: dashboardData,
           cached: false,
+          fetchedAt: now,
         });
     } catch (error: any) {
+      if (error.statusCode === 401 || error.code === 'SESSION_EXPIRED') {
+        return reply.status(401).send({
+          success: false,
+          error: error.message || 'Session expired. Please log in again.',
+          code: 'SESSION_EXPIRED',
+        });
+      }
+
       if (enrollment) {
         try {
           const cached = await cache.get<any>('dashboard', enrollment);
@@ -196,19 +208,12 @@ export async function registerDashboardRoutes(
                 data: cached.data,
                 cached: true,
                 stale: true,
+                fetchedAt: cached.fetchedAt,
               });
           }
         } catch {
           // ignore cache read error
         }
-      }
-
-      if (error.statusCode === 401 || error.code === 'SESSION_EXPIRED') {
-        return reply.status(401).send({
-          success: false,
-          error: error.message || 'Session expired. Please log in again.',
-          code: 'SESSION_EXPIRED',
-        });
       }
 
       fastify.log.error(error, '[Dashboard] Unhandled error');
@@ -274,9 +279,20 @@ export async function registerDashboardRoutes(
    * Returns whether a fresh cache entry exists and its remaining TTL.
    */
   fastify.get<{ Querystring: DashboardQuery }>('/api/dashboard/cache-status', async (request, reply) => {
+    let identity: PortalSessionIdentity;
+    try {
+      identity = await getOrRenewCampusLynxIdentity(request, reply);
+    } catch {
+      return reply.status(401).send({ cached: false, ttl: 0, error: 'Unauthorized' });
+    }
+
     const enrollment = firstString(request.query.enrollment);
     if (!enrollment) {
       return reply.status(400).send({ success: false, error: 'Missing enrollment parameter' });
+    }
+
+    if (enrollment.toUpperCase() !== identity.username.toUpperCase()) {
+      return reply.status(403).send({ cached: false, ttl: 0, error: 'Forbidden' });
     }
 
     try {

@@ -89,7 +89,15 @@ function parseExamDateTime(str: string): Date | null {
   // Indian format: DD/MM/YYYY or DD-MM-YYYY
   const dmyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(.*)$/);
   if (dmyMatch) {
-    const [, d, m, y, rest] = dmyMatch;
+    let [, dStr, mStr, yStr, rest] = dmyMatch;
+    let d = parseInt(dStr, 10);
+    let m = parseInt(mStr, 10);
+    const y = parseInt(yStr, 10);
+    if (m > 12 && d <= 12) {
+      const temp = d;
+      d = m;
+      m = temp;
+    }
     const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
     if (timeMatch) {
       let hr = parseInt(timeMatch[1], 10);
@@ -98,9 +106,9 @@ function parseExamDateTime(str: string): Date | null {
       const mer = timeMatch[4] ? timeMatch[4].toUpperCase() : null;
       if (mer === "PM" && hr < 12) hr += 12;
       if (mer === "AM" && hr === 12) hr = 0;
-      return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), hr, min, sec);
+      return new Date(y, m - 1, d, hr, min, sec);
     }
-    return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+    return new Date(y, m - 1, d);
   }
 
   const parsed = new Date(s);
@@ -113,6 +121,7 @@ function formatDate(dateStr: string): string {
     const d = parseExamDateTime(dateStr);
     if (!d || isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
       weekday: "short",
       day: "numeric",
       month: "short",
@@ -152,22 +161,17 @@ function formatTime(startStr: string, endStr?: string): string {
     if (!start || isNaN(start.getTime())) return "";
 
     const startTimeStr = start.toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     });
 
-    // Reject phantom times: midnight local (12:00 am) or IST-offset UTC midnight (05:30 am).
-    // Normalize narrow no-break space (\u202f) that en-IN locale may insert between time and am/pm.
-    const normalizedTime = startTimeStr.replace(/\u202f/g, " ").toLowerCase();
-    if (/^(?:12:00|05:30)\s*am$/.test(normalizedTime)) {
-      return "";
-    }
-
     if (endStr && hasExplicitTime(endStr)) {
       const end = parseExamDateTime(endStr);
       if (end && !isNaN(end.getTime())) {
         const endTimeStr = end.toLocaleTimeString("en-IN", {
+          timeZone: "Asia/Kolkata",
           hour: "2-digit",
           minute: "2-digit",
           hour12: true,
@@ -324,6 +328,10 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((item, index) => {
+            const originalIndex = items.findIndex(
+              (orig) => orig === item || (orig.subject === item.subject && orig.datetime === item.datetime)
+            );
+            const paperNum = originalIndex >= 0 ? originalIndex + 1 : index + 1;
             const status = getExamStatus(item.datetime);
             const dateStr = formatDate(item.datetime);
             const timeStr = formatTime(item.datetime, item.datetimeupto);
@@ -338,7 +346,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50">
                       <BookOpen className="w-3 h-3" />
-                      Paper {index + 1}
+                      Paper {paperNum}
                     </span>
 
                     {status && (
