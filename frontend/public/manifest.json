@@ -4,8 +4,8 @@
   "description": "Modern proxy dashboard for JUET student portal",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#FAF9F6",
-  "theme_color": "#FAF9F6",
+  "background_color": "#F7F7F5",
+  "theme_color": "#6246C7",
   "icons": [
     {
       "src": "/icon.svg",

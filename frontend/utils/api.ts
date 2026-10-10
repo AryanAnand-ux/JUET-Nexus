@@ -1,4 +1,5 @@
 import axios from "axios";
+import { recoverSession } from "@/utils/sessionRecovery";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -9,13 +10,6 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const sessionToken = localStorage.getItem("sessionToken");
-    if (sessionToken) {
-      config.headers = config.headers || {};
-      config.headers["x-session-token"] = sessionToken;
-    }
-  }
   return config;
 });
 
@@ -47,6 +41,7 @@ apiClient.interceptors.response.use(
       originalRequest &&
       !originalRequest._retry &&
       !originalRequest.url?.includes("/api/auth/refresh") &&
+      !originalRequest.url?.includes("/api/auth/silent-login") &&
       !originalRequest.url?.includes("/api/auth/verify-user")
     ) {
       if (isRefreshing) {
@@ -65,27 +60,11 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const sessionToken =
-          typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
-        const headers: Record<string, string> = {};
-        if (sessionToken) {
-          headers["x-session-token"] = sessionToken;
+        const recovered = await recoverSession();
+        if (!recovered) {
+          processQueue(error);
+          return Promise.reject(error);
         }
-
-        const res = await axios.post(
-          `${API_URL}/api/auth/refresh`,
-          {},
-          { withCredentials: true, headers, timeout: 15000 }
-        );
-
-        const renewed = res.data?.sessionToken || res.headers?.["x-session-token"];
-        if (renewed && typeof window !== "undefined") {
-          localStorage.setItem("sessionToken", renewed);
-          if (originalRequest.headers) {
-            originalRequest.headers["x-session-token"] = renewed;
-          }
-        }
-
         processQueue(null);
         return apiClient(originalRequest);
       } catch (refreshErr) {

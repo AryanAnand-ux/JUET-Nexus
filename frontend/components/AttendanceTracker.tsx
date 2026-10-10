@@ -93,7 +93,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
                 Enrolled Courses
               </p>
-              <p className="text-4xl font-extrabold text-slate-850 dark:text-slate-100 font-nunito tracking-tight">
+              <p className="text-4xl font-extrabold text-slate-800 dark:text-slate-100 font-nunito tracking-tight">
                 {stats.subjectCount}
               </p>
             </div>
@@ -142,7 +142,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                 <Link
                   href={`/dashboard/subject/${encodeURIComponent(record.subject)}?pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
                   key={record.subject}
-                  className="group relative block bg-white dark:bg-slate-950/20 hover:bg-slate-50/30 dark:hover:bg-slate-900/25 border border-slate-200/80 dark:border-slate-800/60 rounded-[20px] p-4 sm:p-5 transition-all duration-300 hover:shadow-md hover:scale-[1.005] hover:border-slate-350 dark:hover:border-slate-700 cursor-pointer"
+                  className="group relative block bg-white dark:bg-slate-950/20 hover:bg-slate-50/30 dark:hover:bg-slate-900/25 border border-slate-200/80 dark:border-slate-800/60 rounded-[20px] p-4 sm:p-5 transition-all duration-300 hover:shadow-md hover:scale-[1.005] hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer"
                 >
                   <div className="flex flex-col md:flex-row items-center md:items-stretch gap-6">
                     {/* Circular Progress Indicator */}
@@ -185,7 +185,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                       {/* Header Title */}
                       <div className="flex justify-between items-start gap-4 mb-3">
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-850 dark:text-slate-200 leading-snug font-nunito group-hover:text-accent-primary transition-colors">
+                          <h4 className="text-base font-extrabold text-slate-800 dark:text-slate-200 leading-snug font-nunito group-hover:text-accent-primary transition-colors">
                             {record.subject}
                           </h4>
                         </div>
@@ -260,6 +260,3 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
 };
 
 AttendanceTracker.displayName = "AttendanceTracker";
-
-// Backward-compatible alias
-export const BunkMeter = AttendanceTracker;

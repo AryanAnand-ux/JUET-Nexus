@@ -32,7 +32,7 @@ const LoadingSkeleton: React.FC = () => (
       ))}
     </div>
     <div className="h-44 rounded-3xl bg-gray-200 dark:bg-slate-800 animate-pulse" />
-    <div className="h-80 rounded-2xl bg-gray-100 dark:bg-slate-850 animate-pulse" />
+    <div className="h-80 rounded-2xl bg-gray-100 dark:bg-slate-800 animate-pulse" />
   </div>
 );
 
@@ -79,7 +79,7 @@ export default function GradesPage() {
           <button
             onClick={() => refresh()}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 text-xs font-bold shadow-sm hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors self-start sm:self-auto disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 text-xs font-bold shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors self-start sm:self-auto disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
             <span>Refresh Grades</span>

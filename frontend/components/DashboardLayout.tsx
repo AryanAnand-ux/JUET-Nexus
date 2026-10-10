@@ -13,7 +13,6 @@ import { FigmaButton } from "./base";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { MobileBottomNav } from "./MobileBottomNav";
-import { useSessionHeartbeat } from "@/hooks/useSessionHeartbeat";
 import { RotateCw, MessageSquare } from "lucide-react";
 import { FeedbackModal } from "./FeedbackModal";
 import { DevelopmentBanner } from "./DevelopmentBanner";
@@ -35,7 +34,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onRefresh,
   isRefreshing = false,
 }) => {
-  useSessionHeartbeat();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -143,14 +141,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-[#09090b] font-nunito overflow-hidden transition-colors duration-200">
+    <div className="flex h-screen bg-[var(--surface-page)] font-nunito overflow-hidden transition-colors duration-200">
 
       {/* Sidebar Panel */}
       <aside
         ref={sidebarRef}
         onClick={handleSidebarClick}
         className={clsx(
-          "hidden lg:flex fixed inset-y-0 left-0 z-50 lg:static flex-col bg-white dark:bg-zinc-950/80 border-r border-gray-200 dark:border-zinc-850 transition-all duration-300 ease-in-out",
+          "hidden lg:flex fixed inset-y-0 left-0 z-50 lg:static flex-col bg-[var(--surface-card)] border-r border-[var(--line-subtle)] transition-all duration-300 ease-in-out",
           // Desktop state
           sidebarCollapsed ? "lg:w-20 cursor-pointer" : "lg:w-64 cursor-default"
         )}
@@ -161,13 +159,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           sidebarCollapsed ? "p-4 justify-center" : "p-6"
         )}>
           {!sidebarCollapsed ? (
-            <h2 className="font-nunito text-2xl font-black tracking-tight text-figma-dark dark:text-slate-100 truncate">
-              JUET <span className="text-accent-primary">Nexus</span>
-            </h2>
-          ) : (
-            <div className="w-10 h-10 rounded-xl bg-accent-light flex items-center justify-center font-bold text-accent-primary border border-accent-primary/20">
-              JN
+            <div className="flex items-center gap-3 min-w-0">
+              <img src="/icon-192x192.png" alt="" className="h-9 w-9 rounded-xl shrink-0" />
+              <h2 className="font-nunito text-xl font-extrabold tracking-tight text-[var(--ink-strong)] truncate">
+                JUET <span className="text-accent-primary">Nexus</span>
+              </h2>
             </div>
+          ) : (
+            <img src="/icon-192x192.png" alt="JUET Nexus" className="h-10 w-10 rounded-xl" />
           )}
         </div>
 
@@ -267,7 +266,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               e.stopPropagation();
               setSidebarCollapsed(!sidebarCollapsed);
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-figma-gray dark:text-zinc-400 hover:text-figma-dark dark:hover:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-850 transition-colors font-nunito text-xs font-bold"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-figma-gray dark:text-zinc-400 hover:text-figma-dark dark:hover:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors font-nunito text-xs font-bold"
           >
             <svg
               className={clsx("w-5 h-5 transition-transform duration-300", sidebarCollapsed && "rotate-180")}
@@ -285,7 +284,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header bar */}
-        <header className="bg-white dark:bg-[#09090b] border-b border-gray-200 dark:border-zinc-800/80 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 shadow-sm z-10 transition-colors duration-200">
+        <header className="bg-[var(--surface-card)] border-b border-[var(--line-subtle)] px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 shadow-sm z-10 transition-colors duration-200">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <h1 className="text-base sm:text-xl font-bold text-figma-dark dark:text-slate-100 font-nunito truncate">
               {pathname === "/dashboard/performance"
@@ -331,7 +330,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </header>
 
         {/* Content body */}
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-gray-50 dark:bg-[#09090b] p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 touch-scroll-momentum transition-colors duration-200">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-[var(--surface-page)] p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 touch-scroll-momentum transition-colors duration-200">
           <div className="max-w-7xl mx-auto">
             <DevelopmentBanner
               onOpenFeedback={() => setFeedbackOpen(true)}

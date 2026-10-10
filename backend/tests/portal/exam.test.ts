@@ -11,13 +11,6 @@ process.env.ENCRYPTION_KEY = "0".repeat(64);
 
 const mockPostEncrypted = jest.fn();
 
-jest.mock("../../src/utils/axios", () => ({
-  __esModule: true,
-  default: { get: jest.fn(), post: jest.fn() },
-  get: jest.fn(),
-  post: jest.fn(),
-}));
-
 jest.mock("../../src/portal/client", () => ({
   createPortalClient: jest.fn(() => ({
     postEncrypted: mockPostEncrypted,

@@ -24,13 +24,6 @@ jest.mock("../src/portal/client", () => ({
   })),
 }));
 
-jest.mock("../src/utils/axios", () => ({
-  __esModule: true,
-  default: { get: jest.fn(), post: jest.fn() },
-  get: jest.fn(),
-  post: jest.fn(),
-}));
-
 import { registerDashboardRoutes } from "../src/routes/dashboard";
 import { CacheService } from "../src/utils/cache";
 import { encryptSessionData, type SessionData } from "../src/utils/encryption";

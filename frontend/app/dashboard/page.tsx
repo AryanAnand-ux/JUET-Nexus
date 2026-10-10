@@ -12,6 +12,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { AttendanceTracker } from "@/components/AttendanceTracker";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
+import { usePortalRecovery } from "@/hooks/usePortalRecovery";
 import { performLogout } from "@/utils/logout";
 import { AlertTriangle, MapPin, Copy, Check, Eye, EyeOff } from "lucide-react";
 import { Typing } from "@/components/loading-ui/typing";
@@ -19,12 +20,21 @@ import { Typing } from "@/components/loading-ui/typing";
 /**
  * Error Display Component
  */
-const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
-  <div className="mb-6 border border-red-200 rounded-2xl bg-red-50 p-4 flex items-start gap-3 shadow-sm animate-shake">
+const ErrorBanner: React.FC<{ error: { message: string }; onRetry?: () => void }> = ({ error, onRetry }) => (
+  <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm animate-shake">
     <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-    <p className="text-sm font-medium text-red-700 font-nunito">
-      {error.message}
-    </p>
+    <div className="flex-1">
+      <p className="text-sm font-medium text-red-700 dark:text-red-300 font-nunito">{error.message}</p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-2 text-sm font-bold text-red-700 dark:text-red-300 underline underline-offset-2 hover:text-red-900 dark:hover:text-red-200"
+        >
+          Try again
+        </button>
+      )}
+    </div>
   </div>
 );
 
@@ -75,9 +85,13 @@ export default function DashboardPage() {
     data,
     isLoading,
     error,
+    refresh,
     invalidateCache,
     cachedAt,
   } = useDashboard(enrollment);
+  const recovery = usePortalRecovery(enrollment, async () => {
+    await refresh();
+  });
 
   // Proactively refresh the portal token every 10 min + on app foreground
   // Prevents the 15-min CampusLynx token from expiring between sessions
@@ -198,7 +212,34 @@ export default function DashboardPage() {
       </div>
 
       {/* Error Display */}
-      {error && <ErrorBanner error={error} />}
+      {error && <ErrorBanner error={error} onRetry={refresh} />}
+      {error && ["SESSION_EXPIRED", "SESSION_RENEWING", "RELOGIN_FAILED"].includes(error.code || "") && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+          <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+            We couldn&apos;t reconnect to the portal automatically. Enter your portal password to
+            reconnect — future reconnects will happen on their own.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input
+              type="password"
+              value={recovery.password}
+              onChange={(event) => recovery.setPassword(event.target.value)}
+              placeholder="Portal password"
+              autoComplete="current-password"
+              className="rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm dark:border-amber-800 dark:bg-slate-900"
+            />
+            <button
+              type="button"
+              onClick={() => void recovery.recover()}
+              disabled={recovery.isRecovering}
+              className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {recovery.isRecovering ? "Reconnecting…" : "Reconnect portal"}
+            </button>
+          </div>
+          {recovery.error && <p className="mt-2 text-xs font-semibold text-red-700 dark:text-red-300">{recovery.error}</p>}
+        </div>
+      )}
 
       {/* Loading State */}
       {isLoading && !data ? (
@@ -260,7 +301,25 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+            Your dashboard is unavailable
+          </h3>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Your portal session may have expired. Please sign in again to load current records.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              performLogout().finally(() => router.push("/login"));
+            }}
+            className="mt-5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+          >
+            Sign in again
+          </button>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

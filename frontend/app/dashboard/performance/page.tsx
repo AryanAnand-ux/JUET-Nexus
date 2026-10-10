@@ -16,9 +16,9 @@ import Link from "next/link";
 import { Typing } from "@/components/loading-ui/typing";
 
 const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
-  <div className="mb-6 border border-red-200 rounded-2xl bg-red-50 p-4 flex items-start gap-3 shadow-sm">
+  <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm">
     <span className="text-red-500 mt-0.5">⚠</span>
-    <p className="text-sm font-medium text-red-700 font-nunito">
+    <p className="text-sm font-medium text-red-700 dark:text-red-300 font-nunito">
       {error.message}
     </p>
   </div>

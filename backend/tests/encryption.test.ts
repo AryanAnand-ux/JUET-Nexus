@@ -3,7 +3,7 @@
  * Tests encryption/decryption round-trip and edge cases
  */
 
-import { encryptSession, decryptSession, generateEncryptionKey, encryptSessionData, decryptSessionData, SessionData } from "../src/utils/encryption";
+import { encryptSession, decryptSession, encryptSessionData, decryptSessionData, SessionData } from "../src/utils/encryption";
 
 // Mock environment for testing
 const TEST_ENCRYPTION_KEY = "0".repeat(64); // Valid hex
@@ -80,23 +80,6 @@ describe("Encryption Utilities", () => {
         encrypted.substring(authTagEnd);
 
       expect(() => decryptSession(tampered)).toThrow();
-    });
-  });
-
-  describe("generateEncryptionKey", () => {
-    it("should generate valid 256-bit hex keys", () => {
-      const key = generateEncryptionKey();
-
-      // Should be 64 hex characters (256 bits)
-      expect(key).toMatch(/^[0-9a-f]{64}$/i);
-      expect(key.length).toBe(64);
-    });
-
-    it("should generate different keys each time", () => {
-      const key1 = generateEncryptionKey();
-      const key2 = generateEncryptionKey();
-
-      expect(key1).not.toBe(key2);
     });
   });
 

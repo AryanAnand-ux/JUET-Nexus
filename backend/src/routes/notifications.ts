@@ -48,7 +48,8 @@ export async function registerNotificationRoutes(
       // Verify that the user is not subscribing for someone else
       try {
         const session = decryptSessionData(encryptedSession);
-        if (session.enrollment !== uppercaseEnrollment) {
+        const sessionEnrollment = (session.campusLynx?.enrollmentno || session.enrollment || '').toUpperCase();
+        if (sessionEnrollment !== uppercaseEnrollment) {
           return reply.status(403).send({
             success: false,
             error: 'Forbidden: You cannot subscribe for another enrollment',

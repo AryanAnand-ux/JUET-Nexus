@@ -11,6 +11,10 @@ type MemoryEntry<T> = {
   expiresAt: number;
 };
 
+/** Maximum number of entries allowed in the in-memory fallback cache.
+ *  Prevents unbounded memory growth during a Redis outage. */
+const MAX_MEMORY_ENTRIES = 500;
+
 export class CacheService {
   private redis: Redis | null;
   private memoryCache = new Map<string, MemoryEntry<any>>();
@@ -70,6 +74,28 @@ export class CacheService {
    */
   async set<T>(prefix: string, key: string, data: T, ttlSeconds: number): Promise<void> {
     const cacheKey = this.getCacheKey(prefix, key);
+
+    // Enforce max-entry cap: evict expired entries first, then the oldest entry
+    // if we're still at capacity. This keeps memory bounded during Redis outages.
+    if (this.memoryCache.size >= MAX_MEMORY_ENTRIES) {
+      const now = Date.now();
+      let oldestKey: string | undefined;
+      let oldestTime = Infinity;
+      for (const [k, v] of this.memoryCache) {
+        if (v.expiresAt <= now) {
+          this.memoryCache.delete(k);
+          break;
+        }
+        if (v.expiresAt < oldestTime) {
+          oldestTime = v.expiresAt;
+          oldestKey = k;
+        }
+      }
+      // If no expired entry was found, remove the soonest-to-expire entry
+      if (this.memoryCache.size >= MAX_MEMORY_ENTRIES && oldestKey) {
+        this.memoryCache.delete(oldestKey);
+      }
+    }
 
     // Always populate in-memory cache as reliable fallback if Redis is down/unreachable
     this.memoryCache.set(cacheKey, {
@@ -175,6 +201,12 @@ export class CacheService {
       const cacheKey = this.getCacheKey(prefix, key);
       if (!this.redis) {
         if (!this.memorySets.has(cacheKey)) {
+          // Bound memory-set growth during a Redis outage, mirroring the
+          // MAX_MEMORY_ENTRIES cap applied to the scalar memory cache.
+          if (this.memorySets.size >= MAX_MEMORY_ENTRIES) {
+            const oldest = this.memorySets.keys().next().value;
+            if (oldest !== undefined) this.memorySets.delete(oldest);
+          }
           this.memorySets.set(cacheKey, new Set<string>());
         }
         this.memorySets.get(cacheKey)!.add(value);

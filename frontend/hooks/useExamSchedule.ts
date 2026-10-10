@@ -11,8 +11,6 @@ export interface ExamScheduleState {
 }
 
 export function useExamSchedule() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [state, setState] = useState<ExamScheduleState>({
     data: null,
@@ -24,12 +22,6 @@ export function useExamSchedule() {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
-      const headers: Record<string, string> = {};
-      if (sessionToken) {
-        headers["x-session-token"] = sessionToken;
-      }
-
       const activeEventId = eventId !== undefined ? eventId : selectedEventId;
       const params: Record<string, string> = {};
       if (activeEventId) {
@@ -38,7 +30,6 @@ export function useExamSchedule() {
 
       const response = await apiClient.get(`/api/exam`, {
         params: Object.keys(params).length > 0 ? params : undefined,
-        headers,
         timeout: 60000,
       });
 

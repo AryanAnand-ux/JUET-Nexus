@@ -84,17 +84,15 @@ export function decryptSession(token: string): string {
   }
 }
 
-/**
- * Utility: Generate a new encryption key
- * Use this to set ENCRYPTION_KEY environment variable
- */
-export function generateEncryptionKey(): string {
-  return crypto.randomBytes(32).toString("hex");
-}
-
 export interface SessionData {
   jsessionid: string;
   enrollment: string;
+  /**
+   * The portal password, kept so the backend can silently re-login when the
+   * portal refuses a token refresh. Only ever persisted inside this AES-256-GCM
+   * encrypted cookie — never logged or returned to the client. Empty for legacy
+   * / non-CampusLynx sessions, in which case silent re-login is unavailable.
+   */
   password: string;
   dob: string;
   role: "Student" | "Employee" | "Guest" | string;

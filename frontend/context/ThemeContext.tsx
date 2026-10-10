@@ -19,12 +19,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme-mode") as ThemeMode | null;
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setThemeMode(savedTheme);
-    } else {
-      const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setThemeMode(systemPrefersDark ? "dark" : "light");
-    }
+    // Default to light mode when no explicit preference is saved.
+    setThemeMode(savedTheme === "light" || savedTheme === "dark" ? savedTheme : "light");
     setMounted(true);
   }, []);
 
@@ -40,6 +36,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     localStorage.setItem("theme-mode", themeMode);
   }, [themeMode, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncSystemTheme = (event: MediaQueryListEvent) => {
+      if (!localStorage.getItem("theme-mode")) {
+        setThemeMode(event.matches ? "dark" : "light");
+      }
+    };
+    media.addEventListener("change", syncSystemTheme);
+    return () => media.removeEventListener("change", syncSystemTheme);
+  }, [mounted]);
 
   const toggleTheme = () => {
     setThemeMode((prev) => (prev === "light" ? "dark" : "light"));

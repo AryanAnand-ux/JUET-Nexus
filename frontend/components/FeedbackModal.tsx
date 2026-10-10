@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   X,
   Send,
@@ -98,8 +98,6 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     };
   }, [isOpen, defaultCategory]);
 
-  if (!isOpen) return null;
-
   const currentCategoryObj = CATEGORIES.find((c) => c.id === category) || CATEGORIES[3];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -183,8 +181,35 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     setIsSubmitted(false);
   };
 
+  // Focus the modal container when it opens so keyboard/screen-reader users
+  // are immediately placed inside the dialog.
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.activeElement as HTMLElement | null;
+    modalRef.current?.focus();
+    return () => {
+      prev?.focus();
+    };
+  }, [isOpen]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    },
+    [onClose]
+  );
+
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6 overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6 overflow-y-auto"
+      onKeyDown={handleKeyDown}
+    >
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
@@ -192,7 +217,14 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
       />
 
       {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 shadow-2xl overflow-hidden transition-all duration-300 z-10 font-nunito max-h-[92vh] flex flex-col pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-0">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feedback-modal-title"
+        tabIndex={-1}
+        className="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 shadow-2xl overflow-hidden transition-all duration-300 z-10 font-nunito max-h-[92vh] flex flex-col pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-0 focus:outline-none"
+      >
         {/* Header Ribbon */}
         <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 text-white p-5 sm:p-6 relative shrink-0">
           <button
@@ -209,7 +241,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
             <span>Direct to {TARGET_EMAIL}</span>
           </div>
 
-          <h3 className="text-xl sm:text-2xl font-black tracking-tight">
+          <h3 id="feedback-modal-title" className="text-xl sm:text-2xl font-black tracking-tight">
             Share Your Feedback
           </h3>
           <p className="mt-1 text-xs sm:text-sm text-slate-300">

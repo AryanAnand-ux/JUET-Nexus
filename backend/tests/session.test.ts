@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import fastifyCookie from "@fastify/cookie";
-import { getCampusLynxIdentity, getOrRenewCampusLynxIdentity, getValidSession } from "../src/routes/session";
+import { getCampusLynxIdentity, getOrRenewCampusLynxIdentity } from "../src/routes/session";
 import { encryptSessionData, SessionData } from "../src/utils/encryption";
 
 const TEST_ENCRYPTION_KEY = "0".repeat(64);
@@ -108,7 +108,7 @@ describe("CampusLynx Session", () => {
   it("should return valid identity and enrollment when session is valid", async () => {
     fastify.get("/test", async (request: any) => {
       const identity = getCampusLynxIdentity(request);
-      const enrollment = await getValidSession(request);
+      const enrollment = identity.enrollmentno;
       return { success: true, identity, enrollment };
     });
 
@@ -157,24 +157,6 @@ describe("CampusLynx Session", () => {
     expect(setCookie).toBeDefined();
     expect(String(setCookie)).toContain("auth=");
     expect(String(setCookie)).toContain("Expires=");
-    expect(response.headers["x-session-token"]).toBeDefined();
-  });
-
-  it("should extract session from x-session-token header when cookie is absent", async () => {
-    fastify.get("/test-header", async (request: any) => {
-      const identity = getCampusLynxIdentity(request);
-      return { success: true, identity };
-    });
-
-    const encryptedToken = encryptSessionData(validSession);
-    const response = await fastify.inject({
-      method: "GET",
-      url: "/test-header",
-      headers: { "x-session-token": encryptedToken },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json().success).toBe(true);
-    expect(response.json().identity.username).toBe("24BCS100");
+    expect(response.headers["x-session-token"]).toBeUndefined();
   });
 });

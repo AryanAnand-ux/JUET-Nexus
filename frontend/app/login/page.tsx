@@ -9,9 +9,9 @@ import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { CampusLynxLoginForm } from "@/components/CampusLynxLoginForm";
-import { FigmaLoginGraphic } from "@/components/FigmaLoginGraphic";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { LoginIllustration } from "@/components/LoginIllustration";
 import { useAuthFlow } from "@/hooks/useAuthFlow";
+import { apiClient } from "@/utils/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,38 +29,45 @@ export default function LoginPage() {
   // Redirect to dashboard if already logged in. This runs after hydration so
   // the initial render matches the server (no hydration mismatch).
   useEffect(() => {
-    const enrollment = localStorage.getItem("enrollment");
-    if (enrollment) {
-      router.replace("/dashboard");
-    }
+    let cancelled = false;
+
+    apiClient
+      .get("/api/auth/session")
+      .then(() => {
+        if (!cancelled) router.replace("/dashboard");
+      })
+      .catch(() => {
+        // A missing or expired cookie means the login form should remain available.
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] dark:bg-slate-950 flex transition-colors duration-200">
+    <div
+      id="main-content"
+      className="min-h-screen w-full bg-[#8ba5ec] flex items-center justify-center p-4 sm:p-6"
+    >
       <LoadingOverlay isVisible={isFetchingCaptcha} />
-      
-      {/* Left side Graphic (Hidden on mobile) */}
-      <FigmaLoginGraphic />
 
-      {/* Right side Form Area */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6 relative">
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
-          <ThemeToggle />
-        </div>
-        <CampusLynxLoginForm
-          captchaImage={captcha?.image || null}
-          onSubmitLogin={submitLogin}
-          onRefreshCaptcha={fetchCaptcha}
-          isLoading={isLoading}
-          error={error}
-          onErrorDismiss={clearError}
-        />
-        
-        <div className="mt-8 text-center text-xs font-medium text-gray-400 dark:text-slate-500 max-w-sm">
-          <p>🔒 Secure. Encrypted. Persistent.</p>
-          <p className="mt-2">JUET Nexus connects directly to your CampusLynx portal session.</p>
-        </div>
-      </div>
+      <main className="w-full max-w-[960px] bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-[0_25px_60px_-15px_rgba(15,23,42,0.35)] overflow-hidden flex flex-col md:flex-row border border-[#e4e6e3]">
+        {/* Left illustration pane (hidden on mobile) */}
+        <LoginIllustration />
+
+        {/* Right form pane */}
+        <section className="md:w-1/2 p-6 sm:p-8 md:p-10 lg:p-12 flex flex-col justify-center">
+          <CampusLynxLoginForm
+            captchaImage={captcha?.image || null}
+            onSubmitLogin={submitLogin}
+            onRefreshCaptcha={fetchCaptcha}
+            isLoading={isLoading}
+            error={error}
+            onErrorDismiss={clearError}
+          />
+        </section>
+      </main>
     </div>
   );
 }

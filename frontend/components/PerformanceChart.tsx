@@ -15,7 +15,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
   if (!semesters || semesters.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 border border-slate-200/60 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/10 min-h-[200px]">
-        <TrendingUp className="w-8 h-8 text-slate-350 dark:text-slate-650 mb-2" />
+        <TrendingUp className="w-8 h-8 text-slate-400 dark:text-slate-600 mb-2" />
         <p className="text-sm font-semibold text-slate-500 font-nunito">
           No semester historical data available to plot.
         </p>

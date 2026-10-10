@@ -10,8 +10,6 @@ export interface StudentInfo {
   branch: string;
 }
 
-export type Student = StudentInfo;
-
 // Attendance Data
 export interface AttendanceRecord {
   subject: string;
@@ -24,8 +22,6 @@ export interface AttendanceRecord {
   safeBunksLeft: number;        // 0 when raw counts unavailable
   detailLink?: string;          // Link to detailed day-by-day attendance log
 }
-
-export type AttendanceItem = AttendanceRecord;
 
 export interface AttendanceDetailItem {
   date: string;
@@ -60,16 +56,12 @@ export interface PerformanceData {
   }>;
 }
 
-export type Performance = PerformanceData;
-
 // Notice Data
 export interface NoticeRecord {
   title: string;
   date: string; // Display string from Campus Portal
   link: string;
 }
-
-export type Notice = NoticeRecord;
 
 // Registered Courses and Marks
 export interface RegisteredCourse {
@@ -107,81 +99,10 @@ export interface DashboardResponse {
  */
 export type LoginFlow = 'campuslynx';
 
-// Captcha Init Response
-export interface CaptchaResponse {
-  captchaImage: string; // base64 data URI
-  sessionToken: string;
-  captchaValue?: string | null;
-  loginFlow?: LoginFlow;
-}
-
-// --- CampusLynx two-step login -------------------------------------------
-
-/** Step 1: identify the user. Served by `POST /api/auth/verify-user`. */
-export interface LoginIdentifyPayload {
-  enrollment: string;
-  captcha: string;
-  sessionToken: string;
-  /** Portal user type: `S` student (default) or `P` parent. */
-  usertype?: 'S' | 'P';
-}
-
-/**
- * Step 1 result. `loginToken` is an opaque, short-lived handle the server keeps
- * mapped to the portal pre-token -- the pre-token itself is never sent to the
- * browser, so it cannot be tampered with.
- */
-export interface LoginIdentifyResponse {
-  success: boolean;
-  loginToken: string;
-  /** Login mode the portal wants next: `"PWD"` (password) or `"otp"`. */
-  loginMode: string;
-}
-
-/** Step 2: exchange the handle plus password for a session. */
-export interface LoginPasswordPayload {
-  loginToken: string;
-  password: string;
-}
-
-// API Error Response
-export interface ApiError {
-  error: string;
-  code?: string;
-  details?: string;
-}
-
-// Auth State — base shape; hooks may extend this
-export interface AuthStateBase {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-  enrollment?: string;
-}
-
-/** @deprecated Use AuthStateBase */
-export type AuthState = AuthStateBase;
-
-// Dashboard State — base shape; hooks may extend this
-export interface DashboardStateBase {
-  data: DashboardResponse | null;
-  isLoading: boolean;
-  error: string | null;
-  lastUpdated?: Date;
-}
-
-/** @deprecated Use DashboardStateBase */
-export type DashboardState = DashboardStateBase;
-
 // Exam Schedule
 export interface ExamEvent {
   exameventid: string;
   exameventdesc: string;
-}
-
-export interface ExamSemester {
-  registrationid: string;
-  registrationdesc: string;
 }
 
 export interface ExamScheduleItem {
@@ -200,11 +121,6 @@ export interface ExamScheduleResponse {
 }
 
 // Grade Card
-export interface GradeSemester {
-  stynumber: string;
-  semesterdesc: string;
-}
-
 export interface GradeSubject {
   subjectdesc: string;
   subjectcode: string;
@@ -223,14 +139,4 @@ export interface GradeCardResponse {
 
 // Feedback
 export type FeedbackCategory = "bug" | "feature" | "improvement" | "general";
-
-export interface FeedbackPayload {
-  category: FeedbackCategory;
-  subject?: string;
-  message: string;
-  email?: string;
-  enrollment?: string;
-  name?: string;
-  rating?: number;
-}
 

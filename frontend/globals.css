@@ -2,35 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CSS Variables for Dynamic Accent Colors */
+/* JUET Nexus design tokens */
 :root {
-  --accent-primary: #6366F1; /* Default: Indigo */
-  --accent-primary-hover: #4F46E5;
-  --accent-primary-light: rgba(99, 102, 241, 0.1);
+  --accent-primary: #6246c7;
+  --accent-primary-hover: #5138ad;
+  --accent-primary-light: rgba(98, 70, 199, 0.11);
+  --surface-page: #f7f7f5;
+  --surface-card: #ffffff;
+  --surface-subtle: #f0f0ed;
+  --ink-strong: #172033;
+  --ink-muted: #5e6878;
+  --line-subtle: #e4e6e3;
+  --focus-ring: #8b6fe8;
+  --font-inter: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-newsreader: Newsreader, Georgia, "Times New Roman", serif;
+  --font-nunito-sans: "Nunito Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-jakarta: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 :root.accent-indigo {
-  --accent-primary: #6366F1;
-  --accent-primary-hover: #4F46E5;
-  --accent-primary-light: rgba(99, 102, 241, 0.1);
+  --accent-primary: #6246c7;
+  --accent-primary-hover: #5138ad;
+  --accent-primary-light: rgba(98, 70, 199, 0.11);
 }
 
-:root.accent-burgundy {
-  --accent-primary: #7F265B;
-  --accent-primary-hover: #73114B;
-  --accent-primary-light: rgba(127, 38, 91, 0.15);
-}
-
-:root.accent-purple {
-  --accent-primary: #8B5CF6;
-  --accent-primary-hover: #7C3AED;
-  --accent-primary-light: rgba(139, 92, 246, 0.1);
-}
-
-:root.accent-emerald {
-  --accent-primary: #10B981;
-  --accent-primary-hover: #059669;
-  --accent-primary-light: rgba(16, 185, 129, 0.1);
+:root.dark {
+  --surface-page: #10131b;
+  --surface-card: #171b25;
+  --surface-subtle: #202633;
+  --ink-strong: #f4f5f7;
+  --ink-muted: #a5adba;
+  --line-subtle: #2b3341;
+  --focus-ring: #a995ff;
 }
 
 /* Global Base Styles */
@@ -42,7 +45,9 @@
   }
 
   body {
-    @apply bg-brutal-cream text-brutal-black antialiased transition-colors duration-200 dark:bg-[#09090b] dark:text-zinc-100;
+    @apply antialiased transition-colors duration-200;
+    background: var(--surface-page);
+    color: var(--ink-strong);
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -77,7 +82,8 @@
   }
 
   a {
-    @apply text-brutal-black font-bold hover:opacity-80 transition-opacity;
+    @apply font-bold hover:opacity-80 transition-opacity;
+    color: var(--ink-strong);
   }
 
   /* Remove default input styles */
@@ -90,7 +96,9 @@
   input:focus,
   textarea:focus,
   select:focus {
-    @apply outline-none ring-2 ring-figma-maroon ring-offset-2;
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 28%, transparent);
+    border-color: var(--focus-ring);
   }
 }
 
@@ -140,6 +148,15 @@
   .touch-scroll-momentum {
     -webkit-overflow-scrolling: touch;
   }
+
+  .surface-card {
+    background: var(--surface-card);
+    border: 1px solid var(--line-subtle);
+  }
+
+  .brand-gradient {
+    background: linear-gradient(135deg, #5b43d6 0%, #762c72 100%);
+  }
 }
 
 /* Enhanced Minimalist Scrollbar */
@@ -186,5 +203,17 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 /* Selection Styling */
 ::selection {
-  @apply bg-brutal-yellow text-brutal-black;
+  background: #d9d0ff;
+  color: #21164f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
