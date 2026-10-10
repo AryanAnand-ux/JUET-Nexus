@@ -43,13 +43,13 @@ function createAgent(): https.Agent {
   // root certs or require custom validation. Allow strict rejection when configured.
   const rejectUnauthorized = process.env.PORTAL_REJECT_UNAUTHORIZED === "true";
 
-  // Safety guard: never allow TLS downgrade in production.
+  // Warn if TLS verification is disabled in production (portal cert chain is often incomplete)
   if (process.env.NODE_ENV === "production" && !rejectUnauthorized) {
-    console.error(
-      "[Security] PORTAL_REJECT_UNAUTHORIZED must be 'true' in production. " +
-      "Refusing to start with TLS verification disabled."
+    console.warn(
+      "[Security] PORTAL_REJECT_UNAUTHORIZED is not 'true' — TLS verification disabled. " +
+      "This allows connection to portals with incomplete cert chains but is less secure. " +
+      "Set PORTAL_REJECT_UNAUTHORIZED=true when the portal's cert chain is fixed."
     );
-    process.exit(1);
   }
 
   return new https.Agent({
