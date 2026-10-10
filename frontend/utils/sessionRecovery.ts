@@ -57,11 +57,11 @@ async function runRecovery(): Promise<boolean> {
 
   // Tier 2 — silent full re-login with the server-stored password.
   for (let attempt = 0; attempt < MAX_CAPTCHA_ATTEMPTS; attempt++) {
-    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
-      // The captcha is solved on a canvas; skip while backgrounded and let the
-      // next foreground/interval pass handle it.
-      return false;
-    }
+    // NOTE: no `document.visibilityState === "hidden"` bail-out here. The
+    // captcha is solved on a detached canvas plus an `Image` element, neither of
+    // which needs a visible document, so backgrounded tabs recover just fine.
+    // Aborting on hidden is what used to force a manual re-login after the
+    // tab was closed and reopened past the token's ~15-minute lifetime.
 
     let captchaImage = "";
     let sessionToken = "";
