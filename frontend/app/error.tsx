@@ -17,18 +17,18 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-figma-bg flex items-center justify-center p-6 font-nunito">
+    <div className="min-h-screen bg-[var(--surface-page)] flex items-center justify-center p-6 font-nunito">
       <div className="w-full max-w-md">
         <FigmaCard className="text-center">
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center">
               <AlertTriangle className="w-8 h-8 text-figma-red" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-figma-dark mb-2">
+          <h2 className="text-2xl font-bold text-[var(--ink-strong)] mb-2">
             Something went wrong!
           </h2>
-          <p className="text-sm text-figma-gray mb-8">
+          <p className="text-sm text-[var(--ink-muted)] mb-8">
             An unexpected error occurred while loading this page. Our systems have logged the issue.
           </p>
           <div className="flex flex-col gap-3">

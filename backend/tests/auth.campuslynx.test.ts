@@ -29,16 +29,9 @@ jest.mock("../src/portal/client", () => ({
   })),
 }));
 
-jest.mock("../src/utils/axios", () => ({
-  __esModule: true,
-  default: { get: jest.fn(), post: jest.fn() },
-  get: jest.fn(),
-  post: jest.fn(),
-}));
-
 import { registerAuthRoutes } from "../src/routes/auth";
 import { CacheService } from "../src/utils/cache";
-import { decryptSessionData } from "../src/utils/encryption";
+import { decryptSessionData, encryptSessionData } from "../src/utils/encryption";
 import { PortalError } from "../src/portal/types";
 
 const CAPTCHA = { captcha: "", hidden: "HID==", image: "iVBORw0KGgoAAA" };
@@ -192,7 +185,7 @@ describe("CampusLynx login routes", () => {
   });
 
   describe("POST /api/auth (step 2)", () => {
-    it("sets a password-free auth cookie and returns success", async () => {
+    it("persists the password (encrypted) and returns success", async () => {
       app = await buildApp("campuslynx");
       const loginToken = await startLogin(app);
       mockGenerateWebToken.mockResolvedValue({
@@ -218,8 +211,10 @@ describe("CampusLynx login routes", () => {
         memberid: "JUET0000001",
         username: "24BCS001",
       });
-      // The password must never be persisted.
-      expect(session.password).toBe("");
+      // The password is persisted so the backend can silently re-login, but it
+      // must only ever live inside the AES-256-GCM encrypted cookie -- never in
+      // plaintext.
+      expect(session.password).toBe("s3cret");
       expect(cookie.value).not.toContain("s3cret");
 
       expect(mockGenerateWebToken).toHaveBeenCalledWith({
@@ -362,6 +357,168 @@ describe("CampusLynx login routes", () => {
       const setCookie = res.headers["set-cookie"];
       expect(setCookie).toBeDefined();
       expect(String(setCookie)).toContain("auth=");
+    });
+  });
+
+  describe("POST /api/auth/silent-login", () => {
+    const SESSION_WITH_PW = {
+      jsessionid: "",
+      enrollment: "24BCS001",
+      password: "s3cret",
+      dob: "",
+      role: "Student",
+      campusLynx: {
+        clientid: "JAYPEE",
+        instituteid: "INID2603J000001",
+        companyid: "CO1",
+        memberid: "JUET0000001",
+        enrollmentno: "24BCS001",
+        membertype: "S",
+        token: "old.token.sig",
+        username: "24BCS001",
+        otppwd: "PWD",
+      },
+    };
+
+    /** Mint a fresh captcha sessionToken from GET /api/init. */
+    async function issueCaptcha(app: any): Promise<string> {
+      mockGetCaptcha.mockResolvedValue(CAPTCHA);
+      const init = await app.inject({ method: "GET", url: "/api/init" });
+      return init.json().sessionToken as string;
+    }
+
+    it("re-logs-in with the stored password and issues a fresh cookie", async () => {
+      app = await buildApp("campuslynx");
+      const cookie = encryptSessionData(SESSION_WITH_PW as any);
+      const sessionToken = await issueCaptcha(app);
+      mockPreTokenCheck.mockResolvedValue({ random: "PRE-2", otppwd: "PWD" });
+      mockGenerateWebToken.mockResolvedValue({
+        status: { responseStatus: "Success" },
+        response: { regdata: REGDATA },
+      });
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/auth/silent-login",
+        cookies: { auth: cookie },
+        payload: { captcha: "abc12", sessionToken },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().success).toBe(true);
+
+      const fresh = res.cookies.find((c: any) => c.name === "auth");
+      expect(fresh).toBeDefined();
+      const session = decryptSessionData(fresh.value);
+      // The password survives, so the next silent re-login can happen too.
+      expect(session.password).toBe("s3cret");
+      expect(session.campusLynx?.token).toBe("jwt.payload.sig");
+
+      expect(mockPreTokenCheck).toHaveBeenCalledWith({
+        username: "24BCS001",
+        usertype: "S",
+        captcha: { ...CAPTCHA, captcha: "abc12" },
+      });
+      expect(mockGenerateWebToken).toHaveBeenCalledWith({
+        otppwd: "PWD",
+        username: "24BCS001",
+        passwordotpvalue: "s3cret",
+        Modulename: "STUDENTMODULE",
+        random: "PRE-2",
+      });
+    });
+
+    it("returns 401 without an auth cookie", async () => {
+      app = await buildApp("campuslynx");
+      const sessionToken = await issueCaptcha(app);
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/auth/silent-login",
+        payload: { captcha: "abc12", sessionToken },
+      });
+      expect(res.statusCode).toBe(401);
+      expect(res.json().code).toBe("NO_SESSION");
+    });
+
+    it("returns NO_STORED_CREDENTIALS for a legacy password-free cookie", async () => {
+      app = await buildApp("campuslynx");
+      const legacy = { ...SESSION_WITH_PW, password: "" };
+      const cookie = encryptSessionData(legacy as any);
+      const sessionToken = await issueCaptcha(app);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/auth/silent-login",
+        cookies: { auth: cookie },
+        payload: { captcha: "abc12", sessionToken },
+      });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json().code).toBe("NO_STORED_CREDENTIALS");
+      expect(mockGenerateWebToken).not.toHaveBeenCalled();
+    });
+
+    it("returns CAPTCHA_EXPIRED for an unknown session token", async () => {
+      app = await buildApp("campuslynx");
+      const cookie = encryptSessionData(SESSION_WITH_PW as any);
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/auth/silent-login",
+        cookies: { auth: cookie },
+        payload: { captcha: "abc12", sessionToken: "nope" },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe("CAPTCHA_EXPIRED");
+    });
+
+    it("returns CAPTCHA_INVALID when the portal rejects the answer", async () => {
+      app = await buildApp("campuslynx");
+      const cookie = encryptSessionData(SESSION_WITH_PW as any);
+      const sessionToken = await issueCaptcha(app);
+      mockPreTokenCheck.mockRejectedValue(new PortalError("bad captcha", 401));
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/auth/silent-login",
+        cookies: { auth: cookie },
+        payload: { captcha: "wrong", sessionToken },
+      });
+      expect(res.statusCode).toBe(401);
+      expect(res.json().code).toBe("CAPTCHA_INVALID");
+    });
+
+    it("returns CREDENTIALS_INVALID when the stored password is refused", async () => {
+      app = await buildApp("campuslynx");
+      const cookie = encryptSessionData(SESSION_WITH_PW as any);
+      const sessionToken = await issueCaptcha(app);
+      mockPreTokenCheck.mockResolvedValue({ random: "PRE-2", otppwd: "PWD" });
+      mockGenerateWebToken.mockRejectedValue(new PortalError("bad password", 401));
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/auth/silent-login",
+        cookies: { auth: cookie },
+        payload: { captcha: "abc12", sessionToken },
+      });
+      expect(res.statusCode).toBe(401);
+      expect(res.json().code).toBe("CREDENTIALS_INVALID");
+    });
+
+    it("returns OTP_REQUIRED when the portal switches to OTP login", async () => {
+      app = await buildApp("campuslynx");
+      const cookie = encryptSessionData(SESSION_WITH_PW as any);
+      const sessionToken = await issueCaptcha(app);
+      mockPreTokenCheck.mockResolvedValue({ random: "PRE-2", otppwd: "otp" });
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/auth/silent-login",
+        cookies: { auth: cookie },
+        payload: { captcha: "abc12", sessionToken },
+      });
+      expect(res.statusCode).toBe(409);
+      expect(res.json().code).toBe("OTP_REQUIRED");
+      expect(mockGenerateWebToken).not.toHaveBeenCalled();
     });
   });
 });

@@ -8,7 +8,7 @@
 import React, { useState } from "react";
 import { FigmaCard } from "./base";
 import type { PerformanceData, DetailedCourseMarks } from "@/types";
-import { TrendingUp, ClipboardList, Lightbulb, GraduationCap, X, Info } from "lucide-react";
+import { TrendingUp, ClipboardList, Lightbulb, GraduationCap, X } from "lucide-react";
 import { PerformanceChart } from "./PerformanceChart";
 
 export interface PerformanceHubProps {
@@ -98,9 +98,9 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
     if (gpa >= 8.5) {
       return {
         cardBg: "from-green-500/10 via-emerald-500/5 to-transparent border-green-200/60 dark:border-green-800/30",
-        textClass: "text-green-700 dark:text-green-450",
+        textClass: "text-green-700 dark:text-green-400",
         labelClass: "text-green-800 dark:text-green-300",
-        badge: "bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-850/40"
+        badge: "bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800/40"
       };
     }
     if (gpa >= 7.5) {
@@ -114,16 +114,16 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
     if (gpa >= 6.5) {
       return {
         cardBg: "from-amber-500/10 via-yellow-500/5 to-transparent border-amber-200/60 dark:border-amber-800/30",
-        textClass: "text-amber-700 dark:text-amber-450",
+        textClass: "text-amber-700 dark:text-amber-400",
         labelClass: "text-amber-800 dark:text-amber-300",
-        badge: "bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-850/40"
+        badge: "bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/40"
       };
     }
     return {
       cardBg: "from-rose-500/10 via-red-500/5 to-transparent border-rose-200/60 dark:border-rose-800/30",
-      textClass: "text-rose-700 dark:text-rose-450",
+      textClass: "text-rose-700 dark:text-rose-400",
       labelClass: "text-rose-800 dark:text-rose-300",
-      badge: "bg-rose-100 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-850/40"
+      badge: "bg-rose-100 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800/40"
     };
   };
 
@@ -230,15 +230,10 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                       : "border-slate-100 dark:border-slate-800/30 bg-slate-50/20 dark:bg-slate-900/5 opacity-80 cursor-default"
                   }`}
                 >
-                  <span className="font-extrabold text-sm text-slate-700 dark:text-slate-350 font-nunito group-hover:text-accent-primary transition-colors truncate pr-2">
+                  <span className="font-extrabold text-sm text-slate-700 dark:text-slate-300 font-nunito group-hover:text-accent-primary transition-colors truncate pr-2">
                     {mark.subject}
                   </span>
                   <div className="flex items-center gap-2">
-                    {hasDetails && (
-                      <span className="text-[10px] font-bold text-slate-400 font-nunito bg-slate-100 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-2 py-0.5 rounded-lg group-hover:text-accent-primary group-hover:bg-accent-light group-hover:border-accent-primary/20 transition-all flex items-center gap-1">
-                        <Info className="w-3 h-3" /> Details
-                      </span>
-                    )}
                     <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl px-3 py-1.5 shadow-sm text-center shrink-0">
                       <span className="font-extrabold text-sm text-slate-800 dark:text-slate-200 font-nunito">
                         {mark.marks.toFixed(1)}
@@ -303,7 +298,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
               {/* Simulation Toggle Switch */}
               {selectedCourseMarks.components && selectedCourseMarks.components.length > 0 && (
                 <div className="flex items-center justify-between mt-4 border-t border-slate-800/60 pt-3">
-                  <span className="text-xs font-bold text-slate-350 dark:text-slate-400">
+                  <span className="text-xs font-bold text-slate-300 dark:text-slate-400">
                     Simulate Mock Marks
                   </span>
                   <button
@@ -353,9 +348,9 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                                 className="w-14 px-1.5 py-0.5 text-center text-base sm:text-xs font-bold bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md focus:ring-1 focus:ring-accent-primary focus:outline-none dark:text-slate-200 touch-manipulation"
                               />
                             ) : (
-                              <span className="text-slate-850 dark:text-slate-100 font-extrabold">{obtained}</span>
+                              <span className="text-slate-800 dark:text-slate-100 font-extrabold">{obtained}</span>
                             )}
-                            <span className="font-bold text-slate-450 dark:text-slate-500">/ {comp.max}</span>
+                            <span className="font-bold text-slate-400 dark:text-slate-500">/ {comp.max}</span>
                           </div>
                         </div>
 
@@ -374,7 +369,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                           </div>
                         ) : (
                           /* Progress Bar Container */
-                          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-850">
+                          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-800">
                             <div
                               className="h-full rounded-full bg-gradient-to-r from-accent-primary to-violet-600 transition-all duration-500"
                               style={{ width: `${Math.min(pct, 100)}%` }}
@@ -399,7 +394,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
               const displayMax = totalMaxMarks > 0 ? totalMaxMarks : 100;
 
               return (
-                <div className="bg-slate-50 dark:bg-slate-950/40 px-4 py-4 sm:px-6 sm:py-5 border-t border-slate-100 dark:border-slate-850 flex items-center justify-between transition-colors duration-200 shrink-0">
+                <div className="bg-slate-50 dark:bg-slate-950/40 px-4 py-4 sm:px-6 sm:py-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between transition-colors duration-200 shrink-0">
                   <div className="flex flex-col gap-1 min-w-0 pr-2">
                     <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                       {isSimulating ? "Simulated Total" : "Aggregated Score"}
@@ -430,7 +425,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                       {currentTotal.toFixed(1)}
                     </span>
                     {totalMaxMarks > 0 && (
-                      <span className="text-xs sm:text-sm font-bold text-slate-400 dark:text-slate-550 font-nunito ml-0.5">
+                      <span className="text-xs sm:text-sm font-bold text-slate-400 dark:text-slate-500 font-nunito ml-0.5">
                         / {totalMaxMarks}
                       </span>
                     )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import { apiClient } from "@/utils/api";
 import type { GradeCardResponse } from "@/types";
 
 export interface GradesState {
@@ -11,8 +11,6 @@ export interface GradesState {
 }
 
 export function useGrades() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
   const [state, setState] = useState<GradesState>({
     data: null,
     isLoading: true,
@@ -23,17 +21,7 @@ export function useGrades() {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
-      const headers: Record<string, string> = {};
-      if (sessionToken) {
-        headers["x-session-token"] = sessionToken;
-      }
-
-      const response = await axios.get(`${API_URL}/api/grades`, {
-        withCredentials: true,
-        headers,
-        timeout: 60000,
-      });
+      const response = await apiClient.get("/api/grades");
 
       setState({
         data: response.data.data,
@@ -64,7 +52,7 @@ export function useGrades() {
         isLoading: false,
       }));
     }
-  }, [API_URL]);
+  }, []);
 
   useEffect(() => {
     fetchGrades();

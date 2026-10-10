@@ -147,5 +147,8 @@ export function buildIdentity(
       regdata.tokendate || regdata.TokenDate || regdata.tokenDate ||
       regdata.token_date || regdata.issuedate || regdata.issuedAt || ""
     ) || undefined,
+    // Age-tracking for renewal: we do not know the portal's real issue time, but
+    // "when we obtained it" is a safe proxy for the ~15-minute lifetime window.
+    tokenIssuedAt: Math.floor(Date.now() / 1000),
   } as PortalSessionIdentity;
 }

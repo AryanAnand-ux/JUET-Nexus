@@ -28,9 +28,6 @@ function SubjectDetailContent() {
 
   // Interactive Calculator State
   const [targetPercentage, setTargetPercentage] = useState(75);
-  const [simulatedAttended, setSimulatedAttended] = useState(0);
-  const [simulatedTotal, setSimulatedTotal] = useState(0);
-  const [hasDetailData, setHasDetailData] = useState(false);
   const [extraAttends, setExtraAttends] = useState(0);
   const [extraBunks, setExtraBunks] = useState(0);
 
@@ -55,18 +52,30 @@ function SubjectDetailContent() {
   // Official baseline percentage from portal (authoritative API response takes precedence over URL param)
   const officialPct = data?.percentage !== undefined && data.percentage > 0 ? data.percentage : urlPct;
 
-  // Sync simulator state when detail data loads
-  useEffect(() => {
-    if (data && data.classesHeld > 0) {
-      const baseHeld =
-        officialPct > 0
-          ? Math.max(data.classesHeld, Math.round(data.classesAttended / (officialPct / 100)))
-          : data.classesHeld;
-      setSimulatedAttended(data.classesAttended);
-      setSimulatedTotal(baseHeld);
-      setHasDetailData(true);
-    }
-  }, [data, officialPct]);
+  // The headline ring must match the dashboard exactly. The portal computes its
+  // official percentage (`LTpercantage`) over a held-count the day-by-day logs
+  // do not always reproduce (extra/makeup classes count toward "present" but not
+  // "held"; the log endpoint also omits a class here and there), so deriving the
+  // ring from raw log counts showed a different figure than the tracker. Anchor
+  // the baseline to the official percentage instead: back out an attended count
+  // from it across the log-derived held count, keeping it fractional so the
+  // rest-state ring equals the official figure to the decimal. Simulation then
+  // moves from that truth.
+  const logHeld = data?.classesHeld ?? 0;
+  const logAttended = data?.classesAttended ?? 0;
+  const hasDetailData = logHeld > 0;
+  const baseHeld = logHeld;
+  const baseAttended =
+    baseHeld > 0 && officialPct > 0 ? (officialPct / 100) * baseHeld : logAttended;
+  const attendedCount = baseAttended + extraAttends;
+  const totalCount = baseHeld + extraAttends + extraBunks;
+
+  // Practical logs only stay out of the counts when L/T classes exist too
+  // (practical-only subjects are counted in full).
+  const practicalsExcluded =
+    !!data &&
+    data.logs.some((l) => l.type === "Practical") &&
+    data.logs.some((l) => l.type === "Lecture" || l.type === "Tutorial");
 
   const handleLogout = async () => {
     await performLogout();
@@ -76,38 +85,27 @@ function SubjectDetailContent() {
   if (!enrollment) return null;
 
   const handleAttend = () => {
-    setSimulatedAttended((prev) => prev + 1);
-    setSimulatedTotal((prev) => prev + 1);
     setExtraAttends((prev) => prev + 1);
   };
 
   const handleBunk = () => {
-    setSimulatedTotal((prev) => prev + 1);
     setExtraBunks((prev) => prev + 1);
   };
 
+  const undoAttend = () => {
+    setExtraAttends((prev) => (prev > 0 ? prev - 1 : 0));
+  };
+
+  const undoBunk = () => {
+    setExtraBunks((prev) => (prev > 0 ? prev - 1 : 0));
+  };
+
   const resetSimulation = () => {
-    if (data && data.classesHeld > 0) {
-      const baseHeld =
-        officialPct > 0
-          ? Math.max(data.classesHeld, Math.round(data.classesAttended / (officialPct / 100)))
-          : data.classesHeld;
-      setSimulatedAttended(data.classesAttended);
-      setSimulatedTotal(baseHeld);
-    } else {
-      setSimulatedAttended(0);
-      setSimulatedTotal(0);
-    }
     setExtraAttends(0);
     setExtraBunks(0);
   };
 
-  const displayPercent =
-    extraAttends === 0 && extraBunks === 0 && officialPct > 0
-      ? officialPct
-      : simulatedTotal > 0
-        ? (simulatedAttended / simulatedTotal) * 100
-        : officialPct;
+  const displayPercent = totalCount > 0 ? (attendedCount / totalCount) * 100 : officialPct;
 
   const isMeetingTarget = displayPercent >= targetPercentage;
 
@@ -130,8 +128,8 @@ function SubjectDetailContent() {
 
   // Compute action text only when we have raw counts
   let actionText = "";
-  if (simulatedTotal > 0) {
-    const bunkStatus = calculateBunkStatus(simulatedAttended, simulatedTotal, targetPercentage);
+  if (totalCount > 0) {
+    const bunkStatus = calculateBunkStatus(attendedCount, totalCount, targetPercentage);
     if (bunkStatus.status === "critical") {
       if (bunkStatus.count === Infinity) {
         actionText = "It is impossible to reach 100% attendance.";
@@ -173,17 +171,17 @@ function SubjectDetailContent() {
               {officialPct % 1 === 0 ? officialPct.toFixed(0) : officialPct.toFixed(1)}% Overall
             </span>
             {urlLp > 0 && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 bg-white text-gray-500 font-nunito">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 font-nunito">
                 L: {urlLp}%
               </span>
             )}
             {urlTp > 0 && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 bg-white text-gray-500 font-nunito">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 font-nunito">
                 T: {urlTp}%
               </span>
             )}
             {urlPp > 0 && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 bg-white text-gray-500 font-nunito">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 font-nunito">
                 P: {urlPp}%
               </span>
             )}
@@ -192,9 +190,9 @@ function SubjectDetailContent() {
       </div>
 
       {error && (
-        <div className="mb-6 border border-red-200 rounded-2xl bg-red-50 p-4 flex items-start gap-3">
+        <div className="mb-6 border border-red-200 dark:border-red-900/40 rounded-2xl bg-red-50 dark:bg-red-950/20 p-4 flex items-start gap-3">
           <span className="text-red-500 mt-0.5">⚠</span>
-          <p className="text-sm font-medium text-red-700 font-nunito">
+          <p className="text-sm font-medium text-red-700 dark:text-red-400 font-nunito">
             {error.message}
           </p>
         </div>
@@ -206,7 +204,7 @@ function SubjectDetailContent() {
           <FigmaCard heading="Attendance Calculator">
             {/* Ring */}
             <div className="flex justify-center my-6">
-              <div className="relative w-40 h-40 flex items-center justify-center shrink-0 bg-white/60 border border-gray-100 rounded-full shadow-sm">
+              <div className="relative w-40 h-40 flex items-center justify-center shrink-0 bg-white/60 dark:bg-slate-900/40 border border-gray-100 dark:border-slate-800 rounded-full shadow-sm">
                 <svg className="transform -rotate-90 w-40 h-40">
                   <circle
                     cx="80"
@@ -215,7 +213,7 @@ function SubjectDetailContent() {
                     stroke="currentColor"
                     strokeWidth="12"
                     fill="transparent"
-                    className="text-gray-100"
+                    className="text-gray-100 dark:text-slate-800"
                   />
                   <circle
                     cx="80"
@@ -231,10 +229,10 @@ function SubjectDetailContent() {
                   />
                 </svg>
                 <div className="absolute flex flex-col items-center">
-                  <span className="text-5xl font-black tracking-tighter text-figma-dark leading-none font-nunito">
+                  <span className="text-5xl font-black tracking-tighter text-figma-dark dark:text-slate-100 leading-none font-nunito">
                     {displayPercent % 1 === 0 ? displayPercent.toFixed(0) : displayPercent.toFixed(1)}
                   </span>
-                  <span className="text-xs font-bold text-gray-400 font-nunito">
+                  <span className="text-xs font-bold text-gray-400 dark:text-slate-500 font-nunito">
                     %
                   </span>
                 </div>
@@ -242,30 +240,36 @@ function SubjectDetailContent() {
             </div>
 
             {/* Stats */}
-            {simulatedTotal > 0 && (
-              <div className="flex justify-around text-center mb-6 border-y border-gray-100 py-4 bg-gray-50 rounded-xl">
+            {totalCount > 0 && (
+              <div className="flex justify-around text-center mb-6 border-y border-gray-100 dark:border-slate-800 py-4 bg-gray-50 dark:bg-slate-900 rounded-xl">
                 <div>
-                  <p className="text-xs uppercase font-bold text-gray-400 font-nunito">
+                  <p className="text-xs uppercase font-bold text-gray-400 dark:text-slate-500 font-nunito">
                     Attended
                   </p>
-                  <p className="text-2xl font-black text-figma-dark font-nunito">
-                    {simulatedAttended}
+                  <p className="text-2xl font-black text-figma-dark dark:text-slate-100 font-nunito">
+                    {Math.round(attendedCount)}
                   </p>
                 </div>
-                <div className="w-px bg-gray-200" />
+                <div className="w-px bg-gray-200 dark:bg-slate-700" />
                 <div>
-                  <p className="text-xs uppercase font-bold text-gray-400 font-nunito">
+                  <p className="text-xs uppercase font-bold text-gray-400 dark:text-slate-500 font-nunito">
                     Total
                   </p>
-                  <p className="text-2xl font-black text-figma-dark font-nunito">{simulatedTotal}</p>
+                  <p className="text-2xl font-black text-figma-dark dark:text-slate-100 font-nunito">{totalCount}</p>
                 </div>
               </div>
+            )}
+
+            {practicalsExcluded && (
+              <p className="mb-6 -mt-3 text-center text-[11px] font-medium text-gray-400 dark:text-slate-500 font-nunito">
+                Practicals appear in the log below but are excluded from the overall %, matching your portal.
+              </p>
             )}
 
             {!hasDetailData && isLoading && (
               <div className="mb-6 py-3 flex flex-col items-center gap-2">
                 <Typing size="sm" duration={0.8} className="text-accent-primary" />
-                <p className="text-xs font-medium text-gray-400 font-nunito">
+                <p className="text-xs font-medium text-gray-400 dark:text-slate-500 font-nunito">
                   Loading class counts from portal…
                 </p>
               </div>
@@ -273,7 +277,7 @@ function SubjectDetailContent() {
 
             {!hasDetailData && !isLoading && !detailLink && (
               <div className="mb-6 py-3 text-center">
-                <p className="text-xs font-medium text-gray-400 font-nunito">
+                <p className="text-xs font-medium text-gray-400 dark:text-slate-500 font-nunito">
                   Daily log unavailable — showing overall percentage only.
                 </p>
               </div>
@@ -282,7 +286,7 @@ function SubjectDetailContent() {
             {/* Target Slider */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-2">
-                <label className="text-xs uppercase font-bold tracking-wider text-gray-500 font-nunito">
+                <label className="text-xs uppercase font-bold tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
                   Target Criteria
                 </label>
                 <span className="text-sm font-black bg-accent-primary text-white px-2.5 py-0.5 rounded-full font-nunito">
@@ -300,12 +304,12 @@ function SubjectDetailContent() {
             </div>
 
             {/* Action Text */}
-            {simulatedTotal > 0 && (
+            {totalCount > 0 && (
               <div
                 className={`p-4 rounded-xl border mb-6 ${
                   isMeetingTarget
-                    ? "bg-green-50 border-green-200 text-green-800"
-                    : "bg-red-50 border-red-200 text-red-800"
+                    ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40 text-green-800 dark:text-green-300"
+                    : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-300"
                 }`}
               >
                 <p className="text-sm font-bold text-center font-nunito">
@@ -315,39 +319,68 @@ function SubjectDetailContent() {
             )}
 
             {/* Buttons */}
-            {simulatedTotal > 0 && (
+            {totalCount > 0 && (
               <>
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleAttend}
-                    className="flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white border-2 border-green-600 font-bold transition-all hover:-translate-y-1 shadow-sm font-nunito"
-                  >
-                    <span className="text-sm font-black">+ Attend Class</span>
-                    {extraAttends > 0 && (
-                      <span className="text-[10px] font-bold opacity-80">+{extraAttends} added</span>
-                    )}
-                  </button>
-                  <button
-                    onClick={handleBunk}
-                    className="flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-xl bg-red-500 hover:bg-red-600 text-white border-2 border-red-600 font-bold transition-all hover:-translate-y-1 shadow-sm font-nunito"
-                  >
-                    <span className="text-sm font-black">− Skip Class</span>
-                    {extraBunks > 0 && (
-                      <span className="text-[10px] font-bold opacity-80">+{extraBunks} skipped</span>
-                    )}
-                  </button>
+                <div className="space-y-3">
+                  {/* Attend Class stepper */}
+                  <div className="flex items-stretch gap-2">
+                    <button
+                      onClick={undoAttend}
+                      disabled={extraAttends <= 0}
+                      aria-label="Remove an attended class"
+                      className="w-12 shrink-0 flex items-center justify-center rounded-xl bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-2 border-green-200 dark:border-green-900/40 font-black text-lg transition-colors hover:bg-green-100 dark:hover:bg-green-950/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-green-50 dark:disabled:hover:bg-green-950/30 font-nunito"
+                    >
+                      −
+                    </button>
+                    <div className="flex-1 flex flex-col items-center justify-center py-2.5 px-4 rounded-xl bg-green-500 text-white border-2 border-green-600 font-nunito">
+                      <span className="text-sm font-black">Attend Class</span>
+                      {extraAttends > 0 && (
+                        <span className="text-[10px] font-bold opacity-80">+{extraAttends} added</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleAttend}
+                      aria-label="Add an attended class"
+                      className="w-12 shrink-0 flex items-center justify-center rounded-xl bg-green-500 text-white border-2 border-green-600 font-black text-lg transition-all hover:bg-green-600 active:scale-95 font-nunito"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* Skip Class stepper */}
+                  <div className="flex items-stretch gap-2">
+                    <button
+                      onClick={undoBunk}
+                      disabled={extraBunks <= 0}
+                      aria-label="Remove a skipped class"
+                      className="w-12 shrink-0 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-2 border-red-200 dark:border-red-900/40 font-black text-lg transition-colors hover:bg-red-100 dark:hover:bg-red-950/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-50 dark:disabled:hover:bg-red-950/30 font-nunito"
+                    >
+                      −
+                    </button>
+                    <div className="flex-1 flex flex-col items-center justify-center py-2.5 px-4 rounded-xl bg-red-500 text-white border-2 border-red-600 font-nunito">
+                      <span className="text-sm font-black">Skip Class</span>
+                      {extraBunks > 0 && (
+                        <span className="text-[10px] font-bold opacity-80">+{extraBunks} skipped</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleBunk}
+                      aria-label="Add a skipped class"
+                      className="w-12 shrink-0 flex items-center justify-center rounded-xl bg-red-500 text-white border-2 border-red-600 font-black text-lg transition-all hover:bg-red-600 active:scale-95 font-nunito"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
 
-                {data &&
-                  (simulatedAttended !== data.classesAttended ||
-                    simulatedTotal !== data.classesHeld) && (
-                    <button
-                      onClick={resetSimulation}
-                      className="w-full mt-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-figma-dark transition-colors font-nunito"
-                    >
-                      ↻ Reset to Actual
-                    </button>
-                  )}
+                {data && (extraAttends > 0 || extraBunks > 0) && (
+                  <button
+                    onClick={resetSimulation}
+                    className="w-full mt-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 hover:text-figma-dark dark:hover:text-slate-100 transition-colors font-nunito"
+                  >
+                    ↻ Reset to Actual
+                  </button>
+                )}
               </>
             )}
           </FigmaCard>
@@ -357,18 +390,18 @@ function SubjectDetailContent() {
         {/* RIGHT: Daily Log */}
         <div className="xl:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-            <h3 className="text-xl font-bold text-figma-dark font-nunito">
+            <h3 className="text-xl font-bold text-figma-dark dark:text-slate-100 font-nunito">
               Day-by-Day Log
             </h3>
             
             {data && data.logs.length > 0 && (
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
                 <button
                   onClick={() => setLogFilter("all")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-all ${
                     logFilter === "all"
-                      ? "bg-white text-slate-800 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
+                      ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100"
                   }`}
                 >
                   All ({data.logs.length})
@@ -377,8 +410,8 @@ function SubjectDetailContent() {
                   onClick={() => setLogFilter("present")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-all ${
                     logFilter === "present"
-                      ? "bg-white text-green-600 shadow-sm"
-                      : "text-slate-500 hover:text-green-600"
+                      ? "bg-white dark:bg-slate-700 text-green-600 dark:text-green-400 shadow-sm"
+                      : "text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-400"
                   }`}
                 >
                   Present ({data.logs.filter((l) => l.status === "Present").length})
@@ -387,8 +420,8 @@ function SubjectDetailContent() {
                   onClick={() => setLogFilter("absent")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-all ${
                     logFilter === "absent"
-                      ? "bg-white text-red-600 shadow-sm"
-                      : "text-slate-500 hover:text-red-600"
+                      ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm"
+                      : "text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                   }`}
                 >
                   Absent ({data.logs.filter((l) => l.status === "Absent").length})
@@ -408,7 +441,7 @@ function SubjectDetailContent() {
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="border border-gray-100 bg-gray-50 rounded-2xl h-14 animate-pulse"
+                  className="border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 rounded-2xl h-14 animate-pulse"
                 />
               ))}
             </div>
@@ -484,8 +517,8 @@ function SubjectDetailContent() {
                           <span
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] ${
                               log.status === "Present"
-                                ? "bg-green-500/10 text-green-700 border-green-500/20"
-                                : "bg-red-500/10 text-red-700 border-red-500/20"
+                                ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+                                : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
                             }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${
@@ -519,8 +552,8 @@ export default function SubjectDetailPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen items-center justify-center bg-gray-50 font-nunito">
-          <p className="text-sm font-medium text-gray-400 animate-pulse">
+        <div className="flex h-screen items-center justify-center bg-[var(--surface-page)] font-nunito">
+          <p className="text-sm font-medium text-gray-400 dark:text-slate-500 animate-pulse">
             Loading…
           </p>
         </div>

@@ -8,7 +8,6 @@
 
 import {
   resolveProvider,
-  isCampusLynxProvider,
   assertKnownProvider,
 } from "../src/utils/provider";
 
@@ -23,12 +22,12 @@ describe("provider selection", () => {
   test("defaults to campuslynx when unset", () => {
     delete process.env.DATA_PROVIDER;
     expect(resolveProvider()).toBe("campuslynx");
-    expect(isCampusLynxProvider()).toBe(true);
+    expect(resolveProvider()).toBe("campuslynx");
   });
 
   test("selects campuslynx explicitly", () => {
     process.env.DATA_PROVIDER = "campuslynx";
-    expect(isCampusLynxProvider()).toBe(true);
+    expect(resolveProvider()).toBe("campuslynx");
   });
 
   test("rejects unknown provider at boot", () => {

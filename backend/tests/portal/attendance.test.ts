@@ -440,6 +440,80 @@ describe("fetchAttendanceDetail", () => {
     expect(detail.classesAttended).toBe(2);
     expect(detail.percentage).toBe(66.7);
   });
+
+  test("counts drop practicals when a lecture/tutorial exists", async () => {
+    // The portal's headline `LTpercantage` is lectures+tutorials only. If the
+    // counts included practicals, the subject calculator would show the portal
+    // percentage at rest and then jump to a different figure on the first
+    // simulated class (attending a class could appear to lower attendance).
+    // The L component yields 3 classes (2 present); P yields 2 more present.
+    let call = 0;
+    const transport: AttendanceTransport = {
+      async postEncrypted() {
+        if (call++ === 0) {
+          return {
+            status: { responseStatus: "Success" },
+            response: {
+              studentAttdsummarylist: [
+                { datetime: "01/09/2026", present: "Present" },
+                { datetime: "02/09/2026", present: "Absent" },
+                { datetime: "03/09/2026", present: "Present" },
+              ],
+            },
+          };
+        }
+        return {
+          status: { responseStatus: "Success" },
+          response: {
+            studentAttdsummarylist: [
+              { datetime: "05/09/2026", present: "Present" },
+              { datetime: "06/09/2026", present: "Present" },
+            ],
+          },
+        };
+      },
+    };
+
+    const detail = await fetchAttendanceDetail(transport, ctx, {
+      subject: "MIXED SUBJECT",
+      subjectid: "200",
+      individualsubjectcode: "M200",
+      components: { L: "CMP_L", P: "CMP_P" },
+    });
+
+    // Every class is still in the day-by-day log...
+    expect(detail.logs).toHaveLength(5);
+    // ...but the headline counts match the L+T basis (3 held, 2 attended).
+    expect(detail.classesHeld).toBe(3);
+    expect(detail.classesAttended).toBe(2);
+    expect(detail.percentage).toBe(66.7);
+  });
+
+  test("practical-only subjects still count their practicals", async () => {
+    const transport = stubTransport({
+      "/StudentClassAttendance/getstudentsubjectpersentage": {
+        status: { responseStatus: "Success" },
+        response: {
+          studentAttdsummarylist: [
+            { datetime: "01/09/2026", present: "Present" },
+            { datetime: "02/09/2026", present: "Absent" },
+          ],
+        },
+      },
+    });
+
+    const detail = await fetchAttendanceDetail(transport, ctx, {
+      subject: "LAB ONLY",
+      subjectid: "201",
+      individualsubjectcode: "L201",
+      components: { P: "CMP_P" },
+    });
+
+    expect(detail.logs).toHaveLength(2);
+    expect(detail.classesHeld).toBe(2);
+    expect(detail.classesAttended).toBe(1);
+    expect(detail.percentage).toBe(50);
+  });
 });
 
 describe("parseDateForSort", () => {

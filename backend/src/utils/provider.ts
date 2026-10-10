@@ -12,11 +12,6 @@ export function resolveProvider(raw: string | undefined = process.env.DATA_PROVI
   return (raw || "campuslynx") as DataProvider;
 }
 
-/** True when the CampusLynx portal is the active provider. */
-export function isCampusLynxProvider(): boolean {
-  return resolveProvider() === "campuslynx";
-}
-
 /**
  * Fail fast on a typo'd provider at boot rather than silently running an unknown configuration.
  */

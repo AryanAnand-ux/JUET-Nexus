@@ -8,7 +8,8 @@
  *   - Refresh every REFRESH_INTERVAL_MS while the page is visible.
  *   - Also refresh immediately when the page becomes visible again
  *     (handles kill + reopen, tab switch, phone unlock).
- *   - If refresh gets a 401 (cookie truly gone), redirect to /login.
+ *   - When the refresh is refused, fall back to `recoverSession()`, which does a
+ *     transparent silent re-login with the server-stored password.
  *   - Silently ignores network errors so offline / flaky connections don't
  *     kick the user out.
  */
@@ -16,16 +17,12 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import axios from "axios";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { recoverSession } from "@/utils/sessionRecovery";
 
 // Refresh every 5 minutes — well within the 15-minute portal token window
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 export function useSessionKeepAlive(enabled: boolean) {
-  const router = useRouter();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMounted = useRef(true);
 
@@ -33,22 +30,7 @@ export function useSessionKeepAlive(enabled: boolean) {
     if (!enabled || !isMounted.current) return;
 
     try {
-      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
-      const headers: Record<string, string> = {};
-      if (sessionToken) {
-        headers["x-session-token"] = sessionToken;
-      }
-
-      const res = await axios.post(
-        `${API_URL}/api/auth/refresh`,
-        {},
-        { withCredentials: true, headers, timeout: 15000 }
-      );
-
-      const renewed = res.data?.sessionToken || res.headers?.["x-session-token"];
-      if (renewed && typeof window !== "undefined") {
-        localStorage.setItem("sessionToken", renewed);
-      }
+      await recoverSession();
     } catch (err) {
       // Zero spontaneous logouts: keep quiet on background refresh failures
       if (process.env.NODE_ENV === "development") {

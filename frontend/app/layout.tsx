@@ -1,30 +1,17 @@
 import "../globals.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter, Newsreader, Nunito_Sans } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "../context/ThemeContext";
 import { Analytics } from "@vercel/analytics/next";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  variable: "--font-newsreader",
-});
-
-const nunitoSans = Nunito_Sans({
-  subsets: ["latin"],
-  variable: "--font-nunito-sans",
-});
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAF9F6" },
-    { media: "(prefers-color-scheme: dark)", color: "#0F172A" },
+    { media: "(prefers-color-scheme: light)", color: "#F7F7F5" },
+    { media: "(prefers-color-scheme: dark)", color: "#10131B" },
   ],
 };
 
@@ -57,7 +44,11 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
@@ -129,7 +120,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${newsreader.variable} ${nunitoSans.variable}`}>
+    <html lang="en">
       <head>
         <meta
           name="google-site-verification"
@@ -156,9 +147,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           {`
             if ('serviceWorker' in navigator) {
               const register = function() {
-                navigator.serviceWorker.register('/sw.js').then(function(reg) {
-                  console.log('[SW] Registered:', reg.scope);
-                }).catch(function(err) {
+                if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    registrations.forEach(function(registration) {
+                      registration.unregister();
+                    });
+                  });
+                  return;
+                }
+                navigator.serviceWorker.register('/sw.js').catch(function(err) {
                   console.error('[SW] Registration failed:', err);
                 });
               };

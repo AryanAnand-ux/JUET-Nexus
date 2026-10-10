@@ -107,7 +107,7 @@ function parseExamDateTime(str: string): Date | null {
 
   const dmyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(.*)$/);
   if (dmyMatch) {
-    let [, dStr, mStr, yStr, rest] = dmyMatch;
+    const [, dStr, mStr, yStr, rest] = dmyMatch;
     let d = parseInt(dStr, 10);
     let m = parseInt(mStr, 10);
     const y = parseInt(yStr, 10);
@@ -304,7 +304,7 @@ export async function fetchExamSchedule(
       let normalizedDate = rawDate;
       const dmyMatch = rawDate.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(.*)$/);
       if (dmyMatch) {
-        let [, dStr, mStr, yStr, rest] = dmyMatch;
+        const [, dStr, mStr, yStr, rest] = dmyMatch;
         let d = parseInt(dStr, 10);
         let m = parseInt(mStr, 10);
         const y = parseInt(yStr, 10);

@@ -15,13 +15,6 @@ process.env.ENCRYPTION_KEY = "0".repeat(64);
 const mockAxiosPost = jest.fn();
 const mockAxiosGet = jest.fn();
 
-jest.mock("../src/utils/axios", () => ({
-  __esModule: true,
-  default: { get: mockAxiosGet, post: mockAxiosPost },
-  get: mockAxiosGet,
-  post: mockAxiosPost,
-}));
-
 // We need a real axios instance to test PortalClient.refreshToken
 // so we mock at the module level
 jest.mock("axios", () => {
@@ -75,6 +68,10 @@ async function buildApp() {
   await app.register(fastifyCookie);
   app.get("/renew", async (request: any, reply: any) => {
     const identity = await getOrRenewCampusLynxIdentity(request, reply);
+    return { ok: true, token: identity.token };
+  });
+  app.get("/renew-force", async (request: any, reply: any) => {
+    const identity = await getOrRenewCampusLynxIdentity(request, reply, { force: true });
     return { ok: true, token: identity.token };
   });
   await app.ready();
@@ -311,5 +308,91 @@ describe("getOrRenewCampusLynxIdentity — refresh endpoint network failure", ()
 
     expect(res.statusCode).toBe(200);
     expect(res.json().token).toBe(almostExpiredToken);
+  });
+});
+
+// -------------------------------------------------------------------------
+// 5. Opaque (non-JWT) tokens are age-renewed — regression for the 15-min cliff
+// -------------------------------------------------------------------------
+
+describe("getOrRenewCampusLynxIdentity — opaque token (no readable exp)", () => {
+  let app: any;
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    app = await buildApp();
+  });
+  afterEach(() => app.close());
+
+  // Before this fix, `needsRenewal` was gated on `exp !== null`, so a token the
+  // backend could not parse was NEVER renewed and silently died after ~15 min.
+  it("renews an opaque token held longer than the age window", async () => {
+    const opaque = "not-a-jwt-token";
+    const newToken = makeJwt(3600);
+    const nineMinutesAgo = Math.floor(Date.now() / 1000) - 9 * 60;
+
+    mockAxiosPost.mockResolvedValueOnce({
+      data: JSON.stringify({
+        status: { responseStatus: "Success" },
+        response: { msg: "Success", token: newToken },
+      }),
+    });
+
+    const session = {
+      ...BASE_SESSION,
+      campusLynx: { ...BASE_SESSION.campusLynx!, token: opaque, tokenIssuedAt: nineMinutesAgo },
+    };
+    const res = await app.inject({ method: "GET", url: "/renew", cookies: { auth: encryptSessionData(session) } });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockAxiosPost).toHaveBeenCalledTimes(1);
+    expect(String(mockAxiosPost.mock.calls[0][0])).toContain("refreshTokenRequest");
+    expect(res.json().token).toBe(newToken);
+  });
+
+  it("does NOT renew a fresh opaque token (still within the age window)", async () => {
+    const opaque = "not-a-jwt-token";
+    const twoMinutesAgo = Math.floor(Date.now() / 1000) - 2 * 60;
+
+    const session = {
+      ...BASE_SESSION,
+      campusLynx: { ...BASE_SESSION.campusLynx!, token: opaque, tokenIssuedAt: twoMinutesAgo },
+    };
+    const res = await app.inject({ method: "GET", url: "/renew", cookies: { auth: encryptSessionData(session) } });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockAxiosPost).not.toHaveBeenCalled();
+    expect(res.json().token).toBe(opaque);
+  });
+});
+
+// -------------------------------------------------------------------------
+// 6. Forced renewal (the /api/auth/refresh keepalive) renews unconditionally
+// -------------------------------------------------------------------------
+
+describe("getOrRenewCampusLynxIdentity — forced renewal", () => {
+  let app: any;
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    app = await buildApp();
+  });
+  afterEach(() => app.close());
+
+  it("renews a healthy, far-from-expiry token when force is set", async () => {
+    const healthy = makeJwt(3600); // 1 hour left — no skew, no age trigger
+    const newToken = makeJwt(7200);
+
+    mockAxiosPost.mockResolvedValueOnce({
+      data: JSON.stringify({
+        status: { responseStatus: "Success" },
+        response: { msg: "Success", token: newToken },
+      }),
+    });
+
+    const session = { ...BASE_SESSION, campusLynx: { ...BASE_SESSION.campusLynx!, token: healthy } };
+    const res = await app.inject({ method: "GET", url: "/renew-force", cookies: { auth: encryptSessionData(session) } });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockAxiosPost).toHaveBeenCalledTimes(1);
+    expect(res.json().token).toBe(newToken);
   });
 });

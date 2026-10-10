@@ -1,14 +1,3 @@
-export function computeScenarioPercentage(
-  actualAttended: number,
-  actualHeld: number,
-  simulatedBunks: number,
-  simulatedAttends: number
-): number {
-  const total = actualHeld + simulatedBunks + simulatedAttends;
-  if (total <= 0) return 0;
-  return ((actualAttended + simulatedAttends) / total) * 100;
-}
-
 export interface BunkStatus {
   status: 'safe' | 'caution' | 'critical';
   count: number;
@@ -30,14 +19,11 @@ export function calculateBunkStatus(
     const maxHeld = Math.floor((100 * attended) / target);
     const safeSkips = Math.max(0, maxHeld - held);
     
-    let status: 'safe' | 'caution' | 'critical' = 'safe';
-    if (percentage >= 85) {
-      status = 'safe';
-    } else if (percentage >= 75) {
-      status = 'caution';
-    } else {
-      status = 'critical';
-    }
+    // This branch already guarantees percentage >= target. Classify relative to
+    // the requested target: a 10-point cushion above it is "safe", otherwise
+    // "caution". (Previously hardcoded to 85/75, which mislabelled custom targets
+    // -- e.g. target 60% at 70% was reported as "critical".)
+    const status: 'safe' | 'caution' = percentage >= target + 10 ? 'safe' : 'caution';
     return { status, count: safeSkips };
   } else {
     if (target >= 100) {

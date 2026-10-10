@@ -14,8 +14,6 @@ export function useAttendanceDetails(
   subject: string,
   link: string | null
 ) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
   const [state, setState] = useState<AttendanceDetailsState>({
     data: null,
     isLoading: true,
@@ -35,18 +33,11 @@ export function useAttendanceDetails(
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
-      const headers: Record<string, string> = {};
-      if (sessionToken) {
-        headers["x-session-token"] = sessionToken;
-      }
-
       const response = await apiClient.get(
         `/api/attendance/details?subject=${encodeURIComponent(
           subject
         )}&link=${encodeURIComponent(link)}`,
         {
-          headers,
           timeout: 60000,
         }
       );

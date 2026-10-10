@@ -14,9 +14,9 @@ export const FigmaButton = React.forwardRef<HTMLButtonElement, FigmaButtonProps>
 
     const variants = {
       primary: "bg-accent-primary hover:bg-accent-hover text-white focus:ring-accent-primary",
-      secondary: "bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-750 text-figma-dark dark:text-slate-200 focus:ring-slate-500 dark:focus:ring-offset-slate-900",
+      secondary: "bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-figma-dark dark:text-slate-200 focus:ring-slate-500 dark:focus:ring-offset-slate-900",
       danger: "bg-figma-red hover:bg-[#9d3c31] text-white focus:ring-figma-red",
-      ghost: "bg-transparent hover:bg-gray-100 dark:hover:bg-slate-850 text-figma-gray dark:text-slate-400 hover:text-figma-dark dark:hover:text-slate-100 focus:ring-slate-600",
+      ghost: "bg-transparent hover:bg-gray-100 dark:hover:bg-slate-800 text-figma-gray dark:text-slate-400 hover:text-figma-dark dark:hover:text-slate-100 focus:ring-slate-600",
     };
 
     const sizes = {

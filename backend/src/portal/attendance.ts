@@ -443,9 +443,13 @@ export async function fetchAttendanceSummary(
 /**
  * Fetch day-by-day logs for one subject, one portal call per component the
  * subject actually has (Lecture / Tutorial / Practical columns). Logs merge in
- * L, T, P order with the component as each entry's `type`, and the headline
- * counts are derived from the merged logs -- the same derivation the
- * WebKiosk details route applies to scraped rows.
+ * L, T, P order with the component as each entry's `type`.
+ *
+ * The headline counts (`classesHeld` / `classesAttended`) are measured on the
+ * same basis as the portal's headline percentage (`LTpercantage`): lectures and
+ * tutorials only, dropping practicals whenever the subject has any L/T classes.
+ * Practical-only subjects count their practicals. The full merged `logs` array
+ * still carries every component for the day-by-day view.
  */
 export async function fetchAttendanceDetail(
   transport: AttendanceTransport,
@@ -484,8 +488,20 @@ export async function fetchAttendanceDetail(
   // component order is preserved (Array.sort is stable in V8/Node ≥ 11).
   logs.sort((a, b) => parseDateForSort(b.date) - parseDateForSort(a.date));
 
-  const classesHeld = logs.length;
-  const classesAttended = logs.filter((l) => l.status === "Present").length;
+  // Counts must share the basis of the headline percentage (`LTpercantage` is
+  // lectures+tutorials only). Counting practicals too made the subject page
+  // show the portal's percentage at rest and then jump to a different, lower
+  // figure the moment a class was simulated -- attending a class appeared to
+  // *drop* attendance. Practicals remain in `logs` for the day-by-day view but
+  // are excluded from the counts whenever lectures/tutorials exist; a
+  // practical-only subject has no L/T logs, so it counts all of them.
+  const lectureOrTutorialLogs = logs.filter(
+    (l) => l.type === "Lecture" || l.type === "Tutorial"
+  );
+  const countedLogs = lectureOrTutorialLogs.length > 0 ? lectureOrTutorialLogs : logs;
+
+  const classesHeld = countedLogs.length;
+  const classesAttended = countedLogs.filter((l) => l.status === "Present").length;
   const percentage =
     subject.officialPercentage !== undefined && subject.officialPercentage > 0
       ? subject.officialPercentage

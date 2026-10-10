@@ -169,6 +169,12 @@ export interface PortalSessionIdentity extends PortalIdentity {
    * was added — refresh will still be attempted with a current timestamp fallback.
    */
   tokendate?: string;
+  /**
+   * Epoch seconds at which this backend last obtained/rotated `token`. Used to
+   * age-renew tokens whose `exp` cannot be parsed (opaque tokens) so a session
+   * is never left to hit the portal's ~15-minute hard expiry unnoticed.
+   */
+  tokenIssuedAt?: number;
 }
 
 /** How a request failure should be surfaced to the caller. */

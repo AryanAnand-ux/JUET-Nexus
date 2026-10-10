@@ -12,7 +12,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       aria-label={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode`}
-      className="p-2 sm:p-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 shadow-sm transition-all duration-200 flex items-center justify-center shrink-0"
+      className="min-h-11 min-w-11 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-muted)] shadow-sm transition-colors duration-200 hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] flex items-center justify-center shrink-0"
       title={`Switch to ${themeMode === "dark" ? "light" : "dark"} mode`}
     >
       {themeMode === "dark" ? (

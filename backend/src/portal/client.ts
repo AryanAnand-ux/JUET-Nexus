@@ -42,6 +42,16 @@ function createAgent(): https.Agent {
   // Portal certificate chains on university infrastructure may lack intermediate
   // root certs or require custom validation. Allow strict rejection when configured.
   const rejectUnauthorized = process.env.PORTAL_REJECT_UNAUTHORIZED === "true";
+
+  // Safety guard: never allow TLS downgrade in production.
+  if (process.env.NODE_ENV === "production" && !rejectUnauthorized) {
+    console.error(
+      "[Security] PORTAL_REJECT_UNAUTHORIZED must be 'true' in production. " +
+      "Refusing to start with TLS verification disabled."
+    );
+    process.exit(1);
+  }
+
   return new https.Agent({
     keepAlive: true,
     maxSockets: 1,
@@ -299,7 +309,8 @@ export class PortalClient {
       // captcha, which is why the two are indistinguishable by inspection.
       // Because this path already carries a Bearer token, an empty body means
       // the session is dead: report 401 so callers surface "log in again"
-      // rather than a generic fetch failure. Token refresh is not implemented.
+      // rather than a generic fetch failure. The caller can attempt a
+      // `refreshToken` first (see `getOrRenewCampusLynxIdentity`).
       throw new PortalError(`The portal session expired for ${path}.`, 401);
     }
     return parseJson(text);
@@ -354,12 +365,15 @@ export class PortalClient {
    *
    * The portal may rotate the token in the response (check all known key names).
    * Returns { ok: true, token? } on success; { ok: false } when the portal
-   * refuses (msg !== "Success" or empty body).
+   * refuses (msg !== "Success" or empty body); and { ok: false, networkError: true }
+   * when the request never reached the portal at all. The two failure modes must
+   * stay distinct: a transport blip says nothing about whether the session is
+   * still valid, so callers must not treat it as an expired session.
    */
   async refreshToken(params: {
     username: string;
     tokendate?: string;
-  }): Promise<{ ok: boolean; token?: string }> {
+  }): Promise<{ ok: boolean; token?: string; networkError?: boolean }> {
     const now = new Date();
     const payload = JSON.stringify({
       username: params.username,
@@ -375,7 +389,9 @@ export class PortalClient {
         { ...ANONYMOUS_HEADERS(now), "Content-Type": "application/json" }
       );
     } catch {
-      return { ok: false };
+      // `send` uses `validateStatus: () => true`, so it only throws on a
+      // genuine transport failure (DNS/TLS/timeout), not an HTTP error code.
+      return { ok: false, networkError: true };
     }
 
     if (!text?.trim()) return { ok: false };

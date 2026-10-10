@@ -65,6 +65,8 @@ export async function createServer() {
               },
             },
     },
+    // Reject request bodies larger than 1 MB to prevent memory exhaustion.
+    bodyLimit: 1 * 1024 * 1024,
   });
 
   const globalCache = new CacheService(getRedisUrl());
@@ -89,7 +91,7 @@ export async function createServer() {
       return cb(new Error('Origin not allowed by CORS policy'), false);
     },
     credentials: true,
-    exposedHeaders: ['x-cache', 'x-cache-status', 'x-cache-ttl', 'x-session-token'],
+    exposedHeaders: ['x-cache', 'x-cache-status', 'x-cache-ttl'],
   });
 
   // Global rate limit: 300 requests per minute per IP (increased for shared campus Wi-Fi)
@@ -102,6 +104,19 @@ export async function createServer() {
       error: `Too many requests. Try again in ${Math.ceil(context.ttl / 1000)} seconds.`,
       code: 'RATE_LIMITED',
     }),
+  });
+
+  // Conservative security headers on every response. A CSP is intentionally
+  // omitted (this is a JSON API with no inline document content) to avoid
+  // breaking clients while still disabling MIME sniffing, framing and referrer leaks.
+  fastify.addHook('onSend', async (_request, reply, payload) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    reply.header('Referrer-Policy', 'no-referrer');
+    if (process.env.NODE_ENV === 'production') {
+      reply.header('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+    }
+    return payload;
   });
 
   await registerAuthRoutes(fastify, globalCache);
@@ -129,16 +144,6 @@ export async function createServer() {
     });
   });
 
-  const signals = ['SIGINT', 'SIGTERM'];
-  signals.forEach((signal) => {
-    process.on(signal, async () => {
-      fastify.log.info(`[Server] Received ${signal}, shutting down...`);
-      await globalCache.close();
-      await fastify.close();
-      process.exit(0);
-    });
-  });
-
   return { fastify, cache: globalCache };
 }
 
@@ -147,6 +152,16 @@ export async function startServer() {
     const { fastify, cache } = await createServer();
 
     await fastify.listen({ port: PORT, host: HOST });
+
+    // Last-resort process-level guards so a stray rejection/throw is logged
+    // instead of vanishing (rejections) or crashing opaquely (exceptions).
+    process.on('unhandledRejection', (reason) => {
+      fastify.log.error({ err: reason }, '[Server] Unhandled promise rejection');
+    });
+    process.on('uncaughtException', (error) => {
+      fastify.log.error({ err: error }, '[Server] Uncaught exception, shutting down');
+      process.exit(1);
+    });
 
     fastify.log.info(`JUET//SYNC backend running on http://${HOST}:${PORT}`);
     fastify.log.info(`CORS origins: ${CORS_ORIGINS.join(', ')}`);
@@ -159,12 +174,26 @@ export async function startServer() {
       'Endpoints: GET /health, GET /api/init, POST /api/auth, GET /api/dashboard'
     );
 
-    // Run the background academic updates check every 30 minutes
-    setInterval(() => {
+    // Run the background academic updates check every 30 minutes.
+    // Retain the handle so it can be cleared on graceful shutdown.
+    const pushWorkerInterval = setInterval(() => {
       checkAcademicUpdates(cache, fastify.log).catch((err: any) => {
         fastify.log.error(err, '[PushWorker] Background execution failed');
       });
     }, 30 * 60 * 1000);
+    // Unref so the interval does not prevent the process from exiting naturally.
+    pushWorkerInterval.unref();
+
+    const signals = ['SIGINT', 'SIGTERM'];
+    signals.forEach((signal) => {
+      process.on(signal, async () => {
+        fastify.log.info(`[Server] Received ${signal}, shutting down...`);
+        clearInterval(pushWorkerInterval);
+        await cache.close();
+        await fastify.close();
+        process.exit(0);
+      });
+    });
   } catch (error) {
     console.error('[Server] Failed to start:', error);
     process.exit(1);

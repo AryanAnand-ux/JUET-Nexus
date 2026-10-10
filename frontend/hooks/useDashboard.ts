@@ -6,7 +6,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { apiClient } from "@/utils/api";
 import type { DashboardResponse } from "@/types";
 
@@ -26,9 +25,6 @@ export interface UseDashboardReturn extends DashboardState {
 }
 
 export function useDashboard(enrollment: string | null): UseDashboardReturn {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-  const router = useRouter();
-
   const [state, setState] = useState<DashboardState>({
     data: null,
     isLoading: true,
@@ -54,27 +50,15 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
-      const headers: Record<string, string> = {};
-      if (sessionToken) {
-        headers["x-session-token"] = sessionToken;
-      }
-
       const response = await apiClient.get(
         `/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
         {
-          headers,
           timeout: 60000,
         }
       );
 
       const { data, cached, ttl } = response.data;
       const cacheHeader = response.headers["x-cache"];
-      const renewedToken = response.headers["x-session-token"];
-      if (renewedToken && typeof window !== "undefined") {
-        localStorage.setItem("sessionToken", renewedToken);
-      }
-
       setState((prev) => ({
         ...prev,
         data,
@@ -92,11 +76,12 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       }
     } catch (error: any) {
       if (error.response?.status === 401) {
-        // Zero spontaneous logouts: never wipe localStorage or force redirect to login on background 401
         setState((prev) => ({
           ...prev,
           error: {
-            message: "Portal session is syncing in background. Your records remain safe.",
+            message: prev.data
+              ? "We could not reconnect to the portal. Your last synced records are still shown."
+              : "We could not reconnect to the portal. Please try again.",
             code: error.response?.data?.code || "SESSION_RENEWING",
           },
           isLoading: false,
@@ -140,16 +125,10 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
 
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
-      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("sessionToken") : null;
-      const headers: Record<string, string> = {};
-      if (sessionToken) {
-        headers["x-session-token"] = sessionToken;
-      }
       await apiClient.get(
         `/api/dashboard/invalidate?enrollment=${encodeURIComponent(
           enrollment
-        )}`,
-        { headers }
+        )}`
       );
       // Fetch fresh data
       await fetchDashboard();

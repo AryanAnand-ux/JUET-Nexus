@@ -198,7 +198,7 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
                 {filteredSubjects.map((sub, idx) => (
                   <tr
                     key={`${sub.subjectcode}-${idx}`}
-                    className="hover:bg-gray-50/50 dark:hover:bg-slate-850/50 transition-colors"
+                    className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors"
                   >
                     <td className="py-4 px-5 font-semibold text-gray-900 dark:text-slate-100">
                       {sub.subjectdesc || "Untitled Course"}

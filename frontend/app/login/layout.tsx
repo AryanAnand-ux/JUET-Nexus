@@ -17,5 +17,9 @@ export const metadata: Metadata = {
 };
 
 export default function LoginLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return (
+    <div style={{ fontFamily: "var(--font-jakarta)" }}>
+      {children}
+    </div>
+  );
 }

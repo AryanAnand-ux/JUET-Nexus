@@ -46,6 +46,7 @@ Thumbs.db
 .turbo/
 *.pem
 scratch/
+stitch-export/
 backend/data/
 
 # Redis
