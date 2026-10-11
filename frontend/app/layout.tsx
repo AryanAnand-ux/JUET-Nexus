@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Script from "next/script";
 import { ThemeProvider } from "../context/ThemeContext";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -143,6 +144,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           {children}
         </ThemeProvider>
         <Analytics />
+        <SpeedInsights />
         <Script id="register-sw" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
