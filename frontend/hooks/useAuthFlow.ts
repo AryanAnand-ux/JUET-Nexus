@@ -92,7 +92,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
 
     try {
       const response = await axios.get(`${API_URL}/api/init`, {
-        timeout: 60000,
+        timeout: 45000,
       });
 
       setLoginFlow("campuslynx");
@@ -105,7 +105,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error
           ? err.response.data.error
-          : "Failed to load captcha. Please try again.";
+          : "Portal connection timed out or is unavailable. Please click refresh to retry.";
 
       setError({ message });
       console.error("Failed to fetch captcha:", err);
@@ -140,7 +140,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
             captcha: credentials.captchaInput,
             sessionToken: captcha.sessionToken,
           },
-          { timeout: 60000, withCredentials: true }
+          { timeout: 30000, withCredentials: true }
         );
 
         const token = verifyRes.data.loginToken;
@@ -151,7 +151,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
         const authRes = await axios.post(
           `${API_URL}/api/auth`,
           { loginToken: token, password: credentials.password },
-          { timeout: 60000, withCredentials: true }
+          { timeout: 30000, withCredentials: true }
         );
 
         if (authRes.data.success) {
@@ -206,7 +206,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
             captcha: credentials.captchaInput,
             sessionToken: captcha.sessionToken,
           },
-          { timeout: 60000, withCredentials: true }
+          { timeout: 30000, withCredentials: true }
         );
 
         setLoginToken(response.data.loginToken);
@@ -252,7 +252,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
         const response = await axios.post(
           `${API_URL}/api/auth`,
           { loginToken, password: credentials.password },
-          { timeout: 60000, withCredentials: true }
+          { timeout: 20000, withCredentials: true }
         );
 
         if (response.data.success) {

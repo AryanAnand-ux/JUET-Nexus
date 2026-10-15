@@ -4,6 +4,7 @@ import { createPortalClient } from "../portal/client";
 import { fetchGradeCard } from "../portal/grades";
 import { PortalError } from "../portal/types";
 import { CacheService } from "../utils/cache";
+import { decryptSessionData } from "../utils/encryption";
 
 const GRADES_CACHE_TTL_SEC = 3600; // 1 hour
 
@@ -16,6 +17,22 @@ export async function registerGradesRoutes(
     try {
       identity = await getOrRenewCampusLynxIdentity(request, reply);
     } catch (err: any) {
+      const encryptedSession = request.cookies?.auth;
+      if (encryptedSession && cache) {
+        try {
+          const session = decryptSessionData(encryptedSession);
+          const userEnrollment = session.campusLynx?.enrollmentno || session.enrollment;
+          if (userEnrollment) {
+            const cached = await cache.get<any>("grades", userEnrollment);
+            if (cached) {
+              return reply.send({ success: true, data: cached, cached: true, stale: true });
+            }
+          }
+        } catch {
+          // Ignore and proceed to 401
+        }
+      }
+
       return reply.status(err.statusCode || 401).send({
         success: false,
         error: err.message || "Unauthorized",

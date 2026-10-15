@@ -50,7 +50,14 @@ export default function LoginPage() {
       id="main-content"
       className="min-h-screen w-full bg-[#8ba5ec] flex items-center justify-center p-4 sm:p-6"
     >
-      <LoadingOverlay isVisible={isFetchingCaptcha} />
+      <LoadingOverlay
+        isVisible={isLoading}
+        message="Authenticating with student portal..."
+        timeoutMs={15000}
+        onCancel={() => {
+          clearError();
+        }}
+      />
 
       <main className="w-full max-w-[960px] bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-[0_25px_60px_-15px_rgba(15,23,42,0.35)] overflow-hidden flex flex-col md:flex-row border border-[#e4e6e3]">
         {/* Left illustration pane (hidden on mobile) */}

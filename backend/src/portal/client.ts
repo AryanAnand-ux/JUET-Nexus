@@ -30,13 +30,13 @@ const DEFAULT_BASE_URL =
   process.env.PORTAL_BASE_URL ||
   "https://studentportal.juet.ac.in/StudentPortalAPI";
 
-const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT || "60000", 10);
+const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT || "15000", 10);
 
 /**
- * A single persistent socket is used for the whole client. `getcaptcha` and
- * `pretoken-check` are answered by the same request the browser makes over one
- * connection, so keeping affinity avoids being load-balanced to a portal node
- * that has never seen the captcha.
+ * Socket agent configuration for the portal client.
+ * Pools connections with keepAlive and allows up to 10 concurrent sockets
+ * so parallel dashboard data fetching (attendance, marks, semesters, notices)
+ * is not serialized.
  */
 function createAgent(): https.Agent {
   // Portal certificate chains on university infrastructure may lack intermediate
@@ -54,7 +54,7 @@ function createAgent(): https.Agent {
 
   return new https.Agent({
     keepAlive: true,
-    maxSockets: 1,
+    maxSockets: 10,
     keepAliveMsecs: 30000,
     rejectUnauthorized,
   });

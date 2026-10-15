@@ -57,6 +57,8 @@ backend/package-lock.json
 
 # AI & Agent local configs
 .agent/
+.agents/
+skills-lock.json
 .superpowers/
 docs/superpowers/
 mcp.json

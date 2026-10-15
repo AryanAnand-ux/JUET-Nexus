@@ -53,6 +53,7 @@ function getRedisUrl(): string | undefined {
 
 export async function createServer() {
   const fastify = Fastify({
+    trustProxy: true,
     logger: {
       transport:
         process.env.NODE_ENV === 'production'
@@ -79,6 +80,8 @@ export async function createServer() {
       }
       if (
         CORS_ORIGINS.includes(origin) ||
+        origin === 'https://juetnexus.vercel.app' ||
+        /^https:\/\/(juetnexus|juet-nexus)[a-zA-Z0-9-]*\.vercel\.app$/.test(origin) ||
         /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
       ) {
         return cb(null, true);
@@ -88,7 +91,7 @@ export async function createServer() {
           return cb(null, true);
         }
       }
-      return cb(new Error('Origin not allowed by CORS policy'), false);
+      return cb(null, false);
     },
     credentials: true,
     exposedHeaders: ['x-cache', 'x-cache-status', 'x-cache-ttl'],

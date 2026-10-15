@@ -7,6 +7,7 @@
 
 import { FastifyInstance } from 'fastify';
 import { CacheService } from '../utils/cache';
+import { decryptSessionData } from '../utils/encryption';
 import { getCampusLynxIdentity, getOrRenewCampusLynxIdentity } from './session';
 import { createPortalClient } from '../portal/client';
 import { fetchCampusLynxDashboard } from '../portal/dashboard';
@@ -94,6 +95,38 @@ export async function registerDashboardRoutes(
       try {
         identity = await getOrRenewCampusLynxIdentity(request, reply);
       } catch (err: any) {
+        // If the portal token expired but the user holds a valid encrypted auth cookie,
+        // attempt to serve cached dashboard data so the user is never locked out
+        // of viewing their records while background session recovery occurs.
+        const encryptedSession = request.cookies?.auth;
+        if (encryptedSession) {
+          try {
+            const session = decryptSessionData(encryptedSession);
+            const userEnrollment = (session.campusLynx?.username || session.enrollment || '').toUpperCase();
+            if (userEnrollment) {
+              const cachedWrapper = await cache.get<any>('dashboard', userEnrollment);
+              if (cachedWrapper) {
+                const data = cachedWrapper.data ? cachedWrapper.data : cachedWrapper;
+                request.log.info(`[Dashboard] Serving stale cached data for ${userEnrollment} during portal token expiry`);
+                return reply
+                  .header('X-Cache', 'hit')
+                  .header('X-Cache-Status', 'stale')
+                  .header('X-Session-Status', 'expired')
+                  .send({
+                    success: true,
+                    data,
+                    cached: true,
+                    stale: true,
+                    sessionExpired: true,
+                    fetchedAt: cachedWrapper.fetchedAt || Date.now(),
+                  });
+              }
+            }
+          } catch {
+            // Decryption failed or invalid cookie, proceed to 401
+          }
+        }
+
         return reply.status(err.statusCode || 401).send({
           success: false,
           error: err.message || 'Unauthorized',

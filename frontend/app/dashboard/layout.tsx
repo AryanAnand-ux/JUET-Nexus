@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { DashboardSessionKeeper } from "@/components/DashboardSessionKeeper";
 
 export const metadata: Metadata = {
   robots: {
@@ -14,5 +15,10 @@ export default function DashboardSubtreeLayout({
 }: {
   children: ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <DashboardSessionKeeper />
+      {children}
+    </>
+  );
 }

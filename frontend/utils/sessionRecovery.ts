@@ -68,7 +68,7 @@ async function runRecovery(): Promise<boolean> {
     try {
       const init = await axios.get(`${API_URL}/api/init`, {
         withCredentials: true,
-        timeout: 30000,
+        timeout: 15000,
       });
       captchaImage = init.data?.captchaImage || "";
       sessionToken = init.data?.sessionToken || "";
@@ -89,20 +89,24 @@ async function runRecovery(): Promise<boolean> {
       await axios.post(
         `${API_URL}/api/auth/silent-login`,
         { captcha: captchaText, sessionToken },
-        { withCredentials: true, timeout: 30000 }
+        { withCredentials: true, timeout: 15000 }
       );
       return true;
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const code = err.response?.data?.code;
-        // Terminal states — retrying cannot help; ask the user to sign in.
+        // Terminal states — if credentials repeatedly fail or session is missing, ask the user to sign in.
         if (
           code === "NO_STORED_CREDENTIALS" ||
-          code === "CREDENTIALS_INVALID" ||
           code === "OTP_REQUIRED" ||
           code === "NO_SESSION" ||
           code === "INVALID_SESSION"
         ) {
+          return false;
+        }
+        // If credentials failed on attempt > 0, password really changed.
+        // On attempt 0, could be portal 200-empty-body glitch, so retry once.
+        if (code === "CREDENTIALS_INVALID" && attempt > 0) {
           return false;
         }
         // CAPTCHA_INVALID / CAPTCHA_EXPIRED / 502 / timeout: try a fresh captcha.

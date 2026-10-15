@@ -393,12 +393,28 @@ export async function fetchCampusLynxDashboard(
   transport: DashboardTransport,
   args: CampusLynxDashboardArgs
 ): Promise<DashboardResponse> {
-  const profile = await fetchStudentProfile(transport, args.instituteid);
+  // Phase 1: Fetch student profile, latest registration, and notices concurrently.
+  // None of these three depend on each other, saving multiple sequential roundtrips.
+  const [profileSettled, regSettled, noticesSettled] = await Promise.allSettled([
+    fetchStudentProfile(transport, args.instituteid),
+    fetchLatestRegistration(transport, args.instituteid),
+    fetchNotices(transport),
+  ]);
 
-  const registration = await fetchLatestRegistration(transport, args.instituteid);
+  if (profileSettled.status === "rejected") {
+    throw profileSettled.reason;
+  }
+  const profile = profileSettled.value;
+
+  if (regSettled.status === "rejected") {
+    throw regSettled.reason;
+  }
+  const registration = regSettled.value;
   if (!registration.registrationid) {
     throw new PortalError("The portal returned no usable registration.", 502);
   }
+
+  const notices = noticesSettled.status === "fulfilled" ? noticesSettled.value : [];
 
   const ctx: AttendanceContext = {
     instituteid: args.instituteid,
@@ -406,27 +422,37 @@ export async function fetchCampusLynxDashboard(
     registrationid: registration.registrationid,
     registrationcode: registration.registrationcode ?? "",
   };
-  const attendance: AttendanceRecord[] = await fetchAttendanceSummary(transport, ctx);
 
-  const [marksSettled, semestersSettled, noticesSettled] = await Promise.allSettled([
-    fetchMarkRows(transport, {
-      instituteid: args.instituteid,
-      registrationid: registration.registrationid,
-      companyid: args.companyid,
-    }),
+  // Phase 2: Fetch attendance, marks, and semesters concurrently.
+  // Semesters has a race timeout because CampusLynx frequently hangs or errors on it.
+  const semesterPromise = Promise.race([
     fetchSemesters(transport, {
       instituteid: args.instituteid,
       studentid: profile.studentid,
       name: profile.name,
       enrollmentno: profile.enrollment,
     }),
-    fetchNotices(transport),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
   ]);
+
+  const [attendanceSettled, marksSettled, semestersSettled] = await Promise.allSettled([
+    fetchAttendanceSummary(transport, ctx),
+    fetchMarkRows(transport, {
+      instituteid: args.instituteid,
+      registrationid: registration.registrationid,
+      companyid: args.companyid,
+    }),
+    semesterPromise,
+  ]);
+
+  if (attendanceSettled.status === "rejected") {
+    throw attendanceSettled.reason;
+  }
+  const attendance: AttendanceRecord[] = attendanceSettled.value;
 
   const markRows = marksSettled.status === "fulfilled" ? marksSettled.value : [];
   const semesterInfo =
     semestersSettled.status === "fulfilled" ? semestersSettled.value : null;
-  const notices = noticesSettled.status === "fulfilled" ? noticesSettled.value : [];
 
   const semesters = semesterInfo?.semesters ?? [];
   const current =

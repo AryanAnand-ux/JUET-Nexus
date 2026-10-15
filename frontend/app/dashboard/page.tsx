@@ -304,20 +304,29 @@ export default function DashboardPage() {
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-            Your dashboard is unavailable
+            Your dashboard is temporarily unavailable
           </h3>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Your portal session may have expired. Please sign in again to load current records.
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+            We could not reach the university portal. You can retry connecting or sign in again.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              performLogout().finally(() => router.push("/login"));
-            }}
-            className="mt-5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
-          >
-            Sign in again
-          </button>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => refresh()}
+              className="rounded-xl bg-accent-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-accent-primary/90 shadow-sm active:scale-95 transition"
+            >
+              Try Reconnecting
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                performLogout().finally(() => router.push("/login"));
+              }}
+              className="rounded-xl border border-gray-300 dark:border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 active:scale-95 transition"
+            >
+              Sign in again
+            </button>
+          </div>
         </div>
       )}
     </DashboardLayout>

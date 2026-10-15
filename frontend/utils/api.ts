@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 export const apiClient = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  timeout: 60000,
+  timeout: 45000,
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -44,6 +44,8 @@ apiClient.interceptors.response.use(
       !originalRequest.url?.includes("/api/auth/silent-login") &&
       !originalRequest.url?.includes("/api/auth/verify-user")
     ) {
+      originalRequest._retry = true;
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
