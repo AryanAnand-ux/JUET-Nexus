@@ -1,5 +1,19 @@
 # JUET Nexus
 
-**JUET Nexus** is a modern, high-performance academic portal and dashboard for Jaypee University of Engineering and Technology (JUET). 
+A faster, cleaner way to check your attendance, grades, and exam schedule — without wrestling with the official portal.
 
-Built with Next.js 15 and Fastify, it connects directly to the CampusLynx portal to provide instant attendance tracking with safe-skip calculations, exam schedules, GPA analytics, and persistent sessions in a clean, mobile-first interface.
+Built by a JUET student, for JUET students. It talks directly to CampusLynx under the hood, so the data is always live and accurate.
+
+---
+
+**What you get**
+
+- Attendance at a glance, with safe-bunk calculations per subject
+- Exam timetable that actually loads
+- Semester-wise grade and SGPA breakdown
+- Stays logged in — no re-entering credentials every time
+- Works great on mobile
+
+**Stack** — Next.js 15 · Fastify · TypeScript · CampusLynx API
+
+**Live** → [juetnexus.vercel.app](https://juetnexus.vercel.app)

@@ -167,7 +167,7 @@ export async function startServer() {
       process.exit(1);
     });
 
-    fastify.log.info(`JUET//SYNC backend running on http://${HOST}:${PORT}`);
+    fastify.log.info(`JUET Nexus backend running on http://${HOST}:${PORT}`);
     fastify.log.info(`CORS origins: ${CORS_ORIGINS.join(', ')}`);
     fastify.log.info(
       getRedisUrl()

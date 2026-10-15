@@ -1,5 +1,5 @@
 {
-  "name": "juet-sync",
+  "name": "juet-nexus",
   "version": "1.0.0",
   "description": "JUET Nexus - Modern client and proxy layer for Campus Portal (CampusLynx)",
   "private": true,

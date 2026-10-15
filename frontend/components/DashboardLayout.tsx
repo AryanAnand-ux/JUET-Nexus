@@ -33,7 +33,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onRefresh,
   isRefreshing = false,
 }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [maskEnrollment, setMaskEnrollment] = useState(false);
@@ -65,7 +64,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       }
       if (sidebarRef.current && !sidebarRef.current.contains(target)) {
         setSidebarCollapsed(true);
-        setSidebarOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -218,7 +216,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   type="button"
                   onClick={() => {
                     item.onClick?.();
-                    setSidebarOpen(false);
                   }}
                   className={clsx(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium tracking-wide transition-all font-nunito text-left cursor-pointer",
@@ -248,7 +245,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   sidebarCollapsed && "justify-center"
                 )}
                 title={sidebarCollapsed ? item.label : undefined}
-                onClick={() => setSidebarOpen(false)}
               >
                 {item.icon}
                 {!sidebarCollapsed && <span className="truncate">{item.label}</span>}

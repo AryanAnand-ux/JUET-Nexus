@@ -1,5 +1,5 @@
 {
-  "name": "juet-sync-backend",
+  "name": "juet-nexus-backend",
   "version": "1.0.0",
   "description": "JUET Nexus Backend - Fastify client & proxy for JUET CampusLynx portal",
   "main": "dist/backend/src/index.js",
