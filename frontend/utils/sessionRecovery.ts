@@ -44,7 +44,7 @@ async function runRecovery(): Promise<boolean> {
     await axios.post(
       `${API_URL}/api/auth/refresh`,
       {},
-      { withCredentials: true, timeout: 15000 }
+      { withCredentials: true, timeout: 30000 }
     );
     return true;
   } catch (err) {
@@ -68,7 +68,7 @@ async function runRecovery(): Promise<boolean> {
     try {
       const init = await axios.get(`${API_URL}/api/init`, {
         withCredentials: true,
-        timeout: 15000,
+        timeout: 30000,
       });
       captchaImage = init.data?.captchaImage || "";
       sessionToken = init.data?.sessionToken || "";
@@ -89,7 +89,7 @@ async function runRecovery(): Promise<boolean> {
       await axios.post(
         `${API_URL}/api/auth/silent-login`,
         { captcha: captchaText, sessionToken },
-        { withCredentials: true, timeout: 15000 }
+        { withCredentials: true, timeout: 30000 }
       );
       return true;
     } catch (err) {

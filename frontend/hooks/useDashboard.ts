@@ -24,15 +24,63 @@ export interface UseDashboardReturn extends DashboardState {
   checkCacheStatus: () => Promise<void>;
 }
 
+const STORAGE_KEY_PREFIX = "juet_dashboard_cache_";
+
+function loadCachedDashboard(enrollment: string | null): { data: DashboardResponse; fetchedAt: Date } | null {
+  if (typeof window === "undefined" || !enrollment) return null;
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${enrollment.toUpperCase()}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.data) {
+        return {
+          data: parsed.data,
+          fetchedAt: parsed.fetchedAt ? new Date(parsed.fetchedAt) : new Date(),
+        };
+      }
+    }
+  } catch {}
+  return null;
+}
+
 export function useDashboard(enrollment: string | null): UseDashboardReturn {
-  const [state, setState] = useState<DashboardState>({
-    data: null,
-    isLoading: true,
-    error: null,
-    cached: false,
-    ttl: 0,
-    cachedAt: null,
+  const [state, setState] = useState<DashboardState>(() => {
+    const cached = loadCachedDashboard(enrollment);
+    if (cached) {
+      return {
+        data: cached.data,
+        isLoading: false,
+        error: null,
+        cached: true,
+        ttl: 0,
+        cachedAt: cached.fetchedAt,
+      };
+    }
+    return {
+      data: null,
+      isLoading: true,
+      error: null,
+      cached: false,
+      ttl: 0,
+      cachedAt: null,
+    };
   });
+
+  // Hydrate immediately when enrollment becomes available after initial render
+  useEffect(() => {
+    if (enrollment && !state.data) {
+      const cached = loadCachedDashboard(enrollment);
+      if (cached) {
+        setState((prev) => ({
+          ...prev,
+          data: cached.data,
+          cached: true,
+          cachedAt: cached.fetchedAt,
+          isLoading: false,
+        }));
+      }
+    }
+  }, [enrollment, state.data]);
 
   /**
    * Fetch dashboard data
@@ -41,14 +89,14 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     if (!enrollment) {
       setState((prev) => ({
         ...prev,
-        error: { message: "Enrollment not available" },
+        error: prev.data ? null : { message: "Enrollment not available" },
         isLoading: false,
       }));
       return;
     }
 
     try {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+      setState((prev) => ({ ...prev, isLoading: !prev.data, error: null }));
 
       const response = await apiClient.get(
         `/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
@@ -59,12 +107,23 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
 
       const { data, cached, ttl } = response.data;
       const cacheHeader = response.headers["x-cache"];
+      const fetchedAt = response.data?.fetchedAt ? new Date(response.data.fetchedAt) : new Date();
+
+      if (typeof window !== "undefined" && enrollment && data) {
+        try {
+          localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}${enrollment.toUpperCase()}`,
+            JSON.stringify({ data, fetchedAt: fetchedAt.toISOString() })
+          );
+        } catch {}
+      }
+
       setState((prev) => ({
         ...prev,
         data,
         cached: cacheHeader === "hit",
         ttl: ttl || 0,
-        cachedAt: response.data?.fetchedAt ? new Date(response.data.fetchedAt) : new Date(),
+        cachedAt: fetchedAt,
         isLoading: false,
         error: null,
       }));
@@ -88,7 +147,6 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         }));
         return;
       }
-
 
       // Transient re-login failure — credentials are still intact, auto-retry
       if (error.response?.status === 503 && error.response?.data?.code === "RELOGIN_FAILED" && !isRetry) {

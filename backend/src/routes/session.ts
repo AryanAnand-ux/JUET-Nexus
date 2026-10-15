@@ -174,10 +174,14 @@ export async function getOrRenewCampusLynxIdentity(
           }
 
           request.log?.warn?.(`[Session] Lightweight refresh rejected for ${username}`);
-          // The portal actively refused the refresh. If the token is past its
-          // readable `exp`, the session is genuinely dead and the caller (or the
-          // frontend's silent re-login) must re-authenticate.
-          if (isTokenExpired(session.campusLynx!.token, 0)) {
+          // The portal actively refused the refresh. Check if the token is genuinely dead:
+          // 1. If exp is readable, check against current epoch.
+          // 2. If exp is unreadable, check tokenIssuedAt against the 15-minute portal window.
+          const isGenuinelyExpired =
+            (exp !== null && isTokenExpired(token, 0)) ||
+            (identity.tokenIssuedAt != null && nowSec - identity.tokenIssuedAt >= 15 * 60);
+
+          if (isGenuinelyExpired) {
             throw {
               statusCode: 401,
               message: "Session expired. Please log in again.",
