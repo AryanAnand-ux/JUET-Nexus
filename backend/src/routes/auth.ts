@@ -17,7 +17,7 @@ import { CacheService } from "../utils/cache";
 import { createPortalClient } from "../portal/client";
 import { verifyUser, issueSession } from "../portal/auth";
 import { PortalError, type PortalCaptcha } from "../portal/types";
-import { getOrRenewCampusLynxIdentity, setAuthCookie } from "./session";
+import { getOrRenewCampusLynxIdentity, setAuthCookie, extractEncryptedSession } from "./session";
 import { jwtExpiry } from "../portal/crypto";
 
 const CAPTCHA_SESSION_TTL_MS = 5 * 60 * 1000;
@@ -220,12 +220,14 @@ export async function campusLynxAuthHandler(
 
     const encryptedSession = encryptSessionData(sessionData);
     setAuthCookie(reply, encryptedSession);
+    reply.header("X-Session-Token", encryptedSession);
 
     logger.info(`[Auth] CampusLynx login successful for ${pending.username}`);
     return reply.status(200).send({
       success: true,
       message: "Authentication successful",
       enrollment: pending.username,
+      sessionToken: encryptedSession,
     });
   } catch (error: any) {
     if (error instanceof PortalError && error.status === 401) {
@@ -274,7 +276,7 @@ export async function campusLynxSilentLoginHandler(
     });
   }
 
-  const encryptedSession = request.cookies.auth;
+  const encryptedSession = extractEncryptedSession(request);
   if (!encryptedSession) {
     return reply.status(401).send({
       success: false,
@@ -384,12 +386,15 @@ export async function campusLynxSilentLoginHandler(
       password,
       campusLynx: identity,
     };
-    setAuthCookie(reply, encryptSessionData(newSession));
+    const newEncryptedSession = encryptSessionData(newSession);
+    setAuthCookie(reply, newEncryptedSession);
+    reply.header("X-Session-Token", newEncryptedSession);
 
     logger.info(`[Auth] Silent re-login succeeded for ${username}`);
     return reply.status(200).send({
       success: true,
       enrollment: identity.enrollmentno,
+      sessionToken: newEncryptedSession,
     });
   } catch (error: any) {
     logger.error(`[Auth] Silent re-login failed: ${error?.message}`);
@@ -462,10 +467,12 @@ export function registerAuthRoutes(fastify: FastifyInstance, cache: CacheService
       try {
         const identity = await getOrRenewCampusLynxIdentity(request, reply, { force: true });
         const expiresAt = identity.token ? jwtExpiry(identity.token) : null;
+        const currentSession = extractEncryptedSession(request);
         return reply.status(200).send({
           success: true,
           enrollment: identity.enrollmentno,
           expiresAt,
+          sessionToken: currentSession,
         });
       } catch (err: any) {
         return reply.status(err.statusCode || 401).send({
@@ -499,10 +506,12 @@ export function registerAuthRoutes(fastify: FastifyInstance, cache: CacheService
   fastify.get("/api/auth/session", async (request, reply) => {
     try {
       const identity = await getOrRenewCampusLynxIdentity(request, reply);
+      const currentSession = extractEncryptedSession(request);
       return reply.status(200).send({
         success: true,
         enrollment: identity.enrollmentno,
         expiresAt: identity.token ? jwtExpiry(identity.token) : null,
+        sessionToken: currentSession,
       });
     } catch (err: any) {
       return reply.status(err.statusCode || 401).send({
@@ -516,7 +525,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, cache: CacheService
   // POST /api/logout — clear cookie & session
   fastify.post("/api/logout", async (request, reply) => {
     try {
-      const encryptedSession = request.cookies.auth;
+      const encryptedSession = extractEncryptedSession(request);
       if (encryptedSession) {
         try {
           const session = decryptSessionData(encryptedSession);

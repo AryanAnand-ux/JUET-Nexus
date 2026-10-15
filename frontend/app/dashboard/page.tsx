@@ -20,23 +20,50 @@ import { Typing } from "@/components/loading-ui/typing";
 /**
  * Error Display Component
  */
-const ErrorBanner: React.FC<{ error: { message: string }; onRetry?: () => void }> = ({ error, onRetry }) => (
-  <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm animate-shake">
-    <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-    <div className="flex-1">
-      <p className="text-sm font-medium text-red-700 dark:text-red-300 font-nunito">{error.message}</p>
-      {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-2 text-sm font-bold text-red-700 dark:text-red-300 underline underline-offset-2 hover:text-red-900 dark:hover:text-red-200"
-        >
-          Try again
-        </button>
-      )}
+const ErrorBanner: React.FC<{
+  error: { message: string; code?: string };
+  onRetry?: () => void;
+  onLogin?: () => void;
+}> = ({ error, onRetry, onLogin }) => {
+  const isAuthError =
+    error.code === "NO_SESSION" ||
+    error.code === "UNAUTHORIZED" ||
+    error.code === "INVALID_SESSION" ||
+    error.message?.toLowerCase().includes("authenticated");
+
+  const displayMessage = isAuthError
+    ? "Your session has expired. You can reconnect below or sign in again."
+    : error.message;
+
+  return (
+    <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm animate-shake">
+      <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <p className="text-sm font-medium text-red-700 dark:text-red-300 font-nunito">{displayMessage}</p>
+        <div className="mt-2 flex items-center gap-4">
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="text-sm font-bold text-red-700 dark:text-red-300 underline underline-offset-2 hover:text-red-900 dark:hover:text-red-200 cursor-pointer"
+            >
+              Try again
+            </button>
+          )}
+          {onLogin && (
+            <button
+              type="button"
+              onClick={onLogin}
+              className="text-sm font-bold text-indigo-700 dark:text-indigo-400 underline underline-offset-2 hover:text-indigo-900 dark:hover:text-indigo-200 cursor-pointer"
+            >
+              Sign in again
+            </button>
+          )}
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Loading Skeleton Component
@@ -212,8 +239,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Error Display */}
-      {error && <ErrorBanner error={error} onRetry={refresh} />}
-      {error && ["SESSION_EXPIRED", "SESSION_RENEWING", "RELOGIN_FAILED"].includes(error.code || "") && (
+      {error && <ErrorBanner error={error} onRetry={refresh} onLogin={() => router.push("/login")} />}
+      {error && ["SESSION_EXPIRED", "SESSION_RENEWING", "RELOGIN_FAILED", "NO_SESSION", "INVALID_SESSION"].includes(error.code || "") && (
         <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
           <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
             We couldn&apos;t reconnect to the portal automatically. Enter your portal password to

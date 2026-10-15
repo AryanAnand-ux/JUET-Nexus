@@ -38,14 +38,33 @@ export function recoverSession(): Promise<boolean> {
   return inFlight;
 }
 
+function getRecoveryHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("sessionToken");
+  if (!token) return {};
+  return {
+    Authorization: `Bearer ${token}`,
+    "X-Session-Token": token,
+  };
+}
+
+function saveRecoveredToken(token?: string) {
+  if (typeof window !== "undefined" && token && typeof token === "string") {
+    localStorage.setItem("sessionToken", token);
+  }
+}
+
 async function runRecovery(): Promise<boolean> {
+  const headers = getRecoveryHeaders();
+
   // Tier 1 — lightweight refresh.
   try {
-    await axios.post(
+    const refreshRes = await axios.post(
       `${API_URL}/api/auth/refresh`,
       {},
-      { withCredentials: true, timeout: 30000 }
+      { withCredentials: true, timeout: 30000, headers }
     );
+    saveRecoveredToken(refreshRes.data?.sessionToken);
     return true;
   } catch (err) {
     // Only an explicit 401 means "the session is gone". A network blip or a
@@ -69,6 +88,7 @@ async function runRecovery(): Promise<boolean> {
       const init = await axios.get(`${API_URL}/api/init`, {
         withCredentials: true,
         timeout: 30000,
+        headers,
       });
       captchaImage = init.data?.captchaImage || "";
       sessionToken = init.data?.sessionToken || "";
@@ -86,11 +106,12 @@ async function runRecovery(): Promise<boolean> {
     if (!captchaText) continue;
 
     try {
-      await axios.post(
+      const silentRes = await axios.post(
         `${API_URL}/api/auth/silent-login`,
         { captcha: captchaText, sessionToken },
-        { withCredentials: true, timeout: 30000 }
+        { withCredentials: true, timeout: 30000, headers }
       );
+      saveRecoveredToken(silentRes.data?.sessionToken);
       return true;
     } catch (err) {
       if (axios.isAxiosError(err)) {

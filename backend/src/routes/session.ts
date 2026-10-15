@@ -24,10 +24,25 @@ type RenewedSession = {
 const renewalInFlight = new Map<string, Promise<RenewedSession>>();
 
 /**
- * Extract the encrypted session from the HttpOnly auth cookie.
+ * Extract the encrypted session from the HttpOnly auth cookie or Authorization header.
+ * Supporting both cookie and Bearer/X-Session-Token headers guarantees seamless
+ * authentication across cross-origin deployments (Vercel -> Render) where third-party
+ * cookies may be partitioned, restricted, or blocked by modern browser privacy policies.
  */
 export function extractEncryptedSession(request: FastifyRequest): string | undefined {
-  return request.cookies?.auth;
+  if (request.cookies?.auth) {
+    return request.cookies.auth;
+  }
+  const authHeader = request.headers.authorization;
+  if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.substring(7).trim();
+    if (token) return token;
+  }
+  const xSession = request.headers["x-session-token"];
+  if (typeof xSession === "string" && xSession.trim()) {
+    return xSession.trim();
+  }
+  return undefined;
 }
 
 /**
@@ -35,12 +50,15 @@ export function extractEncryptedSession(request: FastifyRequest): string | undef
  * and persistent 30-day lifetime (Expires + Max-Age).
  */
 export function setAuthCookie(reply: FastifyReply, encryptedSession: string): void {
-  const isProduction = process.env.NODE_ENV === "production";
+  const isHttps =
+    process.env.NODE_ENV === "production" ||
+    reply.request?.protocol === "https" ||
+    reply.request?.headers["x-forwarded-proto"] === "https";
   const expires = new Date(Date.now() + COOKIE_MAX_AGE_SEC * 1000);
   reply.setCookie("auth", encryptedSession, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    secure: isHttps,
+    sameSite: isHttps ? "none" : "lax",
     maxAge: COOKIE_MAX_AGE_SEC,
     expires,
     path: "/",
@@ -214,6 +232,7 @@ export async function getOrRenewCampusLynxIdentity(
     const renewed = await renewal;
     if (reply) {
       setAuthCookie(reply, renewed.encryptedSession);
+      reply.header("X-Session-Token", renewed.encryptedSession);
     }
     return renewed.identity;
   }

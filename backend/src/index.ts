@@ -94,7 +94,8 @@ export async function createServer() {
       return cb(null, false);
     },
     credentials: true,
-    exposedHeaders: ['x-cache', 'x-cache-status', 'x-cache-ttl'],
+    exposedHeaders: ['x-cache', 'x-cache-status', 'x-cache-ttl', 'x-session-token'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-Token', 'X-Enrollment', 'Cache-Control', 'X-Requested-With'],
   });
 
   // Global rate limit: 300 requests per minute per IP (increased for shared campus Wi-Fi)

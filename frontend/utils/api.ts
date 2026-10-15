@@ -10,6 +10,14 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("sessionToken");
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+      config.headers["X-Session-Token"] = token;
+    }
+  }
   return config;
 });
 
@@ -31,7 +39,17 @@ const processQueue = (error: any = null) => {
 };
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (typeof window !== "undefined") {
+      const newToken =
+        response.headers?.["x-session-token"] ||
+        response.data?.sessionToken;
+      if (newToken && typeof newToken === "string") {
+        localStorage.setItem("sessionToken", newToken);
+      }
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 

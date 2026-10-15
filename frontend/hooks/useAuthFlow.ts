@@ -70,11 +70,14 @@ export function useAuthFlow(): UseAuthFlowReturn {
   const [pendingEnrollment, setPendingEnrollment] = useState("");
 
   const persistSession = useCallback(
-    (enrollment: string, role: string) => {
+    (enrollment: string, role: string, sessionToken?: string) => {
       setIsAuthenticated(true);
       if (typeof window !== "undefined") {
         localStorage.setItem("enrollment", enrollment.toUpperCase());
         localStorage.setItem("role", role);
+        if (sessionToken) {
+          localStorage.setItem("sessionToken", sessionToken);
+        }
       }
       router.push("/dashboard");
     },
@@ -155,7 +158,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
         );
 
         if (authRes.data.success) {
-          persistSession(credentials.enrollment.toUpperCase(), "Student");
+          persistSession(credentials.enrollment.toUpperCase(), "Student", authRes.data.sessionToken);
           return true;
         } else {
           setError({ message: authRes.data.error || "Authentication failed" });
@@ -256,7 +259,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
         );
 
         if (response.data.success) {
-          persistSession(pendingEnrollment, "Student");
+          persistSession(pendingEnrollment, "Student", response.data.sessionToken);
         } else {
           setError({ message: response.data.error || "Authentication failed" });
         }

@@ -46,11 +46,19 @@ export function usePortalRecovery(enrollment: string | null, onRecovered: () => 
         },
         { timeout: 30000, withCredentials: true }
       );
-      await axios.post(
+      const authRes = await axios.post(
         `${API_URL}/api/auth`,
         { loginToken: verify.data.loginToken, password },
         { timeout: 30000, withCredentials: true }
       );
+      if (typeof window !== "undefined") {
+        const token =
+          authRes.data?.sessionToken ||
+          authRes.headers?.["x-session-token"];
+        if (token && typeof token === "string") {
+          localStorage.setItem("sessionToken", token);
+        }
+      }
       await apiClient.get("/api/auth/session");
       setPassword("");
       await onRecovered();
