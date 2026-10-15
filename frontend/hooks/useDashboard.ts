@@ -1,11 +1,20 @@
 /**
  * useDashboard Hook
  * Fetch and manage dashboard data from backend
+ *
+ * On tab reopen the CampusLynx token (≈15 min lifespan) is usually dead.
+ * `useSessionKeepAlive` fires `recoverSession()` immediately on mount, but
+ * `fetchDashboard` used to race it and hit a 401 before recovery finished.
+ *
+ * Fix: when localStorage holds cached data we defer the first network fetch
+ * (SESSION_RECOVERY_GRACE_MS) so the keepalive can restore the token first.
+ * If a 401 still lands *and* cached data is displayed, we silently retry
+ * (up to MAX_SILENT_RETRIES) with back-off before surfacing an error banner.
  */
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { apiClient } from "@/utils/api";
 import type { DashboardResponse } from "@/types";
 
@@ -26,6 +35,15 @@ export interface UseDashboardReturn extends DashboardState {
 
 const STORAGE_KEY_PREFIX = "juet_dashboard_cache_";
 
+/** Grace period to let `useSessionKeepAlive` recover the token before we hit the API. */
+const SESSION_RECOVERY_GRACE_MS = 3_500;
+
+/** Silent retries before we surface a 401 error banner when cached data is shown. */
+const MAX_SILENT_RETRIES = 2;
+
+/** Back-off between silent retries (ms). */
+const SILENT_RETRY_DELAY_MS = 4_000;
+
 function loadCachedDashboard(enrollment: string | null): { data: DashboardResponse; fetchedAt: Date } | null {
   if (typeof window === "undefined" || !enrollment) return null;
   try {
@@ -44,9 +62,22 @@ function loadCachedDashboard(enrollment: string | null): { data: DashboardRespon
 }
 
 export function useDashboard(enrollment: string | null): UseDashboardReturn {
+  /** Tracks silent 401 retries so we don't immediately show the error banner. */
+  const silentRetryCount = useRef(0);
+
+  /** Whether the very first fetch was deferred due to localStorage cache. */
+  const deferredInitialFetch = useRef(false);
+
+  /**
+   * Tracks data availability via ref so it can be read safely in callbacks
+   * without stale closures or side-effects inside setState updaters.
+   */
+  const hasDataRef = useRef(false);
+
   const [state, setState] = useState<DashboardState>(() => {
     const cached = loadCachedDashboard(enrollment);
     if (cached) {
+      hasDataRef.current = true;
       return {
         data: cached.data,
         isLoading: false,
@@ -66,6 +97,11 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     };
   });
 
+  // Keep hasDataRef in sync with state across renders
+  useEffect(() => {
+    hasDataRef.current = state.data !== null;
+  }, [state.data]);
+
   // Hydrate immediately when enrollment becomes available after initial render
   useEffect(() => {
     if (enrollment && !state.data) {
@@ -77,26 +113,29 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
           cached: true,
           cachedAt: cached.fetchedAt,
           isLoading: false,
+          error: null, // Clear any transient error from the enrollment=null phase
         }));
       }
     }
   }, [enrollment, state.data]);
 
   /**
-   * Fetch dashboard data
+   * Fetch dashboard data.
+   *
+   * @param isRetry  Suppresses duplicate auto-retry for 503 RELOGIN_FAILED.
+   * @param isSilent When true, a 401 with cached data triggers a silent retry
+   *                 instead of showing the error banner.
    */
-  const fetchDashboard = useCallback(async (isRetry = false) => {
-    if (!enrollment) {
-      setState((prev) => ({
-        ...prev,
-        error: prev.data ? null : { message: "Enrollment not available" },
-        isLoading: false,
-      }));
-      return;
-    }
+  const fetchDashboard = useCallback(async (isRetry = false, isSilent = false) => {
+    // No-op when enrollment isn't loaded yet — the parent component sets it
+    // asynchronously from localStorage, so null is the expected initial value.
+    if (!enrollment) return;
 
     try {
-      setState((prev) => ({ ...prev, isLoading: !prev.data, error: null }));
+      // Only show loading skeleton when there is no data at all
+      if (!isSilent) {
+        setState((prev) => ({ ...prev, isLoading: !prev.data, error: null }));
+      }
 
       const response = await apiClient.get(
         `/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
@@ -118,6 +157,9 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         } catch {}
       }
 
+      // Successful fetch — reset silent retry counter
+      silentRetryCount.current = 0;
+
       setState((prev) => ({
         ...prev,
         data,
@@ -135,6 +177,26 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       }
     } catch (error: any) {
       if (error.response?.status === 401) {
+        // When we have cached data displayed, silently retry a few times before
+        // showing the error banner. This absorbs the race where the keepalive
+        // hasn't finished restoring the token yet.
+        //
+        // Uses hasDataRef (not setState updater) to avoid side-effects inside
+        // state updaters — React StrictMode double-invokes updaters.
+        if (hasDataRef.current && silentRetryCount.current < MAX_SILENT_RETRIES) {
+          silentRetryCount.current += 1;
+          if (process.env.NODE_ENV === "development") {
+            console.debug(
+              `[Dashboard] 401 with cached data — silent retry ${silentRetryCount.current}/${MAX_SILENT_RETRIES}`
+            );
+          }
+          setState((prev) => ({ ...prev, isLoading: false }));
+          setTimeout(() => fetchDashboard(false, true), SILENT_RETRY_DELAY_MS);
+          return;
+        }
+
+        // Exhausted retries or no cached data — surface the error
+        silentRetryCount.current = 0;
         setState((prev) => ({
           ...prev,
           error: {
@@ -224,9 +286,42 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
   }, [enrollment]);
 
   /**
-   * Fetch on mount and enrollment change
+   * Fetch on mount and enrollment change.
+   *
+   * When we already have localStorage-cached data, defer the first network
+   * fetch by SESSION_RECOVERY_GRACE_MS so that `useSessionKeepAlive` (which
+   * also fires on mount) has time to call `recoverSession()` and restore the
+   * expired CampusLynx token. Without this grace period the dashboard fetch
+   * races the keepalive and almost always hits a 401 on tab reopen.
    */
   useEffect(() => {
+    // Wait for enrollment to be loaded from localStorage by the parent component.
+    // Without this guard, the first render (enrollment = null) would trigger a
+    // pointless fetchDashboard() that returns immediately.
+    if (!enrollment) return;
+
+    const hasCachedData = !!loadCachedDashboard(enrollment);
+
+    if (hasCachedData && !deferredInitialFetch.current) {
+      deferredInitialFetch.current = true;
+      const timer = setTimeout(() => {
+        fetchDashboard(false, true);
+      }, SESSION_RECOVERY_GRACE_MS);
+
+      // Set up periodic cache status check (every 60s)
+      const cacheStatusInterval = setInterval(() => {
+        checkCacheStatus();
+      }, 60000);
+
+      return () => {
+        clearTimeout(timer);
+        clearInterval(cacheStatusInterval);
+        // Reset ref so React StrictMode re-mount correctly re-defers
+        deferredInitialFetch.current = false;
+      };
+    }
+
+    // No cached data — fetch immediately (first visit or cleared storage)
     fetchDashboard();
 
     // Set up periodic cache status check (every 60s)
@@ -235,7 +330,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     }, 60000);
 
     return () => clearInterval(cacheStatusInterval);
-  }, [fetchDashboard, checkCacheStatus]);
+  }, [fetchDashboard, checkCacheStatus, enrollment]);
 
   /**
    * Auto-refresh when cache is about to expire
@@ -257,3 +352,4 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     checkCacheStatus,
   };
 }
+
