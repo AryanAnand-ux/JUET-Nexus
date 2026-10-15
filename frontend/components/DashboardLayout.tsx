@@ -15,7 +15,6 @@ import { ThemeToggle } from "./ThemeToggle";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { RotateCw, MessageSquare } from "lucide-react";
 import { FeedbackModal } from "./FeedbackModal";
-import { DevelopmentBanner } from "./DevelopmentBanner";
 
 export interface DashboardLayoutProps {
   children: ReactNode;
@@ -332,10 +331,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {/* Content body */}
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-[var(--surface-page)] p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 touch-scroll-momentum transition-colors duration-200">
           <div className="max-w-7xl mx-auto">
-            <DevelopmentBanner
-              onOpenFeedback={() => setFeedbackOpen(true)}
-              className="mb-6"
-            />
             {children}
           </div>
         </main>

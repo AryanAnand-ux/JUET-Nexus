@@ -67,10 +67,23 @@ async function runRecovery(): Promise<boolean> {
     saveRecoveredToken(refreshRes.data?.sessionToken);
     return true;
   } catch (err) {
-    // Only an explicit 401 means "the session is gone". A network blip or a
-    // backend 5xx must not cost the user their session.
-    if (!axios.isAxiosError(err) || err.response?.status !== 401) {
+    if (!axios.isAxiosError(err)) {
+      // Network blip / 5xx — session may still be valid, keep the user in.
       return true;
+    }
+    if (err.response?.status !== 401) {
+      // Non-401 non-network error (e.g. 502) — treat as transient, keep in.
+      return true;
+    }
+    const code = err.response?.data?.code as string | undefined;
+    // Terminal: server cannot decrypt this token (key rotated on restart, or
+    // cookie/header was tampered with). Captcha retries will also fail — skip
+    // Tier 2 and tell the caller to send the user back to the login screen.
+    if (code === "INVALID_SESSION" || code === "NO_SESSION") {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("sessionToken");
+      }
+      return false;
     }
   }
 

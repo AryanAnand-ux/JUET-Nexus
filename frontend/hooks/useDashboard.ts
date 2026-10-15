@@ -254,13 +254,26 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       await fetchDashboard();
     } catch (error: any) {
       console.error("[Dashboard] Cache invalidation error:", error);
+      if (error.response?.status === 401) {
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: {
+            message: prev.data
+              ? "We could not reconnect to the portal. Your last synced records are still shown."
+              : "We could not reconnect to the portal. Please try again.",
+            code: error.response?.data?.code || "SESSION_RENEWING",
+          },
+        }));
+        return;
+      }
       setState((prev) => ({
         ...prev,
         isLoading: false,
         error: {
           message: error.response?.data?.error || error.message || "Failed to sync portal data",
-          code: error.response?.data?.code
-        }
+          code: error.response?.data?.code,
+        },
       }));
     }
   }, [enrollment, fetchDashboard]);

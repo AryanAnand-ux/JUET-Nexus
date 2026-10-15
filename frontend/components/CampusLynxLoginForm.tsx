@@ -5,6 +5,7 @@ import { formatEnrollment, isValidEnrollment } from "@/utils/formatters";
 import type { AuthError } from "@/hooks/useAuthFlow";
 import { Eye, EyeOff, RotateCw, AlertCircle, ShieldCheck, User, Lock, ArrowRight } from "lucide-react";
 import { Typing } from "@/components/loading-ui/typing";
+import { TermsModal } from "./TermsModal";
 
 interface CampusLynxLoginFormProps {
   captchaImage: string | null;
@@ -51,6 +52,7 @@ export function CampusLynxLoginForm({
   const [password, setPassword] = useState("");
   const [captchaInput, setCaptchaInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [touched, setTouched] = useState({
     enrollment: false,
     password: false,
@@ -289,7 +291,24 @@ export function CampusLynxLoginForm({
             </>
           )}
         </button>
+
+        {/* Terms & Conditions Link */}
+        <div className="pt-2 text-center">
+          <p className="text-xs text-[#5e6878]">
+            By continuing, you agree to our{" "}
+            <button
+              type="button"
+              onClick={() => setIsTermsOpen(true)}
+              className="font-semibold text-[#6246c7] hover:underline underline-offset-2 cursor-pointer focus:outline-none"
+            >
+              Terms &amp; Conditions
+            </button>
+          </p>
+        </div>
       </form>
+
+      {/* Terms & Conditions Modal */}
+      <TermsModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
     </div>
   );
 }
