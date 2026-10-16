@@ -14,6 +14,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { usePortalRecovery } from "@/hooks/usePortalRecovery";
 import { performLogout } from "@/utils/logout";
+import { apiClient } from "@/utils/api";
 import { AlertTriangle, MapPin, Copy, Check, Eye, EyeOff } from "lucide-react";
 import { Typing } from "@/components/loading-ui/typing";
 
@@ -129,7 +130,32 @@ export default function DashboardPage() {
     if (stored) {
       setEnrollment(stored);
     } else {
-      router.push("/login");
+      let cancelled = false;
+      apiClient
+        .get("/api/auth/session")
+        .then((res: any) => {
+          if (!cancelled && res.data?.success && res.data?.enrollment) {
+            const enr = res.data.enrollment.toUpperCase();
+            if (typeof window !== "undefined") {
+              localStorage.setItem("enrollment", enr);
+              localStorage.setItem("role", "Student");
+              if (res.data.sessionToken) {
+                localStorage.setItem("sessionToken", res.data.sessionToken);
+              }
+            }
+            setEnrollment(enr);
+          } else if (!cancelled) {
+            router.push("/login");
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            router.push("/login");
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
     }
   }, [router]);
 

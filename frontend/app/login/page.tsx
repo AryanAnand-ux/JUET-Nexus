@@ -33,8 +33,17 @@ export default function LoginPage() {
 
     apiClient
       .get("/api/auth/session")
-      .then(() => {
-        if (!cancelled) router.replace("/dashboard");
+      .then((res) => {
+        if (!cancelled && res.data?.success && res.data?.enrollment) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("enrollment", res.data.enrollment.toUpperCase());
+            localStorage.setItem("role", "Student");
+            if (res.data.sessionToken) {
+              localStorage.setItem("sessionToken", res.data.sessionToken);
+            }
+          }
+          router.replace("/dashboard");
+        }
       })
       .catch(() => {
         // A missing or expired cookie means the login form should remain available.
@@ -67,6 +76,7 @@ export default function LoginPage() {
         <section className="md:w-1/2 p-6 sm:p-8 md:p-10 lg:p-12 flex flex-col justify-center">
           <CampusLynxLoginForm
             captchaImage={captcha?.image || null}
+            isFetchingCaptcha={isFetchingCaptcha}
             onSubmitLogin={submitLogin}
             onRefreshCaptcha={fetchCaptcha}
             isLoading={isLoading}

@@ -9,6 +9,7 @@ import { TermsModal } from "./TermsModal";
 
 interface CampusLynxLoginFormProps {
   captchaImage: string | null;
+  isFetchingCaptcha?: boolean;
   onSubmitLogin: (credentials: {
     enrollment: string;
     password: string;
@@ -42,6 +43,7 @@ const fieldShell = [
  */
 export function CampusLynxLoginForm({
   captchaImage,
+  isFetchingCaptcha = false,
   onSubmitLogin,
   onRefreshCaptcha,
   isLoading,
@@ -242,7 +244,7 @@ export function CampusLynxLoginForm({
             />
           </div>
 
-          <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-[#e4e6e3] bg-[#f0f0ed] px-3 py-2">
+          <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-[#e4e6e3] bg-[#f0f0ed] px-3 py-2 min-h-[72px]">
             {captchaImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -250,22 +252,34 @@ export function CampusLynxLoginForm({
                 alt="Captcha"
                 className="h-16 max-w-[240px] w-auto object-contain rounded filter contrast-125 select-none"
               />
-            ) : (
+            ) : isFetchingCaptcha ? (
               <div className="flex items-center justify-center gap-2 w-full text-xs text-[#5e6878] font-medium animate-pulse h-16">
                 <div className="w-4 h-4 border-2 border-[#6246c7] border-t-transparent rounded-full animate-spin" />
-                <span>Loading captcha...</span>
+                <span>Loading security captcha...</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 w-full text-xs text-rose-600 font-medium h-16">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>Failed to load captcha.</span>
+                <button
+                  type="button"
+                  onClick={onRefreshCaptcha}
+                  className="font-bold underline text-[#6246c7] hover:text-[#5138ad] ml-1 cursor-pointer"
+                >
+                  Retry
+                </button>
               </div>
             )}
 
             <button
               type="button"
               onClick={onRefreshCaptcha}
-              disabled={isLoading}
+              disabled={isLoading || isFetchingCaptcha}
               title="Refresh Captcha"
               aria-label="Refresh Captcha"
-              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#5e6878] hover:text-[#6246c7] hover:bg-white rounded-lg border border-transparent hover:border-[#e4e6e3] transition-all cursor-pointer touch-manipulation active:scale-95"
+              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#5e6878] hover:text-[#6246c7] hover:bg-white rounded-lg border border-transparent hover:border-[#e4e6e3] transition-all cursor-pointer touch-manipulation active:scale-95 disabled:opacity-50"
             >
-              <RotateCw className="w-5 h-5" />
+              <RotateCw className={`w-5 h-5 ${isFetchingCaptcha ? "animate-spin" : ""}`} />
             </button>
           </div>
           {error?.field === "captcha" && (

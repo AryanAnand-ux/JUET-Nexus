@@ -14,7 +14,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import type { LoginFlow } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/+$/, "");
 
 interface CaptchaState {
   image: string;
@@ -85,7 +85,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
   );
 
   /**
-   * Fetch captcha from backend
+   * Fetch captcha from backend with automatic retry for server cold starts
    */
   const fetchCaptcha = useCallback(async (options?: { keepError?: boolean }) => {
     setIsFetchingCaptcha(true);
@@ -93,28 +93,41 @@ export function useAuthFlow(): UseAuthFlowReturn {
       setError(null);
     }
 
-    try {
-      const response = await axios.get(`${API_URL}/api/init`, {
-        timeout: 45000,
-      });
+    let lastError: any = null;
+    const maxAttempts = 2;
 
-      setLoginFlow("campuslynx");
-      setCaptcha({
-        image: response.data.captchaImage,
-        sessionToken: response.data.sessionToken,
-        captchaValue: response.data.captchaValue ?? null,
-      });
-    } catch (err) {
-      const message =
-        axios.isAxiosError(err) && err.response?.data?.error
-          ? err.response.data.error
-          : "Portal connection timed out or is unavailable. Please click refresh to retry.";
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await axios.get(`${API_URL}/api/init`, {
+          timeout: 45000,
+        });
 
-      setError({ message });
-      console.error("Failed to fetch captcha:", err);
-    } finally {
-      setIsFetchingCaptcha(false);
+        if (response.data?.captchaImage && response.data?.sessionToken) {
+          setLoginFlow("campuslynx");
+          setCaptcha({
+            image: response.data.captchaImage,
+            sessionToken: response.data.sessionToken,
+            captchaValue: response.data.captchaValue ?? null,
+          });
+          setIsFetchingCaptcha(false);
+          return;
+        }
+      } catch (err) {
+        lastError = err;
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
     }
+
+    const message =
+      axios.isAxiosError(lastError) && lastError.response?.data?.error
+        ? lastError.response.data.error
+        : "Portal connection timed out or is unavailable. Please click refresh to retry.";
+
+    setError({ message });
+    console.error("Failed to fetch captcha:", lastError);
+    setIsFetchingCaptcha(false);
   }, []);
 
   /**

@@ -1,7 +1,7 @@
 import axios from "axios";
 import { recoverSession } from "@/utils/sessionRecovery";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/+$/, "");
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -53,14 +53,22 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Do not retry refresh requests themselves or already retried requests
+    // Do not retry refresh requests themselves or auth verification endpoints
+    const url = originalRequest?.url || "";
+    const isAuthRoute =
+      url.includes("/api/auth/refresh") ||
+      url.includes("/api/auth/silent-login") ||
+      url.includes("/api/auth/verify-user") ||
+      url.includes("/api/auth/session") ||
+      url.includes("/api/auth") ||
+      url.includes("/api/init") ||
+      url.includes("/api/logout");
+
     if (
       error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
-      !originalRequest.url?.includes("/api/auth/refresh") &&
-      !originalRequest.url?.includes("/api/auth/silent-login") &&
-      !originalRequest.url?.includes("/api/auth/verify-user")
+      !isAuthRoute
     ) {
       originalRequest._retry = true;
 

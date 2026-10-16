@@ -29,7 +29,14 @@ export default function RootPage() {
     apiClient
       .get("/api/auth/session")
       .then((res) => {
-        if (!cancelled && res.data?.success) {
+        if (!cancelled && res.data?.success && res.data?.enrollment) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("enrollment", res.data.enrollment.toUpperCase());
+            localStorage.setItem("role", "Student");
+            if (res.data.sessionToken) {
+              localStorage.setItem("sessionToken", res.data.sessionToken);
+            }
+          }
           router.replace("/dashboard");
         } else if (!cancelled) {
           router.replace("/login");
