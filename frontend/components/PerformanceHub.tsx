@@ -106,9 +106,9 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
     if (gpa >= 7.5) {
       return {
         cardBg: "from-accent-primary/10 via-accent-primary/5 to-transparent border-accent-primary/20 dark:border-accent-primary/20",
-        textClass: "text-accent-primary dark:text-accent-primary",
-        labelClass: "text-accent-primary dark:text-accent-primary/80",
-        badge: "bg-accent-light text-accent-primary border-accent-primary/20"
+        textClass: "text-[var(--accent-text)]",
+        labelClass: "text-[var(--accent-text)] opacity-80",
+        badge: "bg-accent-light text-[var(--accent-text)] border-accent-primary/20"
       };
     }
     if (gpa >= 6.5) {
@@ -144,15 +144,16 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
   return (
     <FigmaCard
       heading={
-        <span className="flex items-center text-slate-800 dark:text-slate-100 font-extrabold text-lg md:text-xl font-nunito tracking-tight">
-          <GraduationCap className="w-6 h-6 mr-2 text-accent-primary" /> Performance Hub — Academic Standing
+        <span className="flex items-baseline gap-2.5">
+          <span className="font-editorial-italic text-2xl text-[var(--ink-strong)] font-normal">Performance</span>
+          <GraduationCap className="w-4 h-4 text-brand-600 self-center ml-auto" />
         </span>
       }
-      className="border border-slate-200/80 dark:border-slate-800 shadow-md rounded-[24px] p-6 md:p-8"
+      className="border border-[var(--line-subtle)] shadow-card rounded-[24px] p-6 md:p-8"
     >
       {/* Dynamic Performance Chart */}
       {performance.semesters && performance.semesters.length > 0 && (
-        <div className="mb-8 border-b border-slate-100 dark:border-slate-800/60 pb-8">
+        <div className="mb-8 border-b border-[var(--line-subtle)] pb-8">
           <PerformanceChart semesters={performance.semesters} />
         </div>
       )}
@@ -161,40 +162,40 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Current SGPA */}
         <div
-          className={`relative overflow-hidden bg-gradient-to-tr ${currentTheme.cardBg} border rounded-[22px] p-6 text-center transition-all hover:shadow-md hover:scale-[1.01] duration-300`}
+          className={`relative overflow-hidden bg-gradient-to-tr ${currentTheme.cardBg} border rounded-[22px] p-6 text-center transition-all hover:shadow-elevated hover:scale-[1.01] duration-300`}
         >
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-2">
             Current SGPA
           </p>
-          <p className={`text-5xl font-black mb-2 font-nunito tracking-tight ${currentTheme.textClass}`}>
+          <p className={`text-5xl font-black mb-2 tracking-tight ${currentTheme.textClass}`}>
             {performance.currentSgpa.toFixed(2)}
           </p>
-          <span className={`inline-block px-3 py-1 rounded-full text-xs font-extrabold border font-nunito ${currentTheme.badge}`}>
+          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${currentTheme.badge}`}>
             {getGradeLabel(performance.currentSgpa)}
           </span>
         </div>
 
         {/* Cumulative CGPA */}
         <div
-          className={`relative overflow-hidden bg-gradient-to-tr ${cgpaTheme.cardBg} border rounded-[22px] p-6 text-center transition-all hover:shadow-md hover:scale-[1.01] duration-300`}
+          className={`relative overflow-hidden bg-gradient-to-tr ${cgpaTheme.cardBg} border rounded-[22px] p-6 text-center transition-all hover:shadow-elevated hover:scale-[1.01] duration-300`}
         >
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-2">
             Cumulative CGPA
           </p>
-          <p className={`text-5xl font-black mb-2 font-nunito tracking-tight ${cgpaTheme.textClass}`}>
+          <p className={`text-5xl font-black mb-2 tracking-tight ${cgpaTheme.textClass}`}>
             {performance.cgpa.toFixed(2)}
           </p>
-          <span className={`inline-block px-3 py-1 rounded-full text-xs font-extrabold border font-nunito ${cgpaTheme.badge}`}>
+          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${cgpaTheme.badge}`}>
             {getGradeLabel(performance.cgpa)}
           </span>
         </div>
       </div>
       ) : (
-        <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-[22px] text-center">
-          <p className="text-sm font-bold text-slate-600 dark:text-slate-300 font-nunito">
+        <div className="mb-8 p-6 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-[22px] text-center">
+          <p className="text-sm font-semibold text-[var(--ink-strong)]">
             SGPA &amp; CGPA not available yet
           </p>
-          <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500 font-nunito">
+          <p className="mt-1 text-xs text-[var(--ink-muted)]">
             The student portal has not published result data for your semesters. Your marks and attendance below are unaffected.
           </p>
         </div>
@@ -202,9 +203,9 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
 
       {/* Recent Marks */}
       {performance.recentMarks && performance.recentMarks.length > 0 && (
-        <div className="border-t border-slate-100 dark:border-slate-800/80 pt-6">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center">
-            <ClipboardList className="w-4 h-4 mr-2 text-accent-primary" /> Recent Marks & Evaluations
+        <div className="border-t border-[var(--line-subtle)] pt-6">
+          <h4 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-4 flex items-center">
+            <ClipboardList className="w-4 h-4 mr-2 text-brand-600" /> Recent Marks & Evaluations
           </h4>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -230,11 +231,11 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                       : "border-slate-100 dark:border-slate-800/30 bg-slate-50/20 dark:bg-slate-900/5 opacity-80 cursor-default"
                   }`}
                 >
-                  <span className="font-extrabold text-sm text-slate-700 dark:text-slate-300 font-nunito group-hover:text-accent-primary transition-colors truncate pr-2">
+                  <span className="font-extrabold text-sm text-slate-700 dark:text-slate-300 font-nunito group-hover:text-[var(--accent-text)] transition-colors truncate pr-2">
                     {mark.subject}
                   </span>
                   <div className="flex items-center gap-2">
-                    <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl px-3 py-1.5 shadow-sm text-center shrink-0">
+                    <div className="border border-[var(--line-subtle)] bg-[var(--surface-card)] rounded-xl px-3 py-1.5 shadow-sm text-center shrink-0">
                       <span className="font-extrabold text-sm text-slate-800 dark:text-slate-200 font-nunito">
                         {mark.marks.toFixed(1)}
                       </span>
@@ -255,11 +256,11 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
 
 
       {/* Performance Insights */}
-      <div className="mt-8 relative overflow-hidden bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 rounded-2xl p-5">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-accent-primary mb-2 flex items-center">
+      <div className="mt-8 relative overflow-hidden bg-brand-50/60 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/25 rounded-2xl p-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-100 mb-2 flex items-center">
           <Lightbulb className="w-4 h-4 mr-2" /> Performance Insight
         </p>
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 leading-relaxed font-nunito">
+        <p className="text-sm text-[var(--ink-strong)] leading-relaxed">
           {performance.currentSgpa >= 8.0
             ? "Excellent performance this semester! Keep up the momentum."
             : performance.currentSgpa >= 7.0
@@ -277,35 +278,35 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
             onClick={() => setIsModalOpen(false)}
           />
           {/* Modal Container */}
-          <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-[28px] sm:rounded-[28px] shadow-2xl w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-0">
+          <div className="relative bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-t-[28px] sm:rounded-[28px] shadow-2xl w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] flex flex-col overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-0">
             {/* Header */}
-            <div className="bg-slate-900 px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-800 relative shrink-0">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-accent-primary/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="bg-midnight px-4 py-4 sm:px-6 sm:py-5 border-b border-white/10 relative shrink-0">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/20 rounded-full blur-2xl pointer-events-none" />
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="absolute top-4 right-4 p-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 transition-all active:scale-95 touch-manipulation"
+                className="absolute top-4 right-4 p-2 rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all active:scale-95 touch-manipulation"
               >
                 <X className="w-4 h-4" />
               </button>
-              <span className="text-[10px] font-extrabold text-accent-primary uppercase tracking-widest font-mono bg-slate-950/80 border border-slate-800 px-2.5 py-0.5 rounded-md">
+              <span className="text-[10px] font-bold text-brand-100 uppercase tracking-widest font-mono bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-md">
                 {selectedCourseMarks.code || "COURSE CODE"}
               </span>
-              <h3 className="text-xl font-extrabold text-white mt-2 leading-snug font-nunito break-words pr-8">
+              <h3 className="text-xl font-semibold text-white mt-2 leading-snug break-words pr-8">
                 {selectedCourseMarks.subject}
               </h3>
               
               {/* Simulation Toggle Switch */}
               {selectedCourseMarks.components && selectedCourseMarks.components.length > 0 && (
-                <div className="flex items-center justify-between mt-4 border-t border-slate-800/60 pt-3">
-                  <span className="text-xs font-bold text-slate-300 dark:text-slate-400">
+                <div className="flex items-center justify-between mt-4 border-t border-white/10 pt-3">
+                  <span className="text-xs font-semibold text-slate-300">
                     Simulate Mock Marks
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsSimulating(!isSimulating)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-slate-900 touch-manipulation ${
-                      isSimulating ? "bg-accent-primary" : "bg-slate-800"
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-midnight touch-manipulation ${
+                      isSimulating ? "bg-accent-primary" : "bg-white/20"
                     }`}
                     aria-pressed={isSimulating}
                   >
@@ -321,7 +322,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
 
             {/* Content Body */}
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-[var(--ink-muted)] mb-1">
                 Evaluation Component Breakdown
               </p>
               
@@ -350,7 +351,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                             ) : (
                               <span className="text-slate-800 dark:text-slate-100 font-extrabold">{obtained}</span>
                             )}
-                            <span className="font-bold text-slate-400 dark:text-slate-500">/ {comp.max}</span>
+                            <span className="font-bold text-[var(--ink-muted)]">/ {comp.max}</span>
                           </div>
                         </div>
 
@@ -381,7 +382,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                   })}
                 </div>
               ) : (
-                <p className="text-sm font-semibold text-slate-500 py-4 text-center font-nunito">
+                <p className="text-sm font-semibold text-[var(--ink-muted)] py-4 text-center font-nunito">
                   No evaluation component marks available for this course yet.
                 </p>
               )}
@@ -401,7 +402,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                     </p>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-nunito whitespace-nowrap">
-                        Grade projection: <span className="font-extrabold text-accent-primary">{getProjectedGrade(currentTotal, displayMax)}</span>
+                        Grade projection: <span className="font-extrabold text-[var(--accent-text)]">{getProjectedGrade(currentTotal, displayMax)}</span>
                       </span>
                       {isSimulating && (
                         <button
@@ -420,7 +421,7 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
                       )}
                     </div>
                   </div>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 shadow-sm text-right shrink-0">
+                  <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 shadow-sm text-right shrink-0">
                     <span className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 font-nunito tracking-tight">
                       {currentTotal.toFixed(1)}
                     </span>

@@ -9,8 +9,6 @@ import {
   Hash,
   Search,
   BookOpen,
-  CalendarCheck,
-  AlertCircle,
 } from "lucide-react";
 
 export interface ExamScheduleProps {
@@ -204,7 +202,7 @@ function getExamStatus(dateStr: string) {
       return { label: "Today", variant: "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800 animate-pulse" };
     }
     if (diffDays === 1) {
-      return { label: "Tomorrow", variant: "bg-indigo-100 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border-indigo-300 dark:border-indigo-800" };
+      return { label: "Tomorrow", variant: "bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-100 border-brand-300 dark:border-brand-500/40" };
     }
     return { label: `In ${diffDays} days`, variant: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800" };
   } catch {
@@ -234,29 +232,25 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 text-white p-6 sm:p-8 shadow-xl border border-zinc-800/80">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 rounded-full bg-zinc-700/10 blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-midnight via-carbon to-midnight text-white p-6 sm:p-8 shadow-banner border border-white/5">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 rounded-full bg-brand-500/25 blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs font-semibold uppercase tracking-wider mb-2 border border-zinc-700">
-              <CalendarCheck className="w-3.5 h-3.5 text-zinc-300" />
-              <span>Official Schedule</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-editorial-italic font-normal tracking-normal">
               {schedule.event || "Examination Schedule"}
             </h2>
-            <p className="mt-1 text-sm text-zinc-400 font-medium">
+            <p className="mt-1.5 text-sm text-slate-400">
               {schedule.semester || "Current Academic Session"}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10 flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-zinc-800 text-zinc-300">
-                <Calendar className="w-5 h-5 text-zinc-300" />
+            <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-white/10 text-brand-100">
+                <Calendar className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs text-zinc-400 font-medium">Total Exams</p>
+                <p className="text-xs text-slate-400">Total Exams</p>
                 <p className="text-lg font-bold text-white">{items.length}</p>
               </div>
             </div>
@@ -266,7 +260,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
 
       {/* Exam Event Switcher Tabs */}
       {availableEvents.length > 1 && onSelectEvent && (
-        <div className="flex flex-wrap gap-2 items-center p-1.5 bg-gray-100 dark:bg-slate-800/80 rounded-2xl w-fit border border-gray-200/60 dark:border-slate-700/60">
+        <div className="flex flex-wrap gap-2 items-center p-1.5 bg-[var(--surface-subtle)] rounded-2xl w-fit border border-[var(--line-subtle)]">
           {availableEvents.map((ev) => {
             const isSelected = selectedEventId
               ? selectedEventId === ev.exameventid
@@ -276,10 +270,10 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
               <button
                 key={ev.exameventid}
                 onClick={() => onSelectEvent(ev.exameventid)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all touch-manipulation active:scale-95 ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all touch-manipulation active:scale-95 ${
                   isSelected
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
-                    : "text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50"
+                    ? "bg-midnight dark:bg-brand-600 text-white shadow-sm"
+                    : "text-[var(--ink-muted)] hover:text-[var(--ink-strong)] hover:bg-[var(--surface-card)]"
                 }`}
               >
                 {ev.exameventdesc}
@@ -293,16 +287,16 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
       {items.length > 0 && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--ink-muted)]" />
             <input
               type="text"
               placeholder="Search exam by subject or room..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-shadow shadow-sm placeholder:text-gray-400 dark:placeholder:text-slate-500 touch-manipulation"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-strong)] text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/30 transition-all shadow-card placeholder:text-[var(--ink-muted)] touch-manipulation"
             />
           </div>
-          <span className="text-xs text-gray-500 dark:text-slate-400 font-medium self-center sm:self-auto">
+          <span className="text-xs text-[var(--ink-muted)] self-center sm:self-auto">
             Showing {filtered.length} of {items.length} exams
           </span>
         </div>
@@ -310,19 +304,19 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
 
       {/* Exam Items Grid */}
       {items.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-12 text-center">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-500 mb-4 shadow-inner">
+        <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-12 text-center">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-brand-50 dark:bg-brand-500/15 flex items-center justify-center text-brand-600 mb-4">
             <Calendar className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100">
+          <h3 className="text-lg font-bold text-[var(--ink-strong)]">
             No Upcoming Exams Scheduled
           </h3>
-          <p className="mt-2 text-sm text-gray-500 dark:text-slate-400 max-w-sm mx-auto">
+          <p className="mt-2 text-sm text-[var(--ink-muted)] max-w-sm mx-auto">
             Your exam timetable will appear here automatically once announced by the examination cell.
           </p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center text-gray-500 dark:text-slate-400">
+        <div className="rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-8 text-center text-[var(--ink-muted)]">
           No exams found matching &ldquo;{searchTerm}&rdquo;
         </div>
       ) : (
@@ -339,12 +333,12 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
             return (
               <div
                 key={`${item.subject}-${index}`}
-                className="group relative flex flex-col justify-between rounded-2xl border border-gray-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-200"
+                className="group relative flex flex-col justify-between rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-5 shadow-card hover:shadow-elevated hover:border-brand-500/40 transition-all duration-200"
               >
                 <div>
                   {/* Top tags row */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/50">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-100 border border-brand-100 dark:border-brand-500/30">
                       <BookOpen className="w-3 h-3" />
                       Paper {paperNum}
                     </span>
@@ -359,32 +353,32 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
                   </div>
 
                   {/* Subject Name */}
-                  <h4 className="text-base font-bold text-gray-900 dark:text-slate-100 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  <h4 className="text-base font-semibold text-[var(--ink-strong)] line-clamp-2 group-hover:text-[var(--accent-text)] transition-colors">
                     {cleanSubjectName(item.subject, courseMap)}
                   </h4>
 
                   {/* Date & Time */}
-                  <div className="mt-3.5 space-y-2 text-xs font-medium text-gray-600 dark:text-slate-300">
+                  <div className="mt-3.5 space-y-2 text-xs text-[var(--ink-muted)]">
                     <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
+                      <Calendar className="w-4 h-4 text-brand-600 shrink-0" />
                       <span>{dateStr || "Date to be announced"}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
+                      <Clock className="w-4 h-4 text-brand-600 shrink-0" />
                       <span>{timeStr || "Timing to be announced"}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Venue & Seat Footer */}
-                <div className="mt-5 pt-3.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between text-xs text-gray-600 dark:text-slate-400">
-                  <div className="flex items-center gap-1.5 font-semibold text-gray-800 dark:text-slate-200">
+                <div className="mt-5 pt-3.5 border-t border-[var(--line-subtle)] flex items-center justify-between text-xs text-[var(--ink-muted)]">
+                  <div className="flex items-center gap-1.5 font-semibold text-[var(--ink-strong)]">
                     <MapPin className="w-3.5 h-3.5 text-rose-500" />
                     <span>Room: {item.roomcode || "TBA"}</span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 font-semibold text-gray-800 dark:text-slate-200">
+                  <div className="flex items-center gap-1.5 font-semibold text-[var(--ink-strong)]">
                     <Hash className="w-3.5 h-3.5 text-amber-500" />
                     <span>Seat: {item.seatno || "TBA"}</span>
                   </div>

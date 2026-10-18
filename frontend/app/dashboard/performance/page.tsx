@@ -18,7 +18,7 @@ import { Typing } from "@/components/loading-ui/typing";
 const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
   <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm">
     <span className="text-red-500 mt-0.5">⚠</span>
-    <p className="text-sm font-medium text-red-700 dark:text-red-300 font-nunito">
+    <p className="text-sm font-medium text-red-700 dark:text-red-300">
       {error.message}
     </p>
   </div>
@@ -26,11 +26,11 @@ const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
 
 const LoadingSkeleton: React.FC = () => (
   <div className="space-y-6">
-    <div className="flex flex-col items-center justify-center gap-3 py-8 text-slate-400 dark:text-slate-500">
-      <Typing size="lg" duration={0.9} className="text-accent-primary" />
-      <p className="text-sm font-semibold font-nunito tracking-wide animate-pulse">Loading performance data…</p>
+    <div className="flex flex-col items-center justify-center gap-3 py-8 text-[var(--ink-muted)]">
+      <Typing size="lg" duration={0.9} className="text-[var(--accent-text)]" />
+      <p className="text-sm font-medium tracking-wide animate-pulse">Loading performance data…</p>
     </div>
-    <div className="border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 rounded-[24px] h-[350px] animate-pulse shadow-sm" />
+    <div className="border border-[var(--line-subtle)] bg-[var(--surface-subtle)] rounded-[24px] h-[350px] animate-pulse shadow-card" />
   </div>
 );
 
@@ -68,23 +68,20 @@ export default function PerformancePage() {
           <div className="flex items-center gap-2 mb-2">
             <Link 
               href="/dashboard" 
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 font-nunito"
+              className="text-xs font-semibold text-brand-600 dark:text-brand-100 hover:text-brand-700 flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Attendance
             </Link>
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight font-nunito">
+          <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)]">
             Academic Performance
           </h2>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 font-nunito mt-1">
-            Track your SGPA, CGPA, and recent course grades
-          </p>
         </div>
         
         <button
           onClick={refresh}
           disabled={isLoading}
-          className="flex items-center gap-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl px-5 py-3 text-sm font-bold disabled:opacity-50 transition-all shadow-sm active:scale-95 self-start sm:self-auto"
+          className="flex items-center gap-2 border border-[var(--line-subtle)] bg-[var(--surface-card)] hover:bg-[var(--surface-subtle)] text-[var(--ink-strong)] rounded-xl px-5 py-3 text-sm font-semibold disabled:opacity-50 transition-all shadow-card active:scale-95 self-start sm:self-auto"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> 
           <span>Sync Academic Standings</span>
@@ -98,14 +95,14 @@ export default function PerformancePage() {
       ) : data ? (
         <PerformanceHub performance={data.performance} detailedMarks={data.detailedMarks} />
       ) : (
-        <div className="border border-gray-200 dark:border-slate-800 rounded-[24px] bg-white dark:bg-slate-900 p-12 text-center shadow-sm">
-          <p className="text-sm font-medium text-slate-400 dark:text-slate-500 font-nunito mb-4">
+        <div className="border border-[var(--line-subtle)] rounded-[24px] bg-[var(--surface-card)] p-12 text-center shadow-card">
+          <p className="text-sm text-[var(--ink-muted)] mb-4">
             No performance data available. Let&apos;s sync your portal standings.
           </p>
           <button
             onClick={refresh}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-md shadow-indigo-600/20"
+            className="inline-flex items-center gap-2 bg-accent-primary hover:bg-accent-hover text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all shadow-sm"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> Sync Now
           </button>

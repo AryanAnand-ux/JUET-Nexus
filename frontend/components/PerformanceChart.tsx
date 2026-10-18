@@ -14,9 +14,9 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
 
   if (!semesters || semesters.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 border border-slate-200/60 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/10 min-h-[200px]">
-        <TrendingUp className="w-8 h-8 text-slate-400 dark:text-slate-600 mb-2" />
-        <p className="text-sm font-semibold text-slate-500 font-nunito">
+      <div className="flex flex-col items-center justify-center p-8 border border-[var(--line-subtle)] rounded-2xl bg-[var(--surface-subtle)] min-h-[200px]">
+        <TrendingUp className="w-8 h-8 text-[var(--ink-muted)] mb-2" />
+        <p className="text-sm font-semibold text-[var(--ink-muted)] font-nunito">
           No semester historical data available to plot.
         </p>
       </div>
@@ -100,28 +100,25 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 font-nunito uppercase tracking-wider">
-            <TrendingUp className="w-4 h-4 text-accent-primary" /> SGPA & CGPA Semester Trends
+          <h4 className="text-[11px] font-semibold text-[var(--ink-strong)] flex items-center gap-1.5 uppercase tracking-[0.16em]">
+            <TrendingUp className="w-4 h-4 text-brand-600" /> SGPA & CGPA Semester Trends
           </h4>
-          <p className="text-xs text-slate-400 dark:text-slate-500 font-nunito mt-0.5">
-            Hover over points to see GPA breakdowns per semester
-          </p>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-3 text-xs font-bold font-nunito select-none">
+        <div className="flex items-center gap-3 text-xs font-semibold select-none">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-0.5 bg-accent-primary rounded-full" />
-            <span className="text-slate-600 dark:text-slate-400">SGPA</span>
+            <span className="text-[var(--ink-muted)]">SGPA</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-0.5 bg-slate-400 dark:bg-slate-600 border-dashed border-t rounded-full" />
-            <span className="text-slate-600 dark:text-slate-400">CGPA</span>
+            <span className="text-[var(--ink-muted)]">CGPA</span>
           </div>
         </div>
       </div>
 
-      <div ref={containerRef} className="relative w-full border border-slate-100 dark:border-slate-800/80 rounded-2xl bg-white/50 dark:bg-slate-950/20 p-4 shadow-sm">
+      <div ref={containerRef} className="relative w-full border border-[var(--line-subtle)] rounded-2xl bg-[var(--surface-card)]/60 p-4 shadow-card">
         <svg
           viewBox={`0 0 ${viewWidth} ${viewHeight}`}
           width="100%"
@@ -186,7 +183,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
             <path
               d={cgpaPath}
               fill="none"
-              stroke="#94A3B8"
+              stroke="#A1A1AA"
               strokeWidth={2}
               strokeDasharray="4 4"
               strokeLinecap="round"
@@ -237,7 +234,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
                   cx={getX(idx)}
                   cy={getY(s.cgpa)}
                   r={isHovered ? 5 : 3}
-                  fill="#94A3B8"
+                  fill="#A1A1AA"
                   className="transition-all duration-150 cursor-pointer"
                 />
               </g>
@@ -300,7 +297,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
             <div className="space-y-1 text-xs">
               <div className="flex justify-between items-center gap-4">
                 <span className="font-bold text-slate-500 dark:text-slate-400">Semester SGPA:</span>
-                <span className="font-black text-accent-primary font-mono">{semesters[hoveredIdx].sgpa.toFixed(2)}</span>
+                <span className="font-black text-[var(--accent-text)] font-mono">{semesters[hoveredIdx].sgpa.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center gap-4">
                 <span className="font-bold text-slate-500 dark:text-slate-400">Cumulative CGPA:</span>

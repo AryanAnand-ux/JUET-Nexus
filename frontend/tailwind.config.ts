@@ -9,27 +9,72 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Editorial palette (Stitch design) — purple reserved for brand accents
+        brand: {
+          50: "#F5F3FF",
+          100: "#ECE9FE",
+          200: "#DDD6FE",
+          300: "#C4B5FD",
+          400: "#A78BFA",
+          500: "#6355D8",
+          600: "#6355D8",
+          700: "#4835C4",
+          800: "#3A2AA0",
+          900: "#231969",
+          950: "#1A1247",
+        },
+        // Neutral charcoal (no blue tint) used for banners / dark surfaces
+        midnight: "#131316",
+        carbon: "#1E1E22",
+        // Neutralise Tailwind's cool greys so slate/gray read as true neutral
+        // greys in both themes (single source of truth instead of per-page styling).
+        slate: {
+          50: "#FAFAFA",
+          100: "#F4F4F5",
+          200: "#E5E5E5",
+          300: "#D4D4D4",
+          400: "#A3A3A3",
+          500: "#737373",
+          600: "#525252",
+          700: "#404040",
+          800: "#262626",
+          900: "#171717",
+          950: "#0A0A0A",
+        },
+        gray: {
+          50: "#FAFAFA",
+          100: "#F4F4F5",
+          200: "#E5E5E5",
+          300: "#D4D4D4",
+          400: "#A3A3A3",
+          500: "#737373",
+          600: "#525252",
+          700: "#404040",
+          800: "#262626",
+          900: "#171717",
+          950: "#0A0A0A",
+        },
         // Generations She Palette
         "brutal-cream": "#FAF9F6",
         "brutal-black": "#111111",
         "brutal-white": "#FFFFFF",
-        "brutal-green": "#CBEED5", // soft pastel green
-        "brutal-orange": "#FFE5D4", // soft pastel peach
-        "brutal-red": "#FCA5A5", // soft pinkish red
-        "brutal-yellow": "#D2FA50", // lime accent green
-        "brutal-lavender": "#E2D9FF", // pastel lavender
-        "brutal-soft-yellow": "#FFF4C2", // pastel yellow
-        "figma-bg": "#F5F3FF", // very light violet/slate
-        "figma-maroon": "#6366F1", // Indigo accent
-        "figma-maroon-dark": "#4F46E5", // Indigo dark
-        "figma-maroon-darker": "#3730A3", // Indigo darker
-        "figma-dark": "#0F172A", // Slate dark
-        "figma-gray": "#64748B", // Slate gray
-        "figma-gray-light": "#94A3B8", // Slate light gray
-        "figma-red": "#EF4444", // Red accent
-        "figma-orange": "#E0E7FF", // light Indigo overlay
-        "figma-peach": "#EEF2F6", // soft slate-blue
-        "figma-purple": "#8B5CF6", // Violet accent
+        "brutal-green": "#CBEED5",
+        "brutal-orange": "#FFE5D4",
+        "brutal-red": "#FCA5A5",
+        "brutal-yellow": "#D2FA50",
+        "brutal-lavender": "#E2D9FF",
+        "brutal-soft-yellow": "#FFF4C2",
+        "figma-bg": "#F5F3FF",
+        "figma-maroon": "#6355D8",
+        "figma-maroon-dark": "#5842E3",
+        "figma-maroon-darker": "#4835C4",
+        "figma-dark": "#131722",
+        "figma-gray": "#64748B",
+        "figma-gray-light": "#94A3B8",
+        "figma-red": "#EF4444",
+        "figma-orange": "#E0E7FF",
+        "figma-peach": "#EEF2F6",
+        "figma-purple": "#8B5CF6",
         "figma-burgundy": "#7F265B",
         "figma-burgundy-dark": "#73114B",
         "figma-lavender-light": "#EDE8FF",
@@ -43,24 +88,28 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["var(--font-jakarta)", "ui-sans-serif", "system-ui", "sans-serif"],
         serif: ["var(--font-newsreader)", "Georgia", "serif"],
-        nunito: ["var(--font-nunito-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        nunito: ["var(--font-jakarta)", "ui-sans-serif", "system-ui", "sans-serif"],
+        jakarta: ["var(--font-jakarta)", "ui-sans-serif", "system-ui", "sans-serif"],
+        editorial: ["var(--font-newsreader)", "Georgia", "serif"],
       },
       boxShadow: {
+        card: "0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02)",
+        elevated: "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03)",
+        banner: "0 16px 36px -12px rgba(19, 23, 34, 0.28)",
         // Soft, thin geometric outlines rather than heavy brutalist blocks
         "brutal-sm": "1px 1px 0px 0px rgba(17,17,17,1)",
-        "brutal": "2px 2px 0px 0px rgba(17,17,17,1)",
+        brutal: "2px 2px 0px 0px rgba(17,17,17,1)",
         "brutal-lg": "3px 3px 0px 0px rgba(17,17,17,1)",
         "brutal-xl": "4px 4px 0px 0px rgba(17,17,17,1)",
         "brutal-none": "0px 0px 0px 0px rgba(0,0,0,0)",
       },
       borderWidth: {
         "brutal-thin": "1px",
-        "brutal-thick": "1.5px", // thin lines characteristic of Generations She
+        "brutal-thick": "1.5px",
       },
       fontSize: {
-        // Typography for clean design
         "brutal-xs": ["12px", { lineHeight: "16px", fontWeight: "400" }],
         "brutal-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
         "brutal-base": ["16px", { lineHeight: "24px", fontWeight: "400" }],

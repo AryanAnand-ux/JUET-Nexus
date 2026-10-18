@@ -79,9 +79,6 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
               <p className="text-sm font-semibold text-[var(--ink-strong)] font-nunito tracking-wide">
                 {getDynamicMessage()}
               </p>
-              <p className="text-xs text-[var(--ink-muted)]">
-                {elapsed > 4000 ? "Syncing with CampusLynx servers" : "Please wait a moment"}
-              </p>
             </div>
           </>
         ) : (
@@ -90,7 +87,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-amber-800 dark:text-amber-300 font-nunito">
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
                 Portal connection delayed
               </h3>
               <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-1">
@@ -116,7 +113,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-700 text-xs font-semibold text-[var(--ink-muted)] hover:bg-gray-100 dark:hover:bg-slate-800 transition active:scale-95"
+                  className="px-4 py-2 rounded-xl border border-[var(--line-subtle)] text-xs font-semibold text-[var(--ink-muted)] hover:bg-[var(--surface-subtle)] transition active:scale-95"
                 >
                   Cancel
                 </button>

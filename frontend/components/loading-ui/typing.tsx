@@ -9,7 +9,7 @@
  * Usage:
  *   <Typing />                          — default, 3 dots, 1 s cycle
  *   <Typing count={4} duration={0.6} /> — 4 dots, faster cycle
- *   <Typing size="lg" className="text-indigo-500" />
+ *   <Typing size="lg" className="text-accent-primary" />
  */
 
 import React from "react";

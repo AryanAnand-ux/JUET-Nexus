@@ -62,9 +62,9 @@ const CATEGORIES: {
     id: "general",
     label: "General Feedback",
     icon: <MessageSquare className="w-4 h-4" />,
-    color: "text-indigo-500",
-    activeBg: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-800",
-    border: "hover:border-indigo-300",
+    color: "text-brand-600",
+    activeBg: "bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-100 border-brand-300 dark:border-brand-500/40",
+    border: "hover:border-brand-300",
   },
 ];
 
@@ -223,30 +223,27 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
         aria-modal="true"
         aria-labelledby="feedback-modal-title"
         tabIndex={-1}
-        className="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-gray-200/80 dark:border-slate-800 shadow-2xl overflow-hidden transition-all duration-300 z-10 font-nunito max-h-[92vh] flex flex-col pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-0 focus:outline-none"
+        className="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-[var(--surface-card)] border border-[var(--line-subtle)] shadow-2xl overflow-hidden transition-all duration-300 z-10 max-h-[92vh] flex flex-col pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-0 focus:outline-none"
       >
         {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 text-white p-5 sm:p-6 relative shrink-0">
+        <div className="bg-gradient-to-r from-midnight via-carbon to-midnight text-white p-5 sm:p-6 relative shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors touch-manipulation active:scale-95 cursor-pointer"
+            className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors touch-manipulation active:scale-95 cursor-pointer"
             aria-label="Close feedback modal"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs font-semibold mb-2 border border-zinc-700">
-            <Mail className="w-3.5 h-3.5 text-zinc-300" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-brand-100 text-[10px] font-semibold uppercase tracking-[0.14em] mb-3 border border-white/10">
+            <Mail className="w-3.5 h-3.5" />
             <span>Direct to {TARGET_EMAIL}</span>
           </div>
 
-          <h3 id="feedback-modal-title" className="text-xl sm:text-2xl font-black tracking-tight">
+          <h3 id="feedback-modal-title" className="text-xl sm:text-2xl font-editorial-italic font-normal tracking-normal">
             Share Your Feedback
           </h3>
-          <p className="mt-1 text-xs sm:text-sm text-slate-300">
-            Report bugs, suggest features, or tell us how JUET Nexus is helping you.
-          </p>
         </div>
 
         {/* Modal Body */}
@@ -259,10 +256,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
               </div>
 
               <div>
-                <h4 className="text-xl font-bold text-gray-900 dark:text-slate-100">
+                <h4 className="text-xl font-editorial-italic font-normal text-[var(--ink-strong)]">
                   Ready in Gmail!
                 </h4>
-                <p className="mt-1.5 text-xs sm:text-sm text-gray-600 dark:text-slate-300 max-w-sm mx-auto leading-relaxed">
+                <p className="mt-1.5 text-xs sm:text-sm text-[var(--ink-body)] max-w-sm mx-auto leading-relaxed">
                   We opened Gmail with your feedback pre-filled. Just review and click <strong>Send</strong>.
                 </p>
               </div>
@@ -273,7 +270,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                   href={gmailUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-brand-500/30 bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-100 text-xs font-semibold hover:bg-brand-100 dark:hover:bg-brand-500/25 transition-colors"
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span>Open Gmail Web Compose</span>
@@ -281,9 +278,9 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
 
                 <a
                   href={mailtoUrl}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 text-gray-700 dark:text-slate-300 text-xs font-semibold hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-subtle)] text-[var(--ink-body)] text-xs font-semibold hover:bg-[var(--line-subtle)] transition-colors"
                 >
-                  <MailQuestion className="w-4 h-4 text-gray-500" />
+                  <MailQuestion className="w-4 h-4 text-[var(--ink-muted)]" />
                   <span>Open in Default Mail App</span>
                 </a>
               </div>
@@ -292,14 +289,14 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink-strong)] transition-colors cursor-pointer"
                 >
                   Send Another
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-slate-100 text-white dark:text-gray-900 text-xs font-bold hover:bg-gray-800 dark:hover:bg-white transition-colors cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-midnight dark:bg-brand-600 text-white text-xs font-semibold hover:bg-carbon dark:hover:bg-brand-500 transition-colors cursor-pointer"
                 >
                   Done
                 </button>
@@ -310,7 +307,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Category Picker */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-2">
                   Category
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -337,15 +334,15 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
 
               {/* Subject */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1.5">
-                  Subject / Summary <span className="text-gray-400 normal-case font-normal">(optional)</span>
+                <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-1.5">
+                  Subject / Summary <span className="text-[var(--ink-muted)] normal-case font-normal">(optional)</span>
                 </label>
                 <input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="e.g. Attendance percentage mismatch or suggestion"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all touch-manipulation"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-strong)] placeholder-[var(--ink-muted)] text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/25 focus:border-accent-primary transition-all touch-manipulation"
                   maxLength={100}
                 />
               </div>
@@ -353,7 +350,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
               {/* Message */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
                     Your Feedback <span className="text-rose-500">*</span>
                   </label>
                   <span className="text-[11px] text-gray-400 dark:text-slate-500 font-mono">
@@ -366,14 +363,14 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe the issue or suggestion in detail..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none touch-manipulation"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-strong)] placeholder-[var(--ink-muted)] text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/25 focus:border-accent-primary transition-all resize-none touch-manipulation"
                 />
               </div>
 
               {/* Rating + Optional Email */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1.5">
+                  <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-1.5">
                     How is your experience?
                   </label>
                   <div className="flex items-center gap-1">
@@ -403,30 +400,30 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1.5">
-                    Your Email <span className="text-gray-400 normal-case font-normal">(optional for reply)</span>
+                  <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-1.5">
+                    Your Email <span className="text-[var(--ink-muted)] normal-case font-normal">(optional for reply)</span>
                   </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="enrollment@juetguna.in"
-                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all touch-manipulation"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-strong)] placeholder-[var(--ink-muted)] text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-accent-primary/25 focus:border-accent-primary transition-all touch-manipulation"
                   />
                 </div>
               </div>
 
               {/* Submit Button */}
-              <div className="pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-3">
-                <span className="text-[11px] text-gray-400 dark:text-slate-500 truncate">
-                  Opens in <strong className="text-indigo-600 dark:text-indigo-400">Gmail</strong>
+              <div className="pt-3 border-t border-[var(--line-subtle)] flex items-center justify-between gap-3">
+                <span className="text-[11px] text-[var(--ink-muted)] truncate">
+                  Opens in <strong className="text-[var(--accent-text)]">Gmail</strong>
                 </span>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 text-xs font-bold hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl border border-[var(--line-subtle)] text-[var(--ink-muted)] text-xs font-semibold hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -434,7 +431,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                   <button
                     type="submit"
                     disabled={!message.trim()}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/25 transition-all disabled:opacity-50 active:scale-95 cursor-pointer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-primary/90 text-white text-xs font-semibold shadow-card transition-all disabled:opacity-50 active:scale-95 cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>Submit & Open Gmail</span>

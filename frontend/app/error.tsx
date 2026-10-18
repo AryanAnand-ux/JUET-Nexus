@@ -25,12 +25,9 @@ export default function GlobalError({
               <AlertTriangle className="w-8 h-8 text-figma-red" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-[var(--ink-strong)] mb-2">
+          <h2 className="text-2xl font-editorial-italic font-normal text-[var(--ink-strong)] mb-8">
             Something went wrong!
           </h2>
-          <p className="text-sm text-[var(--ink-muted)] mb-8">
-            An unexpected error occurred while loading this page. Our systems have logged the issue.
-          </p>
           <div className="flex flex-col gap-3">
             <FigmaButton onClick={() => reset()} className="w-full justify-center">
               Try Again

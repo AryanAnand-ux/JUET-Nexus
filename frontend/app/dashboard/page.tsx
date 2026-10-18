@@ -15,7 +15,7 @@ import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { usePortalRecovery } from "@/hooks/usePortalRecovery";
 import { performLogout } from "@/utils/logout";
 import { apiClient } from "@/utils/api";
-import { AlertTriangle, MapPin, Copy, Check, Eye, EyeOff } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Typing } from "@/components/loading-ui/typing";
 
 /**
@@ -55,7 +55,7 @@ const ErrorBanner: React.FC<{
             <button
               type="button"
               onClick={onLogin}
-              className="text-sm font-bold text-indigo-700 dark:text-indigo-400 underline underline-offset-2 hover:text-indigo-900 dark:hover:text-indigo-200 cursor-pointer"
+              className="text-sm font-bold text-brand-700 dark:text-brand-300 underline underline-offset-2 hover:text-brand-900 dark:hover:text-brand-200 cursor-pointer"
             >
               Sign in again
             </button>
@@ -72,7 +72,7 @@ const ErrorBanner: React.FC<{
 const LoadingSkeleton: React.FC = () => (
   <div className="space-y-6">
     <div className="flex flex-col items-center justify-center gap-4 py-16 text-slate-400 dark:text-slate-500">
-      <Typing size="lg" duration={0.9} className="text-accent-primary" />
+      <Typing size="lg" duration={0.9} className="text-[var(--accent-text)]" />
       <p className="text-sm font-semibold font-nunito tracking-wide animate-pulse">
         Loading your dashboard…
       </p>
@@ -80,7 +80,7 @@ const LoadingSkeleton: React.FC = () => (
     {[1, 2, 3].map((i) => (
       <div
         key={i}
-        className="border border-gray-100 dark:border-slate-800 bg-gray-100 dark:bg-slate-800/60 rounded-2xl h-[280px] animate-pulse shadow-sm"
+        className="border border-[var(--line-subtle)] bg-[var(--surface-subtle)] rounded-2xl h-[280px] animate-pulse"
       />
     ))}
   </div>
@@ -89,25 +89,6 @@ const LoadingSkeleton: React.FC = () => (
 export default function DashboardPage() {
   const router = useRouter();
   const [enrollment, setEnrollment] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [maskEnrollment, setMaskEnrollment] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("mask_enrollment");
-      if (saved === "true") setMaskEnrollment(true);
-    }
-  }, []);
-
-  const toggleMask = () => {
-    setMaskEnrollment((prev) => {
-      const next = !prev;
-      if (typeof window !== "undefined") {
-        localStorage.setItem("mask_enrollment", String(next));
-      }
-      return next;
-    });
-  };
 
   const {
     data,
@@ -159,12 +140,10 @@ export default function DashboardPage() {
     }
   }, [router]);
 
-  // Cache student profile info for MobileBottomNav profile sheet
+  // Cache student name for the Settings page (Feedback) and sidebar
   useEffect(() => {
-    if (data?.student) {
-      const { name, branch } = data.student;
-      if (name) localStorage.setItem("studentName", name);
-      if (branch) localStorage.setItem("branch", branch);
+    if (data?.student?.name) {
+      localStorage.setItem("studentName", data.student.name);
     }
   }, [data]);
 
@@ -173,20 +152,12 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
-  const handleCopyEnrollment = (text: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   if (!enrollment) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center font-nunito">
+      <div className="min-h-screen bg-[var(--surface-page)] flex items-center justify-center font-nunito">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm font-bold text-gray-500 dark:text-slate-400">Checking session...</p>
+                      <div className="w-10 h-10 border-4 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm font-bold text-[var(--ink-muted)]">Checking session...</p>
         </div>
       </div>
     );
@@ -204,63 +175,25 @@ export default function DashboardPage() {
       onRefresh={invalidateCache}
       isRefreshing={isLoading}
     >
-      {/* Header Section — Premium Gradient Card */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-[24px] p-6 md:p-8 mb-8 border border-slate-800 shadow-xl">
-        {/* Glow Effects */}
-        <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-[250px] h-[250px] bg-violet-600/10 rounded-full blur-[80px] pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      {/* Header Section — Compact welcome banner */}
+      <div className="relative overflow-hidden bg-midnight dark:bg-carbon rounded-[20px] px-5 py-4 sm:px-6 sm:py-5 mb-6 border border-white/5 shadow-banner">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-2">
-              Academic Portal
-            </p>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-2 tracking-tight font-nunito leading-tight">
+            <h2 className="text-xl sm:text-2xl text-white leading-tight font-editorial-italic">
               {data?.student.name
-                ? maskEnrollment
-                  ? "Welcome back."
-                  : `Welcome back, ${data.student.name}.`
-                : "Welcome back."}
+                ? <span>Welcome back, <span className="text-brand-100">{data.student.name}</span>.</span>
+                : <span>Welcome back.</span>}
             </h2>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300 font-medium">
-              <span className="flex items-center">
-                <MapPin className="w-4 h-4 mr-1.5 flex-shrink-0 text-indigo-400" /> 
-                {data?.student.branch || "Academic Branch"}
-              </span>
-              {data?.student.enrollment && (
-                <>
-                  <span className="text-slate-600">•</span>
-                  <div className="inline-flex items-center gap-1.5">
-                    <button
-                      onClick={() => handleCopyEnrollment(data.student.enrollment)}
-                      title="Click to copy enrollment number"
-                      className="group bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 hover:border-indigo-500/60 px-3 py-1 rounded-full text-xs font-bold text-slate-300 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer font-mono"
-                    >
-                      <span>
-                        {maskEnrollment
-                          ? `${data.student.enrollment.slice(0, 2)}••••${data.student.enrollment.slice(-2)}`
-                          : data.student.enrollment}
-                      </span>
-                      {copied ? (
-                        <Check className="w-3.5 h-3.5 text-green-400" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={toggleMask}
-                      title={maskEnrollment ? "Show enrollment & name" : "Hide enrollment & name (Privacy Mode)"}
-                      aria-label="Toggle Privacy Mode"
-                      className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-all cursor-pointer"
-                    >
-                      {maskEnrollment ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 truncate">
+              {data?.student.branch || "Academic Branch"}
+            </p>
           </div>
+
+          {data?.student.enrollment && (
+            <span className="inline-flex items-center shrink-0 bg-white/10 border border-white/10 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-200 font-mono tabular-nums">
+              {data.student.enrollment}
+            </span>
+          )}
         </div>
       </div>
 
@@ -279,7 +212,7 @@ export default function DashboardPage() {
               onChange={(event) => recovery.setPassword(event.target.value)}
               placeholder="Portal password"
               autoComplete="current-password"
-              className="rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm dark:border-amber-800 dark:bg-slate-900"
+              className="rounded-xl border border-amber-300 bg-[var(--surface-card)] px-3 py-2 text-sm text-[var(--ink-strong)] dark:border-amber-800"
             />
             <button
               type="button"
@@ -301,11 +234,11 @@ export default function DashboardPage() {
         <div className="space-y-6">
           {/* Overall Attendance Summary Banner */}
           {totalHeld > 0 && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[24px] p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 transition-colors">
+            <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-[24px] p-6 shadow-card flex flex-col md:flex-row items-center justify-between gap-6 transition-colors">
               <div className="flex items-center gap-5 w-full md:w-auto">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 font-extrabold text-2xl font-nunito ${
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-2xl font-extrabold tabular-nums ${
                   overallPct >= 75
-                    ? "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300 border border-green-200 dark:border-green-900/60"
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60"
                     : overallPct >= 70
                     ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60"
                     : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
@@ -314,27 +247,19 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 font-nunito">Overall Attendance</h3>
-                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                    <h3 className="text-base font-bold text-[var(--ink-strong)]">Overall Attendance</h3>
+                    <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-[0.14em] ${
                       overallPct >= 75
-                        ? "bg-green-100/70 text-green-800 dark:bg-green-950 dark:text-green-300"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                         : overallPct >= 70
-                        ? "bg-amber-100/70 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                        : "bg-rose-100/70 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                        ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                        : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                     }`}>
                       {overallPct >= 75 ? "Good Standing" : overallPct >= 70 ? "Caution Zone" : "Critical"}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 dark:text-slate-400 font-medium font-nunito mt-1">
+                  <p className="text-xs text-[var(--ink-muted)] mt-1.5">
                     {totalAttended} of {totalHeld} total classes attended across all enrolled courses
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 w-full md:w-auto justify-end border-t md:border-t-0 pt-4 md:pt-0 border-slate-100 dark:border-slate-800">
-                <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Academic Standing</p>
-                  <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">
-                    {overallPct >= 75 ? "Eligible for Examinations" : "Below 75% Requirement"}
                   </p>
                 </div>
               </div>
@@ -345,28 +270,25 @@ export default function DashboardPage() {
           <AttendanceTracker attendanceRecords={data.attendance} />
 
           {/* Footer Info */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 dark:border-slate-800 pt-6">
-            <p className="text-xs font-bold text-gray-400 dark:text-slate-500 font-nunito">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--line-subtle)] pt-6">
+            <p className="text-xs text-[var(--ink-muted)]">
               Last synced: {cachedAt ? new Date(cachedAt).toLocaleString() : new Date().toLocaleString()}
-            </p>
-            <p className="text-xs font-medium text-gray-400 dark:text-slate-500 font-nunito">
-              Secure portal session is active and verified.
             </p>
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+        <div className="rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-8 text-center shadow-card">
+          <h3 className="text-lg font-bold text-[var(--ink-strong)]">
             Your dashboard is temporarily unavailable
           </h3>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+          <p className="mt-2 text-sm text-[var(--ink-muted)] max-w-md mx-auto">
             We could not reach the university portal. You can retry connecting or sign in again.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => refresh()}
-              className="rounded-xl bg-accent-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-accent-primary/90 shadow-sm active:scale-95 transition"
+              className="rounded-xl bg-accent-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-accent-primary/90 shadow-card active:scale-95 transition"
             >
               Try Reconnecting
             </button>
@@ -375,7 +297,7 @@ export default function DashboardPage() {
               onClick={() => {
                 performLogout().finally(() => router.push("/login"));
               }}
-              className="rounded-xl border border-gray-300 dark:border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 active:scale-95 transition"
+              className="rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-body)] hover:bg-[var(--surface-subtle)] active:scale-95 transition"
             >
               Sign in again
             </button>

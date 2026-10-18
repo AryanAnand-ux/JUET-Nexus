@@ -18,14 +18,14 @@ export const FigmaCard = React.forwardRef<HTMLDivElement, FigmaCardProps>(
       <div
         ref={ref}
         className={clsx(
-          "bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-2xl shadow-sm font-nunito transition-all duration-200 hover:shadow-md",
+          "bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-2xl shadow-card font-sans transition-all duration-200 hover:shadow-elevated",
           paddingStyles[padding],
           className
         )}
         {...props}
       >
         {heading && (
-          <h3 className="text-xl font-bold text-[var(--ink-strong)] mb-4 border-b border-[var(--line-subtle)] pb-3 font-nunito">
+          <h3 className="text-lg font-bold text-[var(--ink-strong)] mb-4 border-b border-[var(--line-subtle)] pb-3">
             {heading}
           </h3>
         )}

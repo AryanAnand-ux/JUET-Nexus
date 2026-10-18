@@ -148,7 +148,6 @@ export function CampusLynxLoginForm({
               placeholder="Enter your enrollment number"
               disabled={isLoading}
               aria-invalid={touched.enrollment && !isValidEnrollment(enrollment)}
-              aria-describedby={touched.enrollment && !isValidEnrollment(enrollment) ? "enrollment-help" : undefined}
               autoFocus
               autoComplete="username"
               autoCapitalize="characters"
@@ -158,11 +157,6 @@ export function CampusLynxLoginForm({
               className={`${inputBase} font-mono tracking-wider uppercase`}
             />
           </div>
-          {touched.enrollment && !isValidEnrollment(enrollment) && (
-            <p id="enrollment-help" className="mt-1.5 text-xs font-medium text-rose-600">
-              Format: 2 numbers, 2-4 letters, 3-4 numbers (e.g., 24BCS100)
-            </p>
-          )}
         </div>
 
         {/* Field 2: Password */}

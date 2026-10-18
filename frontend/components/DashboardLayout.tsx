@@ -1,26 +1,17 @@
-/**
- * Dashboard Layout Component
- * Persistent, collapsible sidebar + top navigation + main content area
- * Premium Indigo/Violet/Slate aesthetic
- */
-
 "use client";
 
-import React, { ReactNode, useState } from "react";
-import clsx from "clsx";
+import React, { useState } from "react";
 import Link from "next/link";
-import { FigmaButton } from "./base";
 import { usePathname } from "next/navigation";
-import { ThemeToggle } from "./ThemeToggle";
+import clsx from "clsx";
+import { Settings, RotateCw } from "lucide-react";
 import { MobileBottomNav } from "./MobileBottomNav";
-import { RotateCw, MessageSquare } from "lucide-react";
-import { FeedbackModal } from "./FeedbackModal";
 
 export interface DashboardLayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
   studentName: string;
   enrollment: string;
-  onLogout: () => void;
+  onLogout?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
 }
@@ -29,54 +20,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   studentName,
   enrollment,
-  onLogout,
   onRefresh,
   isRefreshing = false,
 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [maskEnrollment, setMaskEnrollment] = useState(false);
   const pathname = usePathname();
   const sidebarRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      setMaskEnrollment(localStorage.getItem("mask_enrollment") === "true");
-    }
-  }, []);
-
-  const toggleMask = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setMaskEnrollment((prev) => {
-      const next = !prev;
-      if (typeof window !== "undefined") {
-        localStorage.setItem("mask_enrollment", String(next));
-      }
-      return next;
-    });
-  };
-
-  React.useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as HTMLElement;
-      if (target && typeof target.closest === "function" && target.closest('[data-sidebar-toggle="true"]')) {
-        return;
-      }
-      if (sidebarRef.current && !sidebarRef.current.contains(target)) {
-        setSidebarCollapsed(true);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  const handleSidebarClick = () => {
-    if (sidebarCollapsed) {
-      setSidebarCollapsed(false);
-    }
-  };
 
   // Helper to get initials for avatar
   const getInitials = (name: string) => {
@@ -89,8 +38,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   const navItems: Array<{
-    href?: string;
-    onClick?: () => void;
+    href: string;
     label: string;
     icon: React.ReactNode;
   }> = [
@@ -131,9 +79,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       ),
     },
     {
-      label: "Feedback",
-      icon: <MessageSquare className="w-5 h-5 shrink-0" />,
-      onClick: () => setFeedbackOpen(true),
+      href: "/dashboard/settings",
+      label: "Settings",
+      icon: <Settings className="w-5 h-5 shrink-0" />,
     },
   ];
 
@@ -143,16 +91,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Sidebar Panel */}
       <aside
         ref={sidebarRef}
-        onClick={handleSidebarClick}
         className={clsx(
           "hidden lg:flex fixed inset-y-0 left-0 z-50 lg:static flex-col bg-[var(--surface-card)] border-r border-[var(--line-subtle)] transition-all duration-300 ease-in-out",
-          // Desktop state
-          sidebarCollapsed ? "lg:w-20 cursor-pointer" : "lg:w-64 cursor-default"
+          // Desktop state — only changes via the explicit toggle button
+          sidebarCollapsed ? "lg:w-20" : "lg:w-64"
         )}
       >
         {/* Brand Header */}
         <div className={clsx(
-          "border-b border-gray-100 dark:border-zinc-800/80 flex items-center justify-between transition-all duration-300",
+          "border-b border-[var(--line-subtle)] flex items-center justify-between transition-all duration-300",
           sidebarCollapsed ? "p-4 justify-center" : "p-6"
         )}>
           {!sidebarCollapsed ? (
@@ -169,33 +116,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         {/* User Card */}
         <div className={clsx(
-          "border-b border-gray-100 dark:border-slate-800 transition-all duration-300",
+          "border-b border-[var(--line-subtle)] transition-all duration-300",
           sidebarCollapsed ? "p-4 text-center" : "p-6"
         )}>
           {sidebarCollapsed ? (
             <div className="flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-accent-light text-accent-primary font-bold flex items-center justify-center text-sm shadow-sm" title={studentName}>
+              <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-100 font-bold flex items-center justify-center text-sm shadow-sm" title={studentName}>
                 {getInitials(studentName)}
               </div>
             </div>
           ) : (
-            <div
-              className="flex items-center gap-3 cursor-pointer group"
-              onClick={toggleMask}
-              title={maskEnrollment ? "Click to show details" : "Click to hide details (Privacy Mode)"}
-            >
-              <div className="w-10 h-10 rounded-full bg-accent-light text-accent-primary font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-100 font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
                 {getInitials(studentName)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-figma-dark dark:text-slate-200 truncate" title={studentName}>
-                  {maskEnrollment ? "Student" : studentName}
+                <p className="text-sm font-semibold text-[var(--ink-strong)] truncate" title={studentName}>
+                  {studentName}
                 </p>
-                <p className="text-xs text-figma-gray dark:text-slate-400 truncate font-mono">
-                  {maskEnrollment && enrollment
-                    ? `${enrollment.slice(0, 2)}••••${enrollment.slice(-2)}`
-                    : enrollment}
-                </p>
+                {enrollment && (
+                  <p className="text-xs text-[var(--ink-muted)] truncate font-mono">
+                    {enrollment}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -203,45 +146,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         {/* Navigation Items */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto" aria-label="Dashboard sections">
-          {!sidebarCollapsed && (
-            <p className="text-[10px] font-bold tracking-wider text-figma-gray uppercase px-2 mb-2 block">
-              Sections
-            </p>
-          )}
           {navItems.map((item) => {
-            if (item.onClick) {
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => {
-                    item.onClick?.();
-                  }}
-                  className={clsx(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium tracking-wide transition-all font-nunito text-left cursor-pointer",
-                    feedbackOpen
-                      ? "bg-accent-primary text-white shadow-md shadow-accent-primary/20"
-                      : "text-figma-gray dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-figma-dark dark:hover:text-slate-100",
-                    sidebarCollapsed && "justify-center"
-                  )}
-                  title={sidebarCollapsed ? item.label : undefined}
-                >
-                  {item.icon}
-                  {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                </button>
-              );
-            }
-
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
-                href={item.href!}
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={clsx(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium tracking-wide transition-all font-nunito",
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium tracking-wide transition-all text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)]",
                   isActive
-                    ? "bg-accent-primary text-white shadow-md shadow-accent-primary/20"
-                    : "text-figma-gray dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-figma-dark dark:hover:text-slate-100",
+                    ? "bg-midnight dark:bg-brand-600 text-white shadow-sm"
+                    : "text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)]",
                   sidebarCollapsed && "justify-center"
                 )}
                 title={sidebarCollapsed ? item.label : undefined}
@@ -253,15 +169,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           })}
         </nav>
 
-        {/* Collapse Toggle Footer (Desktop only) */}
-        <div className="border-t border-gray-100 dark:border-zinc-800/80 p-4 hidden lg:block">
+        {/* Footer: Refresh + explicit collapse toggle (Desktop only) */}
+        <div className="border-t border-[var(--line-subtle)] p-4 hidden lg:block space-y-3">
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className={clsx(
+                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)] transition-colors disabled:opacity-50",
+                sidebarCollapsed && "justify-center"
+              )}
+              title={sidebarCollapsed ? "Refresh" : undefined}
+            >
+              <RotateCw className={clsx("w-4 h-4 shrink-0", isRefreshing && "animate-spin")} />
+              {!sidebarCollapsed && <span className="truncate">Refresh</span>}
+            </button>
+          )}
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSidebarCollapsed(!sidebarCollapsed);
-            }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-figma-gray dark:text-zinc-400 hover:text-figma-dark dark:hover:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors font-nunito text-xs font-bold"
+            onClick={() => setSidebarCollapsed((prev) => !prev)}
+            className="w-full flex items-center justify-center py-2 px-3 rounded-xl text-[var(--ink-muted)] hover:text-[var(--ink-strong)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <svg
               className={clsx("w-5 h-5 transition-transform duration-300", sidebarCollapsed && "rotate-180")}
@@ -271,77 +201,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
             </svg>
-            {!sidebarCollapsed && <span>Collapse Sidebar</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header bar */}
-        <header className="bg-[var(--surface-card)] border-b border-[var(--line-subtle)] px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3 shadow-sm z-10 transition-colors duration-200">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <h1 className="text-base sm:text-xl font-bold text-figma-dark dark:text-slate-100 font-nunito truncate">
-              {pathname === "/dashboard/performance"
-                ? "Academic Performance"
-                : pathname === "/dashboard/courses"
-                ? "Registered Courses"
-                : pathname === "/dashboard/exam"
-                ? "Exam Schedule"
-                : "Attendance Tracker"}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            {onRefresh && (
-              <button
-                type="button"
-                onClick={onRefresh}
-                disabled={isRefreshing}
-                title="Refresh academic data"
-                aria-label="Refresh academic data"
-                className="p-2 text-gray-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-              >
-                <RotateCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setFeedbackOpen(true)}
-              title="Send Feedback (juetnexus@gmail.com)"
-              aria-label="Send Feedback"
-              className="p-2 text-gray-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer active:scale-95"
-            >
-              <MessageSquare className="w-4 h-4" />
-            </button>
-            <ThemeToggle />
-            <FigmaButton size="sm" variant="ghost" onClick={onLogout} className="px-2 sm:px-3">
-              <span className="hidden sm:inline">Logout</span>
-              <svg className="w-5 h-5 sm:hidden text-figma-gray dark:text-slate-400 hover:text-figma-dark dark:hover:text-slate-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </FigmaButton>
-          </div>
-        </header>
-
         {/* Content body */}
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-[var(--surface-page)] p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 touch-scroll-momentum transition-colors duration-200">
-          <div className="max-w-7xl mx-auto">
+          <div key={pathname} className="max-w-7xl mx-auto animate-page-enter">
             {children}
           </div>
         </main>
       </div>
 
       {/* Fixed bottom navigation for mobile */}
-      <MobileBottomNav onOpenFeedback={() => setFeedbackOpen(true)} />
-
-      {/* Feedback Modal */}
-      <FeedbackModal
-        isOpen={feedbackOpen}
-        onClose={() => setFeedbackOpen(false)}
-        enrollment={enrollment}
-        studentName={studentName}
-      />
+      <MobileBottomNav />
     </div>
   );
 };

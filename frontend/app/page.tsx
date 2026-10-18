@@ -54,9 +54,9 @@ export default function RootPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#8ba5ec] flex items-center justify-center font-nunito">
+    <div className="min-h-screen bg-midnight flex items-center justify-center">
       <div className="text-center text-white space-y-3">
-        <div className="w-9 h-9 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-9 h-9 border-[3px] border-white/30 border-t-white rounded-full animate-spin mx-auto" />
         <p className="text-sm font-semibold tracking-wide">Loading JUET Nexus…</p>
       </div>
     </div>

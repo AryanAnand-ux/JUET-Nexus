@@ -2,17 +2,33 @@ import "../globals.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
+import { Plus_Jakarta_Sans, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "../context/ThemeContext";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-next-jakarta",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  display: "swap",
+  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-next-playfair",
+});
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F7F7F5" },
-    { media: "(prefers-color-scheme: dark)", color: "#10131B" },
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#0F0F10" },
   ],
 };
 
@@ -121,8 +137,15 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${jakarta.variable} ${playfair.variable}`} suppressHydrationWarning>
       <head>
+        {/* Applies the persisted theme before first paint so dark-mode users
+            never see a white flash. Mirrors ThemeContext logic exactly. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme-mode');var d=t==='dark';var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();`,
+          }}
+        />
         <meta
           name="google-site-verification"
           content="0niLebqPCbZ9SH5BLX0uP_S53oiuwx6Zrxmmw5xAWFM"

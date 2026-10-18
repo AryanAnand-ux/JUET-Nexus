@@ -8,18 +8,15 @@ export default function NotFound() {
       <div className="w-full max-w-md">
         <FigmaCard className="text-center">
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 bg-[var(--surface-subtle)] rounded-full flex items-center justify-center">
               <MapPin className="w-8 h-8 text-[var(--ink-muted)]" />
             </div>
           </div>
-          <h2 className="text-4xl font-black text-[var(--ink-strong)] mb-2 tracking-tight">
+          <h2 className="text-4xl font-editorial-italic font-normal text-[var(--ink-strong)] mb-2 tracking-normal">
             404
           </h2>
-          <p className="text-base font-bold text-[var(--ink-strong)] mb-2">
+          <p className="text-base font-semibold text-[var(--ink-strong)] mb-8">
             Page Not Found
-          </p>
-          <p className="text-sm text-[var(--ink-muted)] mb-8">
-            The page you are looking for doesn&apos;t exist or has been moved.
           </p>
           <Link href="/" className="block">
             <FigmaButton className="w-full justify-center">

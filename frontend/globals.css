@@ -2,38 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-/* JUET Nexus design tokens */
+/* JUET Nexus — Editorial design tokens */
 :root {
-  --accent-primary: #6246c7;
-  --accent-primary-hover: #5138ad;
-  --accent-primary-light: rgba(98, 70, 199, 0.11);
-  --surface-page: #f7f7f5;
-  --surface-card: #ffffff;
-  --surface-subtle: #f0f0ed;
-  --ink-strong: #172033;
-  --ink-muted: #5e6878;
-  --line-subtle: #e4e6e3;
-  --focus-ring: #8b6fe8;
-  --font-inter: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-newsreader: Newsreader, Georgia, "Times New Roman", serif;
-  --font-nunito-sans: "Nunito Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-jakarta: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --accent-primary: #6355D8;
+  --accent-primary-hover: #5842E3;
+  --accent-primary-light: rgba(99, 85, 216, 0.10);
+  /* Brand-tinted TEXT (links, accents) — lightened in dark mode for contrast */
+  --accent-text: #6355D8;
+  --surface-page: #FFFFFF;
+  --surface-card: #FFFFFF;
+  --surface-subtle: #F7F7F8;
+  --ink-strong: #17171A;
+  --ink-body: #3F3F46;
+  --ink-muted: #6B6B72;
+  --line-subtle: #E6E6E9;
+  --focus-ring: #6355D8;
+  --font-inter: var(--font-next-jakarta, "Plus Jakarta Sans"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-newsreader: var(--font-next-playfair, "Playfair Display"), Georgia, "Times New Roman", serif;
+  --font-nunito-sans: var(--font-next-jakarta, "Plus Jakarta Sans"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-jakarta: var(--font-next-jakarta, "Plus Jakarta Sans"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 :root.accent-indigo {
-  --accent-primary: #6246c7;
-  --accent-primary-hover: #5138ad;
-  --accent-primary-light: rgba(98, 70, 199, 0.11);
+  --accent-primary: #6355D8;
+  --accent-primary-hover: #5842E3;
+  --accent-primary-light: rgba(99, 85, 216, 0.10);
+  --accent-text: #6355D8;
 }
 
 :root.dark {
-  --surface-page: #10131b;
-  --surface-card: #171b25;
-  --surface-subtle: #202633;
-  --ink-strong: #f4f5f7;
-  --ink-muted: #a5adba;
-  --line-subtle: #2b3341;
-  --focus-ring: #a995ff;
+  --surface-page: #0F0F10;
+  --surface-card: #191919;
+  --surface-subtle: #232325;
+  --ink-strong: #F4F4F5;
+  --ink-body: #D4D4D8;
+  --ink-muted: #A1A1AA;
+  --line-subtle: #2C2C2E;
+  --focus-ring: #8B7FF0;
+  --accent-text: #C4B5FD;
 }
 
 /* Global Base Styles */
@@ -48,9 +54,16 @@
     @apply antialiased transition-colors duration-200;
     background: var(--surface-page);
     color: var(--ink-strong);
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Editorial italic — Playfair Display for section headings */
+  .font-editorial-italic {
+    font-family: var(--font-newsreader);
+    font-style: italic;
+    font-weight: 400;
   }
 
   button,
@@ -61,20 +74,25 @@
     touch-action: manipulation;
   }
 
+  /* Typography mandate:
+     - Plus Jakarta Sans is the primary font for ALL interface elements.
+     *  Headings default to the primary sans; opt into the editorial serif
+      *  (Playfair Display) only for large page headings via `font-editorial-italic`
+      *  or `font-editorial`/`font-serif`. */
   h1 {
-    @apply font-serif text-brutal-4xl font-normal normal-case tracking-tight;
+    @apply font-sans text-brutal-4xl font-normal normal-case tracking-tight;
   }
 
   h2 {
-    @apply font-serif text-brutal-3xl font-normal normal-case tracking-tight;
+    @apply font-sans text-brutal-3xl font-normal normal-case tracking-tight;
   }
 
   h3 {
-    @apply font-serif text-brutal-2xl font-semibold normal-case;
+    @apply font-sans text-brutal-2xl font-semibold normal-case;
   }
 
   h4 {
-    @apply font-serif text-brutal-xl font-semibold normal-case;
+    @apply font-sans text-brutal-xl font-semibold normal-case;
   }
 
   p {
@@ -99,6 +117,14 @@
     outline: none;
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 28%, transparent);
     border-color: var(--focus-ring);
+  }
+
+  /* Keyboard focus visibility for interactive elements */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
   }
 }
 
@@ -129,6 +155,22 @@
 
   .brutal-loading {
     animation: brutal-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Page transition — subtle fade when navigating between sidebar pages.
+     Opacity only: a transform here would create a containing block that
+     breaks `position: fixed` overlays (FeedbackModal, LoadingOverlay). */
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-page-enter {
+    animation: page-enter 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   /* Press effect on active */
@@ -170,13 +212,13 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #C4C4C8;
   border-radius: 9999px;
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #9A9A9F;
 }
 
 .dark ::-webkit-scrollbar-thumb,
@@ -194,7 +236,7 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: #C4C4C8 transparent;
 }
 
 .dark * {
@@ -208,6 +250,10 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .animate-page-enter {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {

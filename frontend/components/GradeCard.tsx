@@ -4,12 +4,9 @@ import React, { useState } from "react";
 import type { GradeCardResponse, GradeSubject } from "@/types";
 import {
   Award,
-  BookOpen,
   CheckCircle2,
   XCircle,
   Search,
-  Sparkles,
-  TrendingUp,
 } from "lucide-react";
 
 interface GradeCardProps {
@@ -22,7 +19,7 @@ function getGradeBadgeStyle(grade: string): string {
     return "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
   }
   if (["B+", "B"].includes(g)) {
-    return "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800";
+    return "bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-800";
   }
   if (["C+", "C", "D", "P"].includes(g)) {
     return "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800";
@@ -30,7 +27,7 @@ function getGradeBadgeStyle(grade: string): string {
   if (["F", "E", "AB", "FAIL"].includes(g)) {
     return "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800";
   }
-  return "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700";
+  return "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700";
 }
 
 export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
@@ -39,12 +36,12 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
 
   if (!grades || grades.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-12 text-center">
-        <Award className="w-12 h-12 text-gray-400 dark:text-slate-600 mx-auto mb-3" />
-        <h3 className="text-base font-bold text-gray-800 dark:text-slate-200">
+      <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-12 text-center">
+        <Award className="w-12 h-12 text-[var(--ink-muted)] mx-auto mb-3" />
+        <h3 className="text-base font-bold text-[var(--ink-strong)]">
           No Grade Card Records Available
         </h3>
-        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+        <p className="text-xs text-[var(--ink-muted)] mt-1 max-w-sm mx-auto">
           Grade card results have not yet been published by the examination branch.
         </p>
       </div>
@@ -88,10 +85,10 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
               setSelectedSemesterIndex(idx);
               setSearchTerm("");
             }}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all shrink-0 border ${
+            className={`px-4 py-2 rounded-2xl text-xs font-semibold transition-all shrink-0 border ${
               selectedSemesterIndex === idx
-                ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20"
-                : "bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800"
+                ? "bg-midnight dark:bg-brand-600 text-white border-midnight dark:border-brand-600 shadow-card"
+                : "bg-[var(--surface-card)] text-[var(--ink-muted)] border-[var(--line-subtle)] hover:bg-[var(--surface-subtle)] hover:text-[var(--ink-strong)]"
             }`}
           >
             {sem.semester.startsWith("Semester") ? sem.semester : `Semester ${sem.semester}`}
@@ -100,49 +97,42 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
       </div>
 
       {/* Overview Stats Banner */}
-      <div className="rounded-3xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 text-white p-6 sm:p-8 shadow-xl border border-zinc-800/80 relative overflow-hidden">
-        <div className="absolute right-0 top-0 -mt-10 -mr-10 w-44 h-44 rounded-full bg-zinc-700/10 blur-3xl pointer-events-none" />
+      <div className="rounded-3xl bg-gradient-to-r from-midnight via-carbon to-midnight text-white p-6 sm:p-8 shadow-banner border border-white/5 relative overflow-hidden">
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 w-44 h-44 rounded-full bg-brand-500/25 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs font-semibold uppercase tracking-wider mb-2 border border-zinc-700">
-              <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
-              <span>Official Result Sheet</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-editorial-italic font-normal tracking-normal">
               {currentSemester.semester.startsWith("Semester")
                 ? currentSemester.semester
                 : `Semester ${currentSemester.semester}`}
             </h2>
-            <p className="mt-1 text-sm text-zinc-400 font-medium">
-              Academic Performance Breakdown
-            </p>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10">
-              <p className="text-xs text-zinc-400 font-medium">Semester SGPA</p>
+            <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
+              <p className="text-xs text-slate-400">Semester SGPA</p>
               <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
                 {currentSemester.sgpa ? currentSemester.sgpa.toFixed(2) : "N/A"}
               </p>
             </div>
 
-            <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10">
-              <p className="text-xs text-zinc-400 font-medium">Cumulative CGPA</p>
+            <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
+              <p className="text-xs text-slate-400">Cumulative CGPA</p>
               <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
                 {currentSemester.cgpa ? currentSemester.cgpa.toFixed(2) : "N/A"}
               </p>
             </div>
 
-            <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10">
-              <p className="text-xs text-zinc-400 font-medium">Total Credits</p>
+            <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
+              <p className="text-xs text-slate-400">Total Credits</p>
               <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
                 {totalCredits || "—"}
               </p>
             </div>
 
-            <div className="px-4 py-3 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/10">
-              <p className="text-xs text-zinc-400 font-medium">Subjects Cleared</p>
+            <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
+              <p className="text-xs text-slate-400">Subjects Cleared</p>
               <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
                 {passedSubjects} / {subjects.length}
               </p>
@@ -155,16 +145,16 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
       {subjects.length > 0 && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--ink-muted)]" />
             <input
               type="text"
               placeholder="Search course or code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-shadow shadow-sm placeholder:text-gray-400 dark:placeholder:text-slate-500"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-strong)] text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/30 transition-all shadow-card placeholder:text-[var(--ink-muted)]"
             />
           </div>
-          <span className="text-xs text-gray-500 dark:text-slate-400 font-medium self-center sm:self-auto">
+          <span className="text-xs text-[var(--ink-muted)] self-center sm:self-auto">
             {filteredSubjects.length} courses recorded
           </span>
         </div>
@@ -172,20 +162,20 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
 
       {/* Subjects View */}
       {subjects.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center text-gray-500 dark:text-slate-400">
-          No course grades recorded for this semester.
+        <div className="rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-8 text-center text-[var(--ink-muted)]">
+          No grade card records have been published yet.
         </div>
       ) : filteredSubjects.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center text-gray-500 dark:text-slate-400">
+        <div className="rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-8 text-center text-[var(--ink-muted)]">
           No courses matching &ldquo;{searchTerm}&rdquo;
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] shadow-card">
           {/* Table for tablet / desktop */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-slate-800 bg-gray-50/75 dark:bg-slate-800/50 text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                <tr className="border-b border-[var(--line-subtle)] bg-[var(--surface-subtle)] text-[10px] font-semibold text-[var(--ink-muted)] uppercase tracking-[0.16em]">
                   <th className="py-3.5 px-5">Course</th>
                   <th className="py-3.5 px-5 text-center">Code</th>
                   <th className="py-3.5 px-5 text-center">Credits</th>
@@ -194,13 +184,13 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
                   <th className="py-3.5 px-5 text-center">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-sm">
+              <tbody className="divide-y divide-[var(--line-subtle)] text-sm">
                 {filteredSubjects.map((sub, idx) => (
                   <tr
                     key={`${sub.subjectcode}-${idx}`}
-                    className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                    className="hover:bg-[var(--surface-subtle)] transition-colors"
                   >
-                    <td className="py-4 px-5 font-semibold text-gray-900 dark:text-slate-100">
+                    <td className="py-4 px-5 font-semibold text-[var(--ink-strong)]">
                       {sub.subjectdesc || "Untitled Course"}
                     </td>
                     <td className="py-4 px-5 text-center font-mono text-xs text-gray-500 dark:text-slate-400 font-medium">
@@ -241,12 +231,12 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
           </div>
 
           {/* Cards for mobile */}
-          <div className="sm:hidden divide-y divide-gray-100 dark:divide-slate-800">
+          <div className="sm:hidden divide-y divide-[var(--line-subtle)]">
             {filteredSubjects.map((sub, idx) => (
               <div key={`${sub.subjectcode}-${idx}`} className="p-4 space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h4 className="font-bold text-gray-900 dark:text-slate-100 text-sm">
+                    <h4 className="font-semibold text-[var(--ink-strong)] text-sm">
                       {sub.subjectdesc || "Untitled Course"}
                     </h4>
                     <p className="text-xs font-mono text-gray-400 dark:text-slate-500 mt-0.5">

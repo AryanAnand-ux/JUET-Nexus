@@ -24,7 +24,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
     if (classesHeld === 0 && percentage === 0) {
       return {
         text: "NO CLASSES",
-        icon: <HelpCircle className="w-3.5 h-3.5 text-slate-400 mr-1" />,
+        icon: <HelpCircle className="w-3.5 h-3.5 text-[var(--ink-muted)] mr-1" />,
         badgeClass: "bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700",
         ringColor: "text-slate-300 dark:text-slate-700",
       };
@@ -32,9 +32,9 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
     if (percentage >= 85) {
       return { 
         text: "SAFE", 
-        icon: <CheckCircle2 className="w-3.5 h-3.5 text-green-600 mr-1" />, 
-        badgeClass: "bg-green-50 text-green-700 border border-green-100 dark:bg-green-950/20 dark:text-green-300 dark:border-green-900/40",
-        ringColor: "text-green-500"
+        icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mr-1" />, 
+        badgeClass: "bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-300 dark:border-emerald-900/40",
+        ringColor: "text-emerald-500"
       };
     }
     if (percentage >= 75) {
@@ -73,15 +73,16 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
   return (
     <FigmaCard 
       heading={
-        <span className="flex items-center text-slate-800 dark:text-slate-100 font-extrabold text-lg md:text-xl font-nunito tracking-tight">
-          <CheckCircle2 className="w-5 h-5 mr-2 text-accent-primary" /> Attendance Tracker
+        <span className="flex items-baseline gap-2.5">
+          <span className="font-editorial-italic text-2xl text-[var(--ink-strong)] font-normal">Attendance</span>
+          <CheckCircle2 className="w-4 h-4 text-brand-600 self-center ml-auto" />
         </span>
       } 
-      className="border border-slate-200/80 dark:border-slate-800 shadow-md rounded-[24px] p-6 md:p-8"
+      className="border border-[var(--line-subtle)] shadow-card rounded-[24px] p-6 md:p-8"
     >
       {attendanceRecords.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-sm font-medium text-slate-400 font-nunito">
+          <p className="text-sm text-[var(--ink-muted)]">
             No attendance data available. Connect to your student portal to view.
           </p>
         </div>
@@ -89,19 +90,19 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
         <>
           {/* Overall Stats Cards */}
           <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
+            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-brand-500/40 rounded-[20px] p-4 sm:p-5 shadow-card transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-1.5">
                 Enrolled Courses
               </p>
-              <p className="text-4xl font-extrabold text-slate-800 dark:text-slate-100 font-nunito tracking-tight">
+              <p className="text-4xl font-extrabold text-[var(--ink-strong)] tracking-tight">
                 {stats.subjectCount}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-950/20 dark:to-slate-900/10 border border-slate-100 dark:border-slate-800/60 hover:border-slate-200 dark:hover:border-slate-700 rounded-[20px] p-4 sm:p-5 shadow-sm transition-all hover:scale-[1.02] duration-300">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-1">
+            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-brand-500/40 rounded-[20px] p-4 sm:p-5 shadow-card transition-all hover:scale-[1.02] duration-300">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-1.5">
                 Attention Required (&lt;75%)
               </p>
-              <p className={`text-4xl font-extrabold font-nunito tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600' : 'text-green-600'}`}>
+              <p className={`text-4xl font-extrabold tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                 {stats.belowThreshold}
               </p>
             </div>
@@ -133,7 +134,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                     ? `Safe to miss ${bunkStatus.count} class${bunkStatus.count > 1 ? "es" : ""}`
                     : "Caution: Cannot miss any classes",
                   className: bunkStatus.count > 0
-                    ? "text-green-600 border-green-100 bg-green-50/40 dark:text-green-400 dark:border-green-900/40 dark:bg-green-950/20"
+                    ? "text-emerald-600 border-emerald-100 bg-emerald-50/40 dark:text-emerald-400 dark:border-emerald-900/40 dark:bg-emerald-950/20"
                     : "text-amber-600 border-amber-100 bg-amber-50/40 dark:text-amber-400 dark:border-amber-900/40 dark:bg-amber-950/20",
                 };
               })();
@@ -142,18 +143,18 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                 <Link
                   href={`/dashboard/subject/${encodeURIComponent(record.subject)}?pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
                   key={record.subject}
-                  className="group relative block bg-white dark:bg-slate-950/20 hover:bg-slate-50/30 dark:hover:bg-slate-900/25 border border-slate-200/80 dark:border-slate-800/60 rounded-[20px] p-4 sm:p-5 transition-all duration-300 hover:shadow-md hover:scale-[1.005] hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer"
+                  className="group relative block bg-[var(--surface-card)] hover:bg-brand-50/40 dark:hover:bg-brand-500/5 border border-[var(--line-subtle)] rounded-[20px] p-4 sm:p-5 transition-all duration-300 hover:shadow-elevated hover:scale-[1.005] hover:border-brand-500/40 cursor-pointer"
                 >
                   <div className="flex flex-col md:flex-row items-center md:items-stretch gap-6">
                     {/* Circular Progress Indicator */}
-                    <div className="relative w-24 h-24 flex items-center justify-center shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full shadow-inner">
+                    <div className="relative w-24 h-24 flex items-center justify-center shrink-0 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-full">
                       <svg className="transform -rotate-90 w-24 h-24">
                         <circle
                           cx="48"
                           cy="48"
                           r="34"
-                          stroke="#F1F5F9"
-                          className="dark:stroke-slate-800"
+                          stroke="#EAEAEC"
+                          className="dark:stroke-[#2C2C2E]"
                           strokeWidth="8"
                           fill="transparent"
                         />
@@ -171,12 +172,12 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                         />
                       </svg>
                       <div className="absolute flex flex-col items-center">
-                        <span className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 leading-none font-nunito">
+                        <span className="text-2xl font-extrabold text-[var(--ink-strong)] leading-none tabular-nums">
                           {record.percentage % 1 === 0
                             ? record.percentage.toFixed(0)
                             : record.percentage.toFixed(1)}
                         </span>
-                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Total %</span>
+                        <span className="text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-widest mt-1">Total %</span>
                       </div>
                     </div>
 
@@ -185,11 +186,11 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                       {/* Header Title */}
                       <div className="flex justify-between items-start gap-4 mb-3">
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-800 dark:text-slate-200 leading-snug font-nunito group-hover:text-accent-primary transition-colors">
+                          <h4 className="text-base font-semibold text-[var(--ink-strong)] leading-snug group-hover:text-[var(--accent-text)] transition-colors">
                             {record.subject}
                           </h4>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold font-nunito flex items-center shadow-sm shrink-0 ${status.badgeClass}`}>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em] flex items-center shadow-sm shrink-0 ${status.badgeClass}`}>
                           {status.icon}
                           {status.text}
                         </span>
@@ -198,7 +199,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                       {/* Quick-Info Skip Indicator */}
                       {skipInfo && (
                         <div className="mb-3 flex items-center">
-                          <span className={`px-2.5 py-1 rounded-xl text-xs font-bold font-nunito border shadow-sm ${skipInfo.className}`}>
+                          <span className={`px-2.5 py-1 rounded-xl text-xs font-medium border ${skipInfo.className}`}>
                             {skipInfo.text}
                           </span>
                         </div>
@@ -206,21 +207,21 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
 
                       {/* Stats Breakdowns */}
                       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
-                          <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Lectures</p>
-                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">
+                        <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-carbon hover:shadow-sm">
+                          <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-[0.14em] mb-0.5">Lectures</p>
+                          <p className="text-xs sm:text-sm font-bold text-[var(--ink-strong)] tabular-nums">
                             {record.lecturePercent > 0 ? `${record.lecturePercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
                           </p>
                         </div>
-                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
-                          <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Tutorials</p>
-                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">
+                        <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-carbon hover:shadow-sm">
+                          <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-[0.14em] mb-0.5">Tutorials</p>
+                          <p className="text-xs sm:text-sm font-bold text-[var(--ink-strong)] tabular-nums">
                             {record.tutorialPercent > 0 ? `${record.tutorialPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
                           </p>
                         </div>
-                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-slate-950 hover:shadow-sm">
-                          <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Practicals</p>
-                          <p className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-200 font-nunito">
+                        <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-carbon hover:shadow-sm">
+                          <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-[0.14em] mb-0.5">Practicals</p>
+                          <p className="text-xs sm:text-sm font-bold text-[var(--ink-strong)] tabular-nums">
                             {record.practicalPercent > 0 ? `${record.practicalPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
                           </p>
                         </div>
@@ -233,22 +234,22 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
           </div>
 
           {/* Footer Legends */}
-          <div className="mt-8 border-t border-slate-100 dark:border-slate-800/80 pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-green-100 dark:border-green-950/30 bg-green-50/50 dark:bg-green-950/10 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-sm">
-              <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
-              <p className="text-xs font-bold text-green-700 dark:text-green-300">
+          <div className="mt-8 border-t border-[var(--line-subtle)] pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border border-emerald-100 dark:border-emerald-950/30 bg-emerald-50/50 dark:bg-emerald-950/10 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-card">
+              <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600" />
+              <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                 SAFE: Attendance ≥ 85%
               </p>
             </div>
-            <div className="border border-amber-100 dark:border-amber-950/30 bg-amber-50/50 dark:bg-amber-950/10 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-sm">
+            <div className="border border-amber-100 dark:border-amber-950/30 bg-amber-50/50 dark:bg-amber-950/10 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-card">
               <AlertTriangle className="w-4 h-4 mr-2 text-amber-600" />
-              <p className="text-xs font-bold text-amber-700 dark:text-amber-300">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
                 CAUTION: Attendance 75-84%
               </p>
             </div>
-            <div className="border border-rose-100 dark:border-rose-950/30 bg-rose-50/50 dark:bg-rose-950/10 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-sm">
+            <div className="border border-rose-100 dark:border-rose-950/30 bg-rose-50/50 dark:bg-rose-950/10 rounded-2xl px-4 py-3 flex items-center justify-center transition-transform hover:-translate-y-0.5 shadow-card">
               <XCircle className="w-4 h-4 mr-2 text-rose-600" />
-              <p className="text-xs font-bold text-rose-700 dark:text-rose-300">
+              <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">
                 CRITICAL: Attendance &lt; 75%
               </p>
             </div>

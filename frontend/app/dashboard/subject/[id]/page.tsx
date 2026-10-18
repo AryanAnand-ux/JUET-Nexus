@@ -150,38 +150,35 @@ function SubjectDetailContent() {
       onLogout={handleLogout}
     >
       {/* Header */}
-      <div className="mb-6 font-nunito">
+      <div className="mb-6">
         <button
           onClick={() => router.push("/dashboard")}
-          className="text-sm font-bold uppercase tracking-wider text-gray-400 hover:text-figma-maroon transition-colors mb-3 inline-flex items-center gap-1.5"
+          className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--ink-muted)] hover:text-[var(--accent-text)] transition-colors mb-3 inline-flex items-center gap-1.5"
         >
           ← Back to Dashboard
         </button>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl sm:text-3xl font-bold text-figma-dark dark:text-slate-100 tracking-tight font-nunito break-words">
+            <h2 className="text-xl sm:text-3xl font-editorial-italic font-normal text-[var(--ink-strong)] tracking-normal break-words">
               {subjectName}
             </h2>
-            <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mt-1 font-nunito">
-              Attendance Details & Calculator
-            </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${getStatusBadgeColor(officialPct)}`}>
+            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border ${getStatusBadgeColor(officialPct)}`}>
               {officialPct % 1 === 0 ? officialPct.toFixed(0) : officialPct.toFixed(1)}% Overall
             </span>
             {urlLp > 0 && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 font-nunito">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-muted)]">
                 L: {urlLp}%
               </span>
             )}
             {urlTp > 0 && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 font-nunito">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-muted)]">
                 T: {urlTp}%
               </span>
             )}
             {urlPp > 0 && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 font-nunito">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-muted)]">
                 P: {urlPp}%
               </span>
             )}
@@ -204,7 +201,7 @@ function SubjectDetailContent() {
           <FigmaCard heading="Attendance Calculator">
             {/* Ring */}
             <div className="flex justify-center my-6">
-              <div className="relative w-40 h-40 flex items-center justify-center shrink-0 bg-white/60 dark:bg-slate-900/40 border border-gray-100 dark:border-slate-800 rounded-full shadow-sm">
+              <div className="relative w-40 h-40 flex items-center justify-center shrink-0 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-full shadow-card">
                 <svg className="transform -rotate-90 w-40 h-40">
                   <circle
                     cx="80"
@@ -229,7 +226,7 @@ function SubjectDetailContent() {
                   />
                 </svg>
                 <div className="absolute flex flex-col items-center">
-                  <span className="text-5xl font-black tracking-tighter text-figma-dark dark:text-slate-100 leading-none font-nunito">
+                  <span className="text-5xl font-black tracking-tighter text-[var(--ink-strong)] leading-none">
                     {displayPercent % 1 === 0 ? displayPercent.toFixed(0) : displayPercent.toFixed(1)}
                   </span>
                   <span className="text-xs font-bold text-gray-400 dark:text-slate-500 font-nunito">
@@ -241,12 +238,12 @@ function SubjectDetailContent() {
 
             {/* Stats */}
             {totalCount > 0 && (
-              <div className="flex justify-around text-center mb-6 border-y border-gray-100 dark:border-slate-800 py-4 bg-gray-50 dark:bg-slate-900 rounded-xl">
+              <div className="flex justify-around text-center mb-6 border-y border-[var(--line-subtle)] py-4 bg-[var(--surface-subtle)] rounded-xl">
                 <div>
                   <p className="text-xs uppercase font-bold text-gray-400 dark:text-slate-500 font-nunito">
                     Attended
                   </p>
-                  <p className="text-2xl font-black text-figma-dark dark:text-slate-100 font-nunito">
+                  <p className="text-2xl font-black text-[var(--ink-strong)]">
                     {Math.round(attendedCount)}
                   </p>
                 </div>
@@ -255,7 +252,7 @@ function SubjectDetailContent() {
                   <p className="text-xs uppercase font-bold text-gray-400 dark:text-slate-500 font-nunito">
                     Total
                   </p>
-                  <p className="text-2xl font-black text-figma-dark dark:text-slate-100 font-nunito">{totalCount}</p>
+                  <p className="text-2xl font-black text-[var(--ink-strong)]">{totalCount}</p>
                 </div>
               </div>
             )}
@@ -268,7 +265,7 @@ function SubjectDetailContent() {
 
             {!hasDetailData && isLoading && (
               <div className="mb-6 py-3 flex flex-col items-center gap-2">
-                <Typing size="sm" duration={0.8} className="text-accent-primary" />
+                <Typing size="sm" duration={0.8} className="text-[var(--accent-text)]" />
                 <p className="text-xs font-medium text-gray-400 dark:text-slate-500 font-nunito">
                   Loading class counts from portal…
                 </p>
@@ -376,7 +373,7 @@ function SubjectDetailContent() {
                 {data && (extraAttends > 0 || extraBunks > 0) && (
                   <button
                     onClick={resetSimulation}
-                    className="w-full mt-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 hover:text-figma-dark dark:hover:text-slate-100 transition-colors font-nunito"
+                    className="w-full mt-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] hover:text-[var(--ink-strong)] transition-colors"
                   >
                     ↻ Reset to Actual
                   </button>
@@ -390,17 +387,16 @@ function SubjectDetailContent() {
         {/* RIGHT: Daily Log */}
         <div className="xl:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-            <h3 className="text-xl font-bold text-figma-dark dark:text-slate-100 font-nunito">
-              Day-by-Day Log
+            <h3 className="text-xl font-editorial-italic font-normal text-[var(--ink-strong)]">Day-by-Day Log
             </h3>
             
             {data && data.logs.length > 0 && (
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+              <div className="flex items-center gap-1 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] p-1 rounded-xl w-fit">
                 <button
                   onClick={() => setLogFilter("all")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-all ${
                     logFilter === "all"
-                      ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm"
+                      ? "bg-[var(--surface-card)] text-[var(--ink-strong)] shadow-card"
                       : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100"
                   }`}
                 >
@@ -410,7 +406,7 @@ function SubjectDetailContent() {
                   onClick={() => setLogFilter("present")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-all ${
                     logFilter === "present"
-                      ? "bg-white dark:bg-slate-700 text-green-600 dark:text-green-400 shadow-sm"
+                      ? "bg-[var(--surface-card)] text-emerald-600 shadow-card"
                       : "text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-400"
                   }`}
                 >
@@ -420,7 +416,7 @@ function SubjectDetailContent() {
                   onClick={() => setLogFilter("absent")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-all ${
                     logFilter === "absent"
-                      ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm"
+                      ? "bg-[var(--surface-card)] text-rose-600 shadow-card"
                       : "text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                   }`}
                 >
@@ -433,7 +429,7 @@ function SubjectDetailContent() {
           {isLoading ? (
             <div className="space-y-3">
               <div className="flex flex-col items-center justify-center gap-3 py-10 text-slate-400 dark:text-slate-500">
-                <Typing size="md" duration={0.85} className="text-accent-primary" />
+                <Typing size="md" duration={0.85} className="text-[var(--accent-text)]" />
                 <p className="text-xs font-semibold font-nunito tracking-wide animate-pulse">
                   Fetching attendance logs…
                 </p>
@@ -441,7 +437,7 @@ function SubjectDetailContent() {
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="border border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 rounded-2xl h-14 animate-pulse"
+                  className="border border-[var(--line-subtle)] bg-[var(--surface-subtle)] rounded-2xl h-14 animate-pulse"
                 />
               ))}
             </div>
@@ -453,14 +449,14 @@ function SubjectDetailContent() {
               <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={() => fetchDetails()}
-                  className="px-4 py-2 text-xs font-bold bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-xs font-semibold bg-[var(--surface-card)] text-[var(--ink-strong)] border border-[var(--line-subtle)] rounded-xl shadow-card hover:bg-[var(--surface-subtle)] transition-colors"
                 >
                   Retry
                 </button>
                 {error.code === "SESSION_EXPIRED" && (
                   <button
                     onClick={() => router.push("/login")}
-                    className="px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl shadow-sm hover:bg-indigo-700 transition-colors"
+                    className="px-4 py-2 text-xs font-semibold bg-accent-primary text-white rounded-xl shadow-card hover:bg-accent-primary/90 transition-colors"
                   >
                     Log In Again
                   </button>
@@ -468,17 +464,17 @@ function SubjectDetailContent() {
               </div>
             </div>
           ) : data && data.logs && data.logs.length > 0 ? (
-            <div className="bg-white dark:bg-slate-950/20 border border-gray-200 dark:border-slate-800 rounded-2xl overflow-x-auto shadow-sm">
+            <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-2xl overflow-x-auto shadow-card">
               <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-0">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800">
-                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
+                  <tr className="bg-[var(--surface-subtle)] border-b border-[var(--line-subtle)]">
+                    <th className="p-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
                       Date
                     </th>
-                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
+                    <th className="p-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
                       Type
                     </th>
-                    <th className="p-4 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
+                    <th className="p-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
                       Status
                     </th>
                   </tr>
@@ -495,7 +491,7 @@ function SubjectDetailContent() {
                     if (filteredLogs.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={3} className="p-8 text-center text-sm font-medium text-slate-400 font-nunito">
+                          <td colSpan={3} className="p-8 text-center text-sm font-medium text-[var(--ink-muted)] font-nunito">
                             No logs match the selected filter.
                           </td>
                         </tr>
@@ -505,12 +501,12 @@ function SubjectDetailContent() {
                     return filteredLogs.map((log, i) => (
                       <tr
                         key={i}
-                        className="border-b border-gray-100 dark:border-slate-900/60 hover:bg-gray-50 dark:hover:bg-slate-900/30 transition-colors last:border-0 dark:border-slate-800/50"
+                        className="border-b border-[var(--line-subtle)] hover:bg-[var(--surface-subtle)] transition-colors last:border-0"
                       >
-                        <td className="p-4 text-sm font-semibold text-figma-dark dark:text-slate-200 whitespace-nowrap font-nunito">
+                        <td className="p-4 text-sm font-semibold text-[var(--ink-strong)] whitespace-nowrap">
                           {log.date}
                         </td>
-                        <td className="p-4 text-sm font-medium text-gray-500 dark:text-slate-400 font-nunito">
+                        <td className="p-4 text-sm text-[var(--ink-muted)]">
                           {log.type}
                         </td>
                         <td className="p-4">
@@ -534,8 +530,8 @@ function SubjectDetailContent() {
               </table>
             </div>
           ) : (
-            <div className="border border-gray-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/50 p-8 text-center shadow-sm">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 font-nunito">
+            <div className="border border-[var(--line-subtle)] rounded-2xl bg-[var(--surface-card)] p-8 text-center shadow-card">
+              <p className="text-sm text-[var(--ink-muted)]">
                 {detailLink
                   ? "No daily records were found on the portal for this subject."
                   : "Daily attendance log is not available for this subject."}
