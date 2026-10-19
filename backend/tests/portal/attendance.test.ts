@@ -514,6 +514,56 @@ describe("fetchAttendanceDetail", () => {
     expect(detail.classesAttended).toBe(1);
     expect(detail.percentage).toBe(50);
   });
+
+  test("preserves logs from successful components when one component times out or fails", async () => {
+    let call = 0;
+    const transport: AttendanceTransport = {
+      async postEncrypted(_path, payload) {
+        // First component (Lecture) succeeds, second component (Tutorial) fails with timeout
+        if (call++ === 0) {
+          return {
+            status: { responseStatus: "Success" },
+            response: {
+              studentAttdsummarylist: [
+                { datetime: "01/09/2026", present: "Present" },
+                { datetime: "02/09/2026", present: "Present" },
+              ],
+            },
+          };
+        }
+        throw new Error("timeout of 15000ms exceeded");
+      },
+    };
+
+    const detail = await fetchAttendanceDetail(transport, ctx, {
+      subject: "PARTIAL FAILURE TEST",
+      subjectid: "300",
+      individualsubjectcode: "P300",
+      components: { L: "CMP_L", T: "CMP_T" },
+    });
+
+    expect(detail.logs).toHaveLength(2);
+    expect(detail.classesHeld).toBe(2);
+    expect(detail.classesAttended).toBe(2);
+    expect(detail.percentage).toBe(100);
+  });
+
+  test("throws error when all active components fail", async () => {
+    const transport: AttendanceTransport = {
+      async postEncrypted() {
+        throw new Error("timeout of 15000ms exceeded");
+      },
+    };
+
+    await expect(
+      fetchAttendanceDetail(transport, ctx, {
+        subject: "TOTAL FAILURE TEST",
+        subjectid: "301",
+        individualsubjectcode: "P301",
+        components: { L: "CMP_L", T: "CMP_T" },
+      })
+    ).rejects.toThrow("timeout of 15000ms exceeded");
+  });
 });
 
 describe("parseDateForSort", () => {

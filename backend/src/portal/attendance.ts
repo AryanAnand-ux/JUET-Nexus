@@ -458,9 +458,12 @@ export async function fetchAttendanceDetail(
 ): Promise<AttendanceDetailsResponse> {
   const logs: AttendanceDetailItem[] = [];
 
-  for (const { key, label } of COMPONENT_TYPES) {
-    const componentid = subject.components[key];
-    if (!componentid) continue;
+  const activeComponents = COMPONENT_TYPES.filter(
+    ({ key }) => Boolean(subject.components[key])
+  );
+
+  const componentPromises = activeComponents.map(async ({ key, label }) => {
+    const componentid = subject.components[key]!;
     const payload = await transport.postEncrypted(CLASS_LOG_PATH, {
       instituteid: ctx.instituteid,
       subjectid: subject.subjectid,
@@ -475,10 +478,36 @@ export async function fetchAttendanceDetail(
     const rows = Array.isArray(response.studentAttdsummarylist)
       ? (response.studentAttdsummarylist as PortalLogRow[])
       : [];
+    const compLogs: AttendanceDetailItem[] = [];
     for (const row of rows) {
       const mapped = mapAttendanceLog(row, label);
-      if (mapped) logs.push(mapped);
+      if (mapped) compLogs.push(mapped);
     }
+    return compLogs;
+  });
+
+  const results = await Promise.allSettled(componentPromises);
+
+  const errors: any[] = [];
+  let successCount = 0;
+
+  for (let i = 0; i < results.length; i++) {
+    const res = results[i];
+    if (res.status === "fulfilled") {
+      logs.push(...res.value);
+      successCount++;
+    } else {
+      errors.push(res.reason);
+      console.warn(
+        `[AttendanceDetail] Component fetch failed for ${activeComponents[i].label}:`,
+        res.reason?.message || res.reason
+      );
+    }
+  }
+
+  // If every component failed and we had active components, throw the error
+  if (activeComponents.length > 0 && successCount === 0) {
+    throw errors[0] || new Error("Failed to fetch attendance details");
   }
 
   // Sort logs latest-first by actual date value.

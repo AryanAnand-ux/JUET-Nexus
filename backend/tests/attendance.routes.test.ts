@@ -47,10 +47,10 @@ const campusLynxSession: SessionData = {
   },
 };
 
-async function buildApp() {
+async function buildApp(cache?: any) {
   const app: any = Fastify({ logger: false });
   await app.register(fastifyCookie);
-  await registerAttendanceRoutes(app);
+  await registerAttendanceRoutes(app, cache);
   await app.ready();
   return app;
 }
@@ -213,5 +213,117 @@ describe("attendance details route - provider dispatch", () => {
     // code is Fastify's, not ours.
     expect(res.statusCode).toBe(400);
     expect(mockPostEncrypted).not.toHaveBeenCalled();
+  });
+
+  it("returns cached attendance details on subsequent requests", async () => {
+    process.env.DATA_PROVIDER = "campuslynx";
+    const mockCache = {
+      get: jest.fn().mockResolvedValue({
+        subject: "PH303",
+        classesHeld: 10,
+        classesAttended: 9,
+        percentage: 90,
+        logs: [],
+      }),
+      set: jest.fn().mockResolvedValue(true),
+    };
+
+    const cachedApp = await buildApp(mockCache);
+    const res = await cachedApp.inject({
+      method: "GET",
+      url: url(REF),
+      cookies: { auth: encryptSessionData(campusLynxSession) },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.cached).toBe(true);
+    expect(body.data.percentage).toBe(90);
+    expect(mockPostEncrypted).not.toHaveBeenCalled();
+    await cachedApp.close();
+  });
+
+  it("bypasses cache when refresh=true is passed", async () => {
+    process.env.DATA_PROVIDER = "campuslynx";
+    const mockCache = {
+      get: jest.fn(),
+      set: jest.fn().mockResolvedValue(true),
+    };
+
+    mockPostEncrypted.mockResolvedValue({
+      status: { responseStatus: "Success" },
+      response: {
+        studentAttdsummarylist: [
+          { datetime: "01-09-2026", present: "Present", classtype: "Lecture" },
+        ],
+      },
+    });
+
+    const cachedApp = await buildApp(mockCache);
+    const res = await cachedApp.inject({
+      method: "GET",
+      url: `${url(REF)}&refresh=true`,
+      cookies: { auth: encryptSessionData(campusLynxSession) },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockCache.get).not.toHaveBeenCalled();
+    expect(mockPostEncrypted).toHaveBeenCalled();
+    expect(mockCache.set).toHaveBeenCalled();
+    await cachedApp.close();
+  });
+
+  it("handles portal timeout gracefully with 504 and ATTENDANCE_TIMEOUT", async () => {
+    process.env.DATA_PROVIDER = "campuslynx";
+    mockPostEncrypted.mockRejectedValue(
+      new Error("CampusLynx request to /StudentClassAttendance/getstudentsubjectpersentage failed: timeout of 28000ms exceeded")
+    );
+
+    const res = await app.inject({
+      method: "GET",
+      url: url(REF),
+      cookies: { auth: encryptSessionData(campusLynxSession) },
+    });
+
+    expect(res.statusCode).toBe(504);
+    const body = res.json();
+    expect(body.success).toBe(false);
+    expect(body.code).toBe("ATTENDANCE_TIMEOUT");
+    expect(body.error).toContain("timed out");
+  });
+
+  it("falls back to stale cache if portal request times out", async () => {
+    process.env.DATA_PROVIDER = "campuslynx";
+    const staleData = {
+      subject: "PH303",
+      classesHeld: 15,
+      classesAttended: 12,
+      percentage: 80,
+      logs: [],
+    };
+    const mockCache = {
+      // First get (before fetch) returns null (cache expired), but second get (on failure) returns staleData
+      get: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(staleData),
+      set: jest.fn(),
+    };
+
+    mockPostEncrypted.mockRejectedValue(
+      new Error("timeout of 28000ms exceeded")
+    );
+
+    const cachedApp = await buildApp(mockCache);
+    const res = await cachedApp.inject({
+      method: "GET",
+      url: url(REF),
+      cookies: { auth: encryptSessionData(campusLynxSession) },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.stale).toBe(true);
+    expect(body.data.classesHeld).toBe(15);
+    await cachedApp.close();
   });
 });

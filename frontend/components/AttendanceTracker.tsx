@@ -5,18 +5,19 @@
 
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { FigmaCard } from "./base";
 import type { AttendanceRecord } from "@/types";
 import { calculateBunkStatus } from "@/utils/bunkHelpers";
-import { CheckCircle2, AlertTriangle, XCircle, HelpCircle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, HelpCircle, Loader2 } from "lucide-react";
 
 export interface AttendanceTrackerProps {
   attendanceRecords: AttendanceRecord[];
 }
 
 export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendanceRecords }) => {
+  const [navigatingSubject, setNavigatingSubject] = useState<string | null>(null);
   const getAttendanceStatus = (
     percentage: number,
     classesHeld?: number
@@ -143,6 +144,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                 <Link
                   href={`/dashboard/subject/${encodeURIComponent(record.subject)}?pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
                   key={record.subject}
+                  onClick={() => setNavigatingSubject(record.subject)}
                   className="group relative block bg-[var(--surface-card)] hover:bg-brand-50/40 dark:hover:bg-brand-500/5 border border-[var(--line-subtle)] rounded-[20px] p-4 sm:p-5 transition-all duration-300 hover:shadow-elevated hover:scale-[1.005] hover:border-brand-500/40 cursor-pointer"
                 >
                   <div className="flex flex-col md:flex-row items-center md:items-stretch gap-6">
@@ -190,10 +192,18 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
                             {record.subject}
                           </h4>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em] flex items-center shadow-sm shrink-0 ${status.badgeClass}`}>
-                          {status.icon}
-                          {status.text}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {navigatingSubject === record.subject && (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-500/10 flex items-center gap-1.5 animate-pulse">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span className="hidden sm:inline">Opening...</span>
+                            </span>
+                          )}
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em] flex items-center shadow-sm ${status.badgeClass}`}>
+                            {status.icon}
+                            {status.text}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Quick-Info Skip Indicator */}

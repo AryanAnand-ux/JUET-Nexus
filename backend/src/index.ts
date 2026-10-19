@@ -125,7 +125,7 @@ export async function createServer() {
 
   await registerAuthRoutes(fastify, globalCache);
   await registerDashboardRoutes(fastify, globalCache);
-  await registerAttendanceRoutes(fastify);
+  await registerAttendanceRoutes(fastify, globalCache);
   await registerExamRoutes(fastify);
   await registerGradesRoutes(fastify, globalCache);
   await registerNotificationRoutes(fastify, globalCache);

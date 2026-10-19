@@ -8,6 +8,7 @@ import { useAttendanceDetails } from "@/hooks/useAttendanceDetails";
 import { calculateBunkStatus } from "@/utils/bunkHelpers";
 import { performLogout } from "@/utils/logout";
 import { Typing } from "@/components/loading-ui/typing";
+import { AlertTriangle, Clock, Lock, RefreshCw, Calendar } from "lucide-react";
 
 function SubjectDetailContent() {
   const params = useParams();
@@ -34,7 +35,7 @@ function SubjectDetailContent() {
   // Log filter state
   const [logFilter, setLogFilter] = useState<"all" | "present" | "absent">("all");
 
-  const { data, isLoading, error, fetchDetails } = useAttendanceDetails(
+  const { data, isLoading, isRetrying, error, fetchDetails } = useAttendanceDetails(
     subjectName,
     detailLink
   );
@@ -186,14 +187,7 @@ function SubjectDetailContent() {
         </div>
       </div>
 
-      {error && (
-        <div className="mb-6 border border-red-200 dark:border-red-900/40 rounded-2xl bg-red-50 dark:bg-red-950/20 p-4 flex items-start gap-3">
-          <span className="text-red-500 mt-0.5">⚠</span>
-          <p className="text-sm font-medium text-red-700 dark:text-red-400 font-nunito">
-            {error.message}
-          </p>
-        </div>
-      )}
+
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         {/* LEFT: Calculator */}
@@ -427,36 +421,74 @@ function SubjectDetailContent() {
           </div>
 
           {isLoading ? (
-            <div className="space-y-3">
-              <div className="flex flex-col items-center justify-center gap-3 py-10 text-slate-400 dark:text-slate-500">
-                <Typing size="md" duration={0.85} className="text-[var(--accent-text)]" />
-                <p className="text-xs font-semibold font-nunito tracking-wide animate-pulse">
-                  Fetching attendance logs…
-                </p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--line-subtle)]">
+                <div className="flex items-center gap-3">
+                  <Typing size="sm" duration={0.85} className="text-[var(--accent-text)]" />
+                  <span className="text-xs font-semibold text-[var(--ink-muted)]">
+                    {isRetrying
+                      ? "Re-connecting to CampusLynx..."
+                      : "Fetching attendance logs from CampusLynx..."}
+                  </span>
+                </div>
+                <span className="text-[10px] font-medium text-[var(--ink-muted)] animate-pulse hidden sm:inline">
+                  Live ERP Sync
+                </span>
               </div>
-              {[...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="border border-[var(--line-subtle)] bg-[var(--surface-subtle)] rounded-2xl h-14 animate-pulse"
-                />
-              ))}
+
+              <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-2xl overflow-hidden shadow-card">
+                <div className="bg-[var(--surface-subtle)] border-b border-[var(--line-subtle)] grid grid-cols-3 p-4">
+                  <div className="h-3 w-16 bg-[var(--line-subtle)] rounded animate-pulse" />
+                  <div className="h-3 w-16 bg-[var(--line-subtle)] rounded animate-pulse" />
+                  <div className="h-3 w-16 bg-[var(--line-subtle)] rounded animate-pulse justify-self-end sm:justify-self-start" />
+                </div>
+                <div className="divide-y divide-[var(--line-subtle)]">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-3 p-4 items-center gap-4 animate-pulse">
+                      <div className="h-4 w-28 bg-[var(--surface-subtle)] rounded-lg" />
+                      <div className="h-4 w-20 bg-[var(--surface-subtle)] rounded-lg" />
+                      <div className="h-6 w-20 bg-[var(--surface-subtle)] rounded-full justify-self-end sm:justify-self-start" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : error ? (
-            <div className="border border-red-200 dark:border-red-900/40 rounded-2xl bg-red-50/50 dark:bg-red-950/20 p-8 text-center shadow-sm space-y-3">
-              <p className="text-sm font-semibold text-red-600 dark:text-red-400 font-nunito">
-                {error.message || "Failed to load attendance logs"}
-              </p>
-              <div className="flex items-center justify-center gap-3">
+            <div className="border border-red-200/80 dark:border-red-900/40 rounded-2xl bg-red-50/60 dark:bg-red-950/20 p-6 sm:p-8 text-center shadow-card space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto shadow-sm">
+                {error.code === "SESSION_EXPIRED" ? (
+                  <Lock className="w-6 h-6" />
+                ) : error.code === "ATTENDANCE_TIMEOUT" ? (
+                  <Clock className="w-6 h-6" />
+                ) : (
+                  <AlertTriangle className="w-6 h-6" />
+                )}
+              </div>
+              <div className="space-y-1.5 max-w-md mx-auto">
+                <h4 className="text-base font-bold text-[var(--ink-strong)] font-nunito">
+                  {error.code === "SESSION_EXPIRED"
+                    ? "Session Expired"
+                    : error.code === "ATTENDANCE_TIMEOUT"
+                    ? "Request Timed Out"
+                    : "Unable to Load Attendance Log"}
+                </h4>
+                <p className="text-xs sm:text-sm text-[var(--ink-muted)] leading-relaxed">
+                  {error.message}
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-2">
                 <button
-                  onClick={() => fetchDetails()}
-                  className="px-4 py-2 text-xs font-semibold bg-[var(--surface-card)] text-[var(--ink-strong)] border border-[var(--line-subtle)] rounded-xl shadow-card hover:bg-[var(--surface-subtle)] transition-colors"
+                  onClick={() => fetchDetails(true)}
+                  disabled={isLoading || isRetrying}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-[var(--surface-card)] text-[var(--ink-strong)] border border-[var(--line-subtle)] rounded-xl shadow-card hover:bg-[var(--surface-subtle)] disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  Retry
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? "animate-spin" : ""}`} />
+                  <span>{isRetrying ? "Retrying..." : "Retry Loading"}</span>
                 </button>
                 {error.code === "SESSION_EXPIRED" && (
                   <button
                     onClick={() => router.push("/login")}
-                    className="px-4 py-2 text-xs font-semibold bg-accent-primary text-white rounded-xl shadow-card hover:bg-accent-primary/90 transition-colors"
+                    className="px-5 py-2.5 text-xs font-bold bg-accent-primary text-white rounded-xl shadow-card hover:bg-accent-primary/90 transition-all cursor-pointer"
                   >
                     Log In Again
                   </button>
@@ -530,12 +562,29 @@ function SubjectDetailContent() {
               </table>
             </div>
           ) : (
-            <div className="border border-[var(--line-subtle)] rounded-2xl bg-[var(--surface-card)] p-8 text-center shadow-card">
-              <p className="text-sm text-[var(--ink-muted)]">
-                {detailLink
-                  ? "No daily records were found on the portal for this subject."
-                  : "Daily attendance log is not available for this subject."}
-              </p>
+            <div className="border border-[var(--line-subtle)] rounded-2xl bg-[var(--surface-card)] p-8 text-center shadow-card space-y-3">
+              <div className="w-10 h-10 rounded-full bg-[var(--surface-subtle)] text-[var(--ink-muted)] flex items-center justify-center mx-auto">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-[var(--ink-strong)]">
+                  No attendance records found
+                </p>
+                <p className="text-xs text-[var(--ink-muted)] max-w-sm mx-auto">
+                  {detailLink
+                    ? "The campus portal reports no individual class entries for this course yet."
+                    : "Daily attendance log is not available for this subject."}
+                </p>
+              </div>
+              {detailLink && (
+                <button
+                  onClick={() => fetchDetails(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink-strong)] transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Check again</span>
+                </button>
+              )}
             </div>
           )}
         </div>
