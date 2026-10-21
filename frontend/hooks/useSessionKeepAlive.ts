@@ -6,8 +6,10 @@
  *
  * Strategy:
  *   - Refresh every REFRESH_INTERVAL_MS while the page is visible.
- *   - Also refresh immediately when the page becomes visible again
- *     (handles kill + reopen, tab switch, phone unlock).
+ *   - Also refresh when the page becomes visible again or the window regains
+ *     focus (handles kill + reopen, tab switch, phone unlock), but at most once
+ *     per REFRESH_THROTTLE_MS — the periodic timer already covers the token's
+ *     lifetime, so foreground events must not each force a portal renewal.
  *   - When the refresh is refused, fall back to `recoverSession()`, which does a
  *     transparent silent re-login with the server-stored password.
  *   - Silently ignores network errors so offline / flaky connections don't
@@ -22,12 +24,26 @@ import { recoverSession } from "@/utils/sessionRecovery";
 // Refresh every 5 minutes — well within the 15-minute portal token window
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
+// Minimum spacing between any two refresh attempts. The 5-minute interval above
+// keeps the ~15-minute CampusLynx token alive on its own, so a focus/visibility
+// event only needs to trigger a renewal when we have not refreshed recently.
+// Without this, every alt-tab fires a forced portal round-trip
+// (POST /api/auth/refresh -> getOrRenewCampusLynxIdentity({ force: true })).
+const REFRESH_THROTTLE_MS = 60 * 1000;
+
+// Shared across every hook instance so two mounts cannot bypass the throttle.
+let lastRefreshAttemptAt = 0;
+
 export function useSessionKeepAlive(enabled: boolean) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMounted = useRef(true);
 
   const refresh = useCallback(async () => {
     if (!enabled || !isMounted.current) return;
+
+    const now = Date.now();
+    if (now - lastRefreshAttemptAt < REFRESH_THROTTLE_MS) return;
+    lastRefreshAttemptAt = now;
 
     try {
       await recoverSession();

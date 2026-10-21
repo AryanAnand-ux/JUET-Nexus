@@ -96,6 +96,7 @@ export default function ExamPage() {
           <div>
             <Link
               href="/dashboard"
+              prefetch={false}
               className="inline-flex items-center gap-2 text-xs font-semibold text-brand-600 dark:text-brand-100 hover:text-brand-700 transition-colors w-fit mb-2"
             >
               <ArrowLeft className="w-4 h-4" />

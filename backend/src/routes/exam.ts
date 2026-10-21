@@ -3,8 +3,14 @@ import { getOrRenewCampusLynxIdentity } from "./session";
 import { createPortalClient } from "../portal/client";
 import { fetchExamSchedule } from "../portal/exam";
 import { PortalError } from "../portal/types";
+import { CacheService } from "../utils/cache";
 
-export async function registerExamRoutes(fastify: FastifyInstance): Promise<void> {
+const EXAM_CACHE_TTL_SEC = 3600; // 1 hour
+
+export async function registerExamRoutes(
+  fastify: FastifyInstance,
+  cache?: CacheService
+): Promise<void> {
   fastify.get("/api/exam", async (request, reply) => {
     let identity;
     try {
@@ -17,21 +23,36 @@ export async function registerExamRoutes(fastify: FastifyInstance): Promise<void
       });
     }
 
+    const query = request.query as { eventId?: string };
+    const effectiveCache = cache || (request as any).globalCache || (fastify as any).globalCache;
+    const enrollmentKey = identity.enrollmentno || identity.username;
+    const cacheKey = enrollmentKey
+      ? `exam_sched:${enrollmentKey}:${query?.eventId || "latest"}`
+      : null;
+
+    // Check cached exam schedule
+    if (effectiveCache && cacheKey) {
+      try {
+        const cachedSchedule = await effectiveCache.get("exam", cacheKey);
+        if (cachedSchedule) {
+          return reply.send({ success: true, data: cachedSchedule, cached: true });
+        }
+      } catch (err) {
+        request.log.warn(err, "[Exam] Cache read failed");
+      }
+    }
+
     const client = createPortalClient();
     const transport = {
       postEncrypted: (path: string, payload: Record<string, unknown>) =>
         client.postEncrypted(path, payload, identity),
     };
 
-    const query = request.query as { eventId?: string };
-
-    const cache = (request as any).globalCache || (fastify as any).globalCache;
     let codeToNameMap: Record<string, string> | undefined;
 
-    const enrollmentKey = identity.enrollmentno || identity.username;
-    if (cache && enrollmentKey) {
+    if (effectiveCache && enrollmentKey) {
       try {
-        const cached = await cache.get("dashboard", enrollmentKey);
+        const cached = await effectiveCache.get("dashboard", enrollmentKey);
         if (cached?.data) {
           codeToNameMap = {};
           if (Array.isArray(cached.data.courses)) {
@@ -63,8 +84,30 @@ export async function registerExamRoutes(fastify: FastifyInstance): Promise<void
         exameventid: query?.eventId,
         codeToNameMap,
       });
-      return reply.send({ success: true, data: schedule });
+
+      if (effectiveCache && cacheKey && schedule) {
+        try {
+          await effectiveCache.set("exam", cacheKey, schedule, EXAM_CACHE_TTL_SEC);
+        } catch (err) {
+          request.log.warn(err, "[Exam] Cache write failed");
+        }
+      }
+
+      return reply.send({ success: true, data: schedule, cached: false });
     } catch (error: any) {
+      // Fallback to stale cached schedule if available
+      if (effectiveCache && cacheKey) {
+        try {
+          const cachedSchedule = await effectiveCache.get("exam", cacheKey);
+          if (cachedSchedule) {
+            request.log.warn("[Exam] Upstream failed, returning stale cached schedule");
+            return reply.send({ success: true, data: cachedSchedule, cached: true, stale: true });
+          }
+        } catch {
+          // Ignore cache read error
+        }
+      }
+
       const status = error instanceof PortalError && error.status === 401 ? 401 : 502;
       request.log.error(error, "[Exam] CampusLynx fetch failed");
       return reply.status(status).send({
@@ -72,6 +115,8 @@ export async function registerExamRoutes(fastify: FastifyInstance): Promise<void
         error: error.message || "Failed to fetch exam schedule from portal",
         code: error instanceof PortalError && error.status === 401 ? "SESSION_EXPIRED" : "PORTAL_ERROR",
       });
+    } finally {
+      client.destroy?.();
     }
   });
 }

@@ -80,6 +80,8 @@ export async function registerGradesRoutes(
         error: error.message || "Failed to fetch grade card from portal",
         code: error instanceof PortalError && error.status === 401 ? "SESSION_EXPIRED" : "PORTAL_ERROR",
       });
+    } finally {
+      client.destroy?.();
     }
   });
 }

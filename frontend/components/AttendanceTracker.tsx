@@ -142,6 +142,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({ attendance
 
               return (
                 <Link
+                  prefetch={false}
                   href={`/dashboard/subject/${encodeURIComponent(record.subject)}?pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
                   key={record.subject}
                   onClick={() => setNavigatingSubject(record.subject)}

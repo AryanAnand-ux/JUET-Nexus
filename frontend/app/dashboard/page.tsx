@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AttendanceTracker } from "@/components/AttendanceTracker";
 import { useDashboard } from "@/hooks/useDashboard";
-import { useSessionKeepAlive } from "@/hooks/useSessionKeepAlive";
 import { usePortalRecovery } from "@/hooks/usePortalRecovery";
 import { performLogout } from "@/utils/logout";
 import { apiClient } from "@/utils/api";
@@ -101,10 +100,6 @@ export default function DashboardPage() {
   const recovery = usePortalRecovery(enrollment, async () => {
     await refresh();
   });
-
-  // Proactively refresh the portal token every 10 min + on app foreground
-  // Prevents the 15-min CampusLynx token from expiring between sessions
-  useSessionKeepAlive(!!enrollment);
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;

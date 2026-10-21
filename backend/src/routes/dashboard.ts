@@ -93,6 +93,10 @@ export async function registerDashboardRoutes(
     try {
       let identity: PortalSessionIdentity;
       try {
+        // Renewal is required here even on a cache hit: it is what keeps the
+        // 30-day auth cookie sliding, and it lets us detect a dead CampusLynx
+        // token so we can serve stale cache flagged `sessionExpired` instead
+        // of locking the user out (see the catch block below).
         identity = await getOrRenewCampusLynxIdentity(request, reply);
       } catch (err: any) {
         // If the portal token expired but the user holds a valid encrypted auth cookie,
@@ -166,7 +170,7 @@ export async function registerDashboardRoutes(
 
         if (ageSec <= FRESH_TTL_SEC) {
           fastify.log.info(`[Dashboard] Fresh cache hit for ${enrollment} (age: ${Math.round(ageSec)}s)`);
-          const ttl = await cache.getTTL('dashboard', enrollment);
+          const ttl = Math.max(0, Math.round(FRESH_TTL_SEC - ageSec));
           return reply
             .header('X-Cache', 'hit')
             .header('X-Cache-Status', 'fresh')
@@ -186,16 +190,15 @@ export async function registerDashboardRoutes(
             request.log.error(err, `[Dashboard] Background refresh trigger failed for ${enrollment}`);
           });
 
-          const ttl = await cache.getTTL('dashboard', enrollment);
           return reply
             .header('X-Cache', 'hit')
             .header('X-Cache-Status', 'stale')
-            .header('X-Cache-TTL', ttl.toString())
+            .header('X-Cache-TTL', '0')
             .send({
               success: true,
               data,
               cached: true,
-              ttl,
+              ttl: 0,
               fetchedAt: cachedWrapper.fetchedAt || Date.now(),
             });
         }
@@ -314,7 +317,9 @@ export async function registerDashboardRoutes(
   fastify.get<{ Querystring: DashboardQuery }>('/api/dashboard/cache-status', async (request, reply) => {
     let identity: PortalSessionIdentity;
     try {
-      identity = await getOrRenewCampusLynxIdentity(request, reply);
+      // This endpoint is polled every 60 s and only reads the cache, so it must
+      // not force a CampusLynx token renewal on every heartbeat.
+      identity = getCampusLynxIdentity(request);
     } catch {
       return reply.status(401).send({ cached: false, ttl: 0, error: 'Unauthorized' });
     }

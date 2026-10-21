@@ -65,6 +65,11 @@ mcp.json
 figma_design.json
 opencode.json
 
-PROJECT_EXPLAINED.md
-CODEBASE_AUDIT.md
+# Markdown files (ignore all except README)
+*.md
+**/*.md
+!README.md
+!**/README.md
+!readme.md
+!**/readme.md
 

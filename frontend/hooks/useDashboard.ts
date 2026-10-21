@@ -44,6 +44,32 @@ const MAX_SILENT_RETRIES = 2;
 /** Back-off between silent retries (ms). */
 const SILENT_RETRY_DELAY_MS = 4_000;
 
+/**
+ * How long a payload fetched by one dashboard page may be reused by another.
+ *
+ * `/dashboard`, `/dashboard/courses` and `/dashboard/performance` each mount
+ * their own `useDashboard` instance, so navigating between them used to
+ * re-download the entire dashboard payload every time. Module-level so every
+ * instance shares one snapshot.
+ */
+const SHARED_DATA_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes (aligned with FRESH_TTL_SEC)
+
+let sharedData: {
+  enrollment: string;
+  data: DashboardResponse;
+  fetchedAt: Date;
+} | null = null;
+
+let inFlightDashboardPromise: Promise<{ data: any; cacheHeader: any; fetchedAt: Date; ttl: number }> | null = null;
+let inFlightEnrollment: string | null = null;
+
+/** Clears the cross-page snapshot (used on manual cache invalidation). */
+function clearSharedDashboard(enrollment: string | null) {
+  if (sharedData && (!enrollment || sharedData.enrollment === enrollment.toUpperCase())) {
+    sharedData = null;
+  }
+}
+
 function loadCachedDashboard(enrollment: string | null): { data: DashboardResponse; fetchedAt: Date } | null {
   if (typeof window === "undefined" || !enrollment) return null;
   try {
@@ -51,10 +77,19 @@ function loadCachedDashboard(enrollment: string | null): { data: DashboardRespon
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed?.data) {
-        return {
+        const fetchedAt = parsed.fetchedAt ? new Date(parsed.fetchedAt) : new Date();
+        const result = {
           data: parsed.data,
-          fetchedAt: parsed.fetchedAt ? new Date(parsed.fetchedAt) : new Date(),
+          fetchedAt,
         };
+        if (!sharedData) {
+          sharedData = {
+            enrollment: enrollment.toUpperCase(),
+            data: parsed.data,
+            fetchedAt,
+          };
+        }
+        return result;
       }
     }
   } catch {}
@@ -137,16 +172,36 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         setState((prev) => ({ ...prev, isLoading: !prev.data, error: null }));
       }
 
-      const response = await apiClient.get(
-        `/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
-        {
-          timeout: 60000,
-        }
-      );
+      const key = enrollment.toUpperCase();
+      let responsePayload: { data: any; cacheHeader: any; fetchedAt: Date; ttl: number };
 
-      const { data, cached, ttl } = response.data;
-      const cacheHeader = response.headers["x-cache"];
-      const fetchedAt = response.data?.fetchedAt ? new Date(response.data.fetchedAt) : new Date();
+      // In-flight promise deduplication: avoid duplicate network requests if a fetch is already running
+      if (inFlightDashboardPromise && inFlightEnrollment === key) {
+        responsePayload = await inFlightDashboardPromise;
+      } else {
+        inFlightEnrollment = key;
+        inFlightDashboardPromise = (async () => {
+          const response = await apiClient.get(
+            `/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
+            {
+              timeout: 60000,
+            }
+          );
+          const { data, ttl } = response.data;
+          const cacheHeader = response.headers["x-cache"];
+          const fetchedAt = response.data?.fetchedAt ? new Date(response.data.fetchedAt) : new Date();
+          return { data, cacheHeader, fetchedAt, ttl };
+        })();
+
+        try {
+          responsePayload = await inFlightDashboardPromise;
+        } finally {
+          inFlightDashboardPromise = null;
+          inFlightEnrollment = null;
+        }
+      }
+
+      const { data, cacheHeader, fetchedAt, ttl } = responsePayload;
 
       if (typeof window !== "undefined" && enrollment && data) {
         try {
@@ -155,6 +210,11 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
             JSON.stringify({ data, fetchedAt: fetchedAt.toISOString() })
           );
         } catch {}
+        sharedData = {
+          enrollment: enrollment.toUpperCase(),
+          data,
+          fetchedAt,
+        };
       }
 
       // Successful fetch — reset silent retry counter
@@ -243,6 +303,10 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
   const invalidateCache = useCallback(async () => {
     if (!enrollment) return;
 
+    // Drop the cross-page snapshot so other dashboard pages cannot serve the
+    // data the user just asked us to discard.
+    clearSharedDashboard(enrollment);
+
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
       await apiClient.get(
@@ -283,6 +347,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
    */
   const checkCacheStatus = useCallback(async () => {
     if (!enrollment) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
 
     try {
       const response = await apiClient.get(
@@ -313,9 +378,42 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     // pointless fetchDashboard() that returns immediately.
     if (!enrollment) return;
 
-    const hasCachedData = !!loadCachedDashboard(enrollment);
+    const key = enrollment.toUpperCase();
 
-    if (hasCachedData && !deferredInitialFetch.current) {
+    // Another dashboard page already fetched this payload moments ago — reuse
+    // it instead of re-downloading the whole dashboard on every route change.
+    if (
+      sharedData &&
+      sharedData.enrollment === key &&
+      Date.now() - sharedData.fetchedAt.getTime() < SHARED_DATA_MAX_AGE_MS
+    ) {
+      const fresh = sharedData;
+      setState((prev) => ({
+        ...prev,
+        data: fresh.data,
+        cached: true,
+        cachedAt: fresh.fetchedAt,
+        isLoading: false,
+        error: null,
+      }));
+      const cacheStatusInterval = setInterval(() => {
+        checkCacheStatus();
+      }, 60000);
+      return () => clearInterval(cacheStatusInterval);
+    }
+
+    const cached = loadCachedDashboard(enrollment);
+    const isFresh = cached && (Date.now() - cached.fetchedAt.getTime() < SHARED_DATA_MAX_AGE_MS);
+
+    // If cached data is fresh (< 5 minutes), do not trigger an unneeded network fetch
+    if (isFresh) {
+      const cacheStatusInterval = setInterval(() => {
+        checkCacheStatus();
+      }, 60000);
+      return () => clearInterval(cacheStatusInterval);
+    }
+
+    if (cached && !deferredInitialFetch.current) {
       deferredInitialFetch.current = true;
       const timer = setTimeout(() => {
         fetchDashboard(false, true);

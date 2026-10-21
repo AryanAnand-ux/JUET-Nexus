@@ -23,16 +23,24 @@ import { solveCampusLynxCaptcha } from "@/utils/captchaSolver";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const MAX_CAPTCHA_ATTEMPTS = 5;
 
+const RECOVERY_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
+let lastRecoveryAt = 0;
 let inFlight: Promise<boolean> | null = null;
 
 /**
+ * @param force When true, bypasses the 2-minute cooldown (used on explicit 401s).
  * @returns `true` when a usable session is (re)established, `false` when the
  *          user must sign in again (e.g. no stored credentials, changed
  *          password, or OTP required).
  */
-export function recoverSession(): Promise<boolean> {
+export function recoverSession(force = false): Promise<boolean> {
+  const now = Date.now();
+  if (!force && now - lastRecoveryAt < RECOVERY_COOLDOWN_MS) {
+    return Promise.resolve(true);
+  }
   if (inFlight) return inFlight;
   inFlight = runRecovery().finally(() => {
+    lastRecoveryAt = Date.now();
     inFlight = null;
   });
   return inFlight;

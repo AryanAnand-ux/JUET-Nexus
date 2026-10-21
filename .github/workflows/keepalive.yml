@@ -1,0 +1,24 @@
+name: Render Backend Keepalive
+
+on:
+  schedule:
+    # Runs every 14 minutes to prevent Render Free Tier from spinning down after 15 min
+    - cron: '*/14 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          BACKEND_URL="${{ secrets.RENDER_BACKEND_URL || 'https://juet-nexus-backend.onrender.com' }}"
+          echo "Pinging $BACKEND_URL/health..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$BACKEND_URL/health" || echo "failed")
+          echo "Health check response code: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "Backend is warm and responsive."
+          else
+            echo "Backend responded with status $HTTP_STATUS (or timed out during cold spin-up)."
+          fi

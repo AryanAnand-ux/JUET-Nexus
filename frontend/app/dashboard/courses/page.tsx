@@ -81,6 +81,7 @@ export default function CoursesPage() {
           <div className="flex items-center gap-2 mb-2">
             <Link
               href="/dashboard"
+              prefetch={false}
               className="text-xs font-semibold text-brand-600 dark:text-brand-100 hover:text-brand-700 flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Attendance

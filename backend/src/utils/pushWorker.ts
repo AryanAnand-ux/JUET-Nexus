@@ -34,6 +34,79 @@ async function sendPushNotification(
   }
 }
 
+async function processSubscriber(
+  enrollment: string,
+  cache: CacheService,
+  log: any
+): Promise<void> {
+  const uppercaseEnrollment = enrollment.toUpperCase();
+  try {
+    const encryptedSession = await cache.get<string>('secure_credentials', uppercaseEnrollment);
+    if (!encryptedSession) {
+      return;
+    }
+
+    let session;
+    try {
+      session = decryptSessionData(encryptedSession);
+    } catch {
+      return;
+    }
+
+    const identity = session.campusLynx;
+    if (!identity?.token) {
+      return;
+    }
+
+    const client = createPortalClient();
+    try {
+      const transport = {
+        postEncrypted: (path: string, payload: Record<string, unknown>) =>
+          client.postEncrypted(path, payload, identity),
+        getEncrypted: (path: string) => client.getEncrypted(path, identity),
+      };
+
+      const newData = await fetchCampusLynxDashboard(transport, {
+        instituteid: identity.instituteid,
+        companyid: identity.companyid,
+        username: identity.username,
+      });
+
+      const cachedWrapper = await cache.get<any>('dashboard', uppercaseEnrollment);
+      if (!cachedWrapper) {
+        await cache.set('dashboard', uppercaseEnrollment, { data: newData, fetchedAt: Date.now() }, 7200);
+        return;
+      }
+
+      const oldData = cachedWrapper.data || cachedWrapper;
+
+      // Check for attendance changes
+      const oldAttendance = oldData.attendance || [];
+      const newAttendance = newData.attendance || [];
+
+      for (const newSub of newAttendance) {
+        const oldSub = oldAttendance.find((s: any) => s.subject === newSub.subject);
+        if (oldSub && (oldSub.classesHeld !== newSub.classesHeld || oldSub.percentage !== newSub.percentage)) {
+          await sendPushNotification(
+            cache,
+            uppercaseEnrollment,
+            `Attendance Updated: ${newSub.subject}`,
+            `Now at ${newSub.percentage}% (${newSub.classesAttended}/${newSub.classesHeld} classes)`
+          );
+        }
+      }
+
+      await cache.set('dashboard', uppercaseEnrollment, { data: newData, fetchedAt: Date.now() }, 7200);
+    } catch {
+      // Token may have expired, ignore background check
+    } finally {
+      client.destroy?.();
+    }
+  } catch (err: any) {
+    log.error(err, `[PushWorker] Failed processing subscriber: ${enrollment}`);
+  }
+}
+
 /**
  * Periodically checks for academic updates for all active push notification users.
  */
@@ -46,73 +119,10 @@ export async function checkAcademicUpdates(cache: CacheService, log: any) {
 
     log.info(`[PushWorker] Checking updates for ${enrollments.length} subscribed students`);
 
-    for (const enrollment of enrollments) {
-      const uppercaseEnrollment = enrollment.toUpperCase();
-      try {
-        const encryptedSession = await cache.get<string>('secure_credentials', uppercaseEnrollment);
-        if (!encryptedSession) {
-          continue;
-        }
-
-        let session;
-        try {
-          session = decryptSessionData(encryptedSession);
-        } catch {
-          continue;
-        }
-
-        const identity = session.campusLynx;
-        if (!identity?.token) {
-          continue;
-        }
-
-        const client = createPortalClient();
-        try {
-          const transport = {
-            postEncrypted: (path: string, payload: Record<string, unknown>) =>
-              client.postEncrypted(path, payload, identity),
-            getEncrypted: (path: string) => client.getEncrypted(path, identity),
-          };
-
-          const newData = await fetchCampusLynxDashboard(transport, {
-            instituteid: identity.instituteid,
-            companyid: identity.companyid,
-            username: identity.username,
-          });
-
-          const cachedWrapper = await cache.get<any>('dashboard', uppercaseEnrollment);
-          if (!cachedWrapper) {
-            await cache.set('dashboard', uppercaseEnrollment, { data: newData, fetchedAt: Date.now() }, 7200);
-            continue;
-          }
-
-          const oldData = cachedWrapper.data || cachedWrapper;
-
-          // Check for attendance changes
-          const oldAttendance = oldData.attendance || [];
-          const newAttendance = newData.attendance || [];
-
-          for (const newSub of newAttendance) {
-            const oldSub = oldAttendance.find((s: any) => s.subject === newSub.subject);
-            if (oldSub && (oldSub.classesHeld !== newSub.classesHeld || oldSub.percentage !== newSub.percentage)) {
-              await sendPushNotification(
-                cache,
-                uppercaseEnrollment,
-                `Attendance Updated: ${newSub.subject}`,
-                `Now at ${newSub.percentage}% (${newSub.classesAttended}/${newSub.classesHeld} classes)`
-              );
-            }
-          }
-
-          await cache.set('dashboard', uppercaseEnrollment, { data: newData, fetchedAt: Date.now() }, 7200);
-        } catch {
-          // Token may have expired, ignore background check
-        } finally {
-          client.destroy();
-        }
-      } catch (err: any) {
-        log.error(err, `[PushWorker] Failed processing subscriber: ${enrollment}`);
-      }
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < enrollments.length; i += BATCH_SIZE) {
+      const batch = enrollments.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(batch.map((e) => processSubscriber(e, cache, log)));
     }
   } catch (err: any) {
     log.error(err, '[PushWorker] Job execution failed');

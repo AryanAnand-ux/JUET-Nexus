@@ -88,7 +88,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const recovered = await recoverSession();
+        const recovered = await recoverSession(true);
         if (!recovered) {
           processQueue(error);
           return Promise.reject(error);

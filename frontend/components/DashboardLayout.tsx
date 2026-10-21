@@ -26,6 +26,30 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
   const sidebarRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const previousPathname = React.useRef<string | null>(null);
+
+  /**
+   * Replay the page-enter animation on route change.
+   *
+   * This used to be done with `key={pathname}` on the content wrapper, which
+   * unmounts and remounts the entire page subtree (discarding local state,
+   * scroll position and memoized work) just to restart a CSS animation.
+   * Toggling the class achieves the identical visual result without the
+   * remount cost.
+   */
+  React.useEffect(() => {
+    if (previousPathname.current === pathname) return;
+    const first = previousPathname.current === null;
+    previousPathname.current = pathname;
+    if (first) return; // The element mounts with the animation already applied
+
+    const el = contentRef.current;
+    if (!el) return;
+    el.classList.remove("animate-page-enter");
+    void el.offsetWidth; // Force reflow so the animation can restart
+    el.classList.add("animate-page-enter");
+  }, [pathname]);
 
   // Helper to get initials for avatar
   const getInitials = (name: string) => {
@@ -152,6 +176,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 aria-current={isActive ? "page" : undefined}
                 className={clsx(
                   "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium tracking-wide transition-all text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)]",
@@ -209,7 +234,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Content body */}
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-[var(--surface-page)] p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 touch-scroll-momentum transition-colors duration-200">
-          <div key={pathname} className="max-w-7xl mx-auto animate-page-enter">
+          <div ref={contentRef} className="max-w-7xl mx-auto animate-page-enter">
             {children}
           </div>
         </main>
