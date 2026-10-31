@@ -97,14 +97,14 @@ export default function ExamPage() {
             <Link
               href="/dashboard"
               prefetch={false}
-              className="inline-flex items-center gap-2 text-xs font-semibold text-brand-600 dark:text-brand-100 hover:text-brand-700 transition-colors w-fit mb-2"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink-strong)] transition-colors w-fit mb-2"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Dashboard</span>
             </Link>
             <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)] flex items-center gap-2.5">
               Exam Schedule
-              <Calendar className="w-5 h-5 text-brand-600" />
+              <Calendar className="w-5 h-5 text-[var(--ink-muted)]" />
             </h2>
           </div>
 

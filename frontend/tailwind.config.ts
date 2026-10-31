@@ -24,8 +24,8 @@ const config: Config = {
           950: "#1A1247",
         },
         // Neutral charcoal (no blue tint) used for banners / dark surfaces
-        midnight: "#131316",
-        carbon: "#1E1E22",
+        midnight: "#121212",
+        carbon: "#1C1C1C",
         // Neutralise Tailwind's cool greys so slate/gray read as true neutral
         // greys in both themes (single source of truth instead of per-page styling).
         slate: {

@@ -3,12 +3,14 @@
  * Calls backend to clear httpOnly auth cookie, then clears localStorage.
  */
 
+import { clearAttendanceDetailCache } from "@/utils/attendanceCache";
+
 const API_URL = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
   : "";
 
 /**
- * Drop the locally cached identity.
+ * Drop the locally cached identity and feature caches.
  *
  * Also called when the backend rejects a request with 401: the httpOnly cookie
  * is already gone in that case, but `enrollment` survives, and `/login` skips
@@ -17,10 +19,16 @@ const API_URL = typeof window !== "undefined"
  */
 export function clearStoredSession(): void {
   if (typeof window === "undefined") return;
+  const currentEnrollment = localStorage.getItem("enrollment");
   localStorage.removeItem("enrollment");
   localStorage.removeItem("dob");
   localStorage.removeItem("role");
   localStorage.removeItem("sessionToken");
+  localStorage.removeItem("studentName");
+  if (currentEnrollment) {
+    localStorage.removeItem(`juet_dashboard_cache_${currentEnrollment.toUpperCase()}`);
+  }
+  clearAttendanceDetailCache(currentEnrollment);
 }
 
 export async function performLogout(): Promise<void> {

@@ -25,6 +25,7 @@ function firstString(value: string | string[] | undefined): string {
 
 const FRESH_TTL_SEC = 300;   // 5 minutes
 const STALE_TTL_SEC = 7200;  // 2 hours
+const CACHE_PREFIX = 'dashboard';
 const activeRefreshes = new Set<string>();
 
 async function fetchDashboardForIdentity(
@@ -75,7 +76,7 @@ async function triggerBackgroundRefresh(
     const identity = getCampusLynxIdentity(request);
     const dashboardData = await fetchDashboardForIdentity(identity, request.log);
 
-    await cache.set('dashboard', enrollment, { data: dashboardData, fetchedAt: Date.now() }, STALE_TTL_SEC);
+    await cache.set(CACHE_PREFIX, enrollment, { data: dashboardData, fetchedAt: Date.now() }, STALE_TTL_SEC);
     request.log.info(`[Dashboard SWR] Background refresh successful for ${enrollment}`);
   } catch (err: any) {
     request.log.error(err, `[Dashboard SWR] Background refresh failed for ${enrollment}`);
@@ -108,7 +109,7 @@ export async function registerDashboardRoutes(
             const session = decryptSessionData(encryptedSession);
             const userEnrollment = (session.campusLynx?.username || session.enrollment || '').toUpperCase();
             if (userEnrollment) {
-              const cachedWrapper = await cache.get<any>('dashboard', userEnrollment);
+              const cachedWrapper = await cache.get<any>(CACHE_PREFIX, userEnrollment);
               if (cachedWrapper) {
                 const data = cachedWrapper.data ? cachedWrapper.data : cachedWrapper;
                 request.log.info(`[Dashboard] Serving stale cached data for ${userEnrollment} during portal token expiry`);
@@ -161,7 +162,7 @@ export async function registerDashboardRoutes(
 
       // SWR Cache Lookup
       fastify.log.info(`[Dashboard] Checking cache for ${enrollment}`);
-      const cachedWrapper = await cache.get<any>('dashboard', enrollment);
+      const cachedWrapper = await cache.get<any>(CACHE_PREFIX, enrollment);
 
       if (cachedWrapper) {
         const data = cachedWrapper.data ? cachedWrapper.data : cachedWrapper;
@@ -209,7 +210,7 @@ export async function registerDashboardRoutes(
       const dashboardData = await fetchDashboardForIdentity(identity, fastify.log);
 
       try {
-        await cache.set('dashboard', enrollment, { data: dashboardData, fetchedAt: now }, STALE_TTL_SEC);
+        await cache.set(CACHE_PREFIX, enrollment, { data: dashboardData, fetchedAt: now }, STALE_TTL_SEC);
       } catch (error) {
         fastify.log.warn(error, '[Dashboard] Cache write failed');
       }
@@ -233,7 +234,7 @@ export async function registerDashboardRoutes(
 
       if (enrollment) {
         try {
-          const cached = await cache.get<any>('dashboard', enrollment);
+          const cached = await cache.get<any>(CACHE_PREFIX, enrollment);
           if (cached?.data) {
             fastify.log.warn(`[Dashboard] Live fetch failed, serving fallback stale cached data for ${enrollment}`);
             return reply
@@ -294,7 +295,7 @@ export async function registerDashboardRoutes(
         });
       }
 
-      await cache.invalidate('dashboard', enrollment);
+      await cache.invalidate(CACHE_PREFIX, enrollment);
 
       return reply.send({
         success: true,
@@ -334,7 +335,7 @@ export async function registerDashboardRoutes(
     }
 
     try {
-      const cached = await cache.get<{ data: DashboardResponse; fetchedAt: number }>('dashboard', enrollment);
+      const cached = await cache.get<{ data: DashboardResponse; fetchedAt: number }>(CACHE_PREFIX, enrollment);
       if (!cached) {
         return reply.send({ cached: false, ttl: 0 });
       }

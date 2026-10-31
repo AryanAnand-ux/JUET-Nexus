@@ -8,6 +8,7 @@ import { performLogout } from "@/utils/logout";
 import { ArrowLeft, RefreshCw, Search, BookOpen, Layers, Award } from "lucide-react";
 import Link from "next/link";
 import { Typing } from "@/components/loading-ui/typing";
+import { useToast } from "@/context/ToastContext";
 
 const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
   <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm">
@@ -51,6 +52,21 @@ export default function CoursesPage() {
 
   const { data, isLoading, error, invalidateCache } = useDashboard(enrollment);
 
+  const toast = useToast();
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = async () => {
+    if (isSyncing || isLoading) return;
+    setIsSyncing(true);
+    const success = await invalidateCache();
+    setIsSyncing(false);
+    if (success) {
+      toast.success("Curriculum synced successfully");
+    } else {
+      toast.error("Failed to sync curriculum. Please try again.");
+    }
+  };
+
   const handleLogout = async () => {
     await performLogout();
     router.push("/login");
@@ -74,6 +90,8 @@ export default function CoursesPage() {
       studentName={data?.student.name || "Student"}
       enrollment={enrollment}
       onLogout={handleLogout}
+      onRefresh={handleSync}
+      isRefreshing={isSyncing || isLoading}
     >
       {/* Header bar and Actions */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -82,7 +100,7 @@ export default function CoursesPage() {
             <Link
               href="/dashboard"
               prefetch={false}
-              className="text-xs font-semibold text-brand-600 dark:text-brand-100 hover:text-brand-700 flex items-center gap-1"
+              className="text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink-strong)] flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Attendance
             </Link>
@@ -93,11 +111,11 @@ export default function CoursesPage() {
         </div>
         
         <button
-          onClick={invalidateCache}
-          disabled={isLoading}
-          className="flex items-center gap-2 border border-[var(--line-subtle)] bg-[var(--surface-card)] hover:bg-[var(--surface-subtle)] text-[var(--ink-strong)] rounded-xl px-5 py-3 text-sm font-semibold disabled:opacity-50 transition-all shadow-card active:scale-95 self-start sm:self-auto"
+          onClick={handleSync}
+          disabled={isSyncing || isLoading}
+          className="flex items-center gap-2 border border-[var(--line-subtle)] bg-[var(--surface-card)] hover:bg-[var(--surface-subtle)] text-[var(--ink-strong)] rounded-xl px-5 py-3 text-sm font-semibold disabled:opacity-50 transition-all shadow-card active:scale-95 self-start sm:self-auto cursor-pointer"
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> 
+          <RefreshCw className={`w-4 h-4 ${isSyncing || isLoading ? "animate-spin" : ""}`} /> 
           <span>Sync Curriculum</span>
         </button>
       </div>
@@ -122,7 +140,7 @@ export default function CoursesPage() {
           {/* Stats Badges */}
           <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
             <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl px-4 py-2 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-brand-600" />
+              <BookOpen className="w-4 h-4 text-[var(--ink-muted)]" />
               <span className="text-xs font-semibold text-[var(--ink-strong)]">
                 {courses.length} Courses Total
               </span>
@@ -159,12 +177,12 @@ export default function CoursesPage() {
                 return (
                   <div
                     key={course.code}
-                    className="group border border-[var(--line-subtle)] bg-[var(--surface-card)] rounded-[20px] p-5 shadow-card hover:shadow-elevated transition-all duration-300 hover:border-brand-500/40 hover:-translate-y-0.5 flex flex-col justify-between min-h-[160px]"
+                    className="group border border-[var(--line-subtle)] bg-[var(--surface-card)] hover:bg-neutral-50 dark:hover:bg-[#202020] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-[20px] p-5 shadow-card hover:shadow-elevated transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between min-h-[160px]"
                   >
                     <div>
                       {/* Code and Credits */}
                       <div className="flex items-center justify-between gap-2 mb-3">
-                        <span className="text-xs font-bold text-brand-700 dark:text-brand-100 tracking-wider font-mono bg-brand-50 dark:bg-brand-500/15 border border-brand-100 dark:border-brand-500/30 px-2.5 py-1 rounded-lg">
+                        <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200 tracking-wider font-mono bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-2.5 py-1 rounded-lg">
                           {course.code}
                         </span>
                         {hasCredits && (
@@ -175,7 +193,7 @@ export default function CoursesPage() {
                       </div>
 
                       {/* Course Title */}
-                      <h3 className="font-semibold text-[var(--ink-strong)] text-lg leading-snug group-hover:text-[var(--accent-text)] transition-colors">
+                      <h3 className="font-semibold text-[var(--ink-strong)] text-lg leading-snug transition-colors break-words">
                         {course.title}
                       </h3>
                     </div>
@@ -204,11 +222,11 @@ export default function CoursesPage() {
             No registered courses data available. Let&apos;s sync your portal curriculum.
           </p>
           <button
-            onClick={invalidateCache}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 bg-accent-primary hover:bg-accent-hover text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all shadow-sm"
+            onClick={handleSync}
+            disabled={isSyncing || isLoading}
+            className="inline-flex items-center gap-2 bg-accent-primary hover:bg-accent-hover text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all shadow-sm disabled:opacity-50 cursor-pointer"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> Sync Now
+            <RefreshCw className={`w-4 h-4 ${isSyncing || isLoading ? "animate-spin" : ""}`} /> Sync Now
           </button>
         </div>
       )}

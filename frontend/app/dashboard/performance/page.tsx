@@ -11,9 +11,11 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { performLogout } from "@/utils/logout";
 import { PerformanceHub } from "@/components/PerformanceHub";
 import { useDashboard } from "@/hooks/useDashboard";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Typing } from "@/components/loading-ui/typing";
+
+import { useToast } from "@/context/ToastContext";
 
 const ErrorBanner: React.FC<{ error: { message: string } }> = ({ error }) => (
   <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm">
@@ -47,7 +49,21 @@ export default function PerformancePage() {
     }
   }, [router]);
 
-  const { data, isLoading, error, refresh } = useDashboard(enrollment);
+  const { data, isLoading, error, invalidateCache } = useDashboard(enrollment);
+  const toast = useToast();
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = async () => {
+    if (isSyncing || isLoading) return;
+    setIsSyncing(true);
+    const success = await invalidateCache();
+    setIsSyncing(false);
+    if (success) {
+      toast.success("Academic standings synced successfully");
+    } else {
+      toast.error("Failed to sync academic standings. Please try again.");
+    }
+  };
 
   const handleLogout = async () => {
     await performLogout();
@@ -61,32 +77,23 @@ export default function PerformancePage() {
       studentName={data?.student.name || "Loading..."}
       enrollment={enrollment}
       onLogout={handleLogout}
+      onRefresh={handleSync}
+      isRefreshing={isSyncing || isLoading}
     >
-      {/* Header bar and Actions */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Link 
-              href="/dashboard" 
-              prefetch={false}
-              className="text-xs font-semibold text-brand-600 dark:text-brand-100 hover:text-brand-700 flex items-center gap-1"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Attendance
-            </Link>
-          </div>
-          <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)]">
-            Academic Performance
-          </h2>
+      {/* Header bar and Navigation */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-2">
+          <Link 
+            href="/dashboard" 
+            prefetch={false}
+            className="text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink-strong)] flex items-center gap-1 transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Attendance
+          </Link>
         </div>
-        
-        <button
-          onClick={refresh}
-          disabled={isLoading}
-          className="flex items-center gap-2 border border-[var(--line-subtle)] bg-[var(--surface-card)] hover:bg-[var(--surface-subtle)] text-[var(--ink-strong)] rounded-xl px-5 py-3 text-sm font-semibold disabled:opacity-50 transition-all shadow-card active:scale-95 self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> 
-          <span>Sync Academic Standings</span>
-        </button>
+        <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)]">
+          Academic Performance
+        </h2>
       </div>
 
       {error && <ErrorBanner error={error} />}
@@ -97,16 +104,9 @@ export default function PerformancePage() {
         <PerformanceHub performance={data.performance} detailedMarks={data.detailedMarks} />
       ) : (
         <div className="border border-[var(--line-subtle)] rounded-[24px] bg-[var(--surface-card)] p-12 text-center shadow-card">
-          <p className="text-sm text-[var(--ink-muted)] mb-4">
-            No performance data available. Let&apos;s sync your portal standings.
+          <p className="text-sm text-[var(--ink-muted)]">
+            No academic performance data available for this semester.
           </p>
-          <button
-            onClick={refresh}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 bg-accent-primary hover:bg-accent-hover text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all shadow-sm"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} /> Sync Now
-          </button>
         </div>
       )}
     </DashboardLayout>

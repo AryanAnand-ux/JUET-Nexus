@@ -375,11 +375,18 @@ export function mapAttendanceLog(
   type: string
 ): AttendanceDetailItem | null {
   const date = String(row.datetime ?? "").trim();
-  const rawStatus = String(row.present ?? "").toLowerCase();
+  const rawPresent = row.present ?? (row as any).attendance ?? (row as any).status;
+  const rawStatus = String(rawPresent ?? "").trim().toLowerCase();
   if (!date || !rawStatus) return null;
 
-  const isPresent = rawStatus.includes("present") || rawStatus === "p";
-  const isAbsent = rawStatus.includes("absent") || rawStatus === "a";
+  const isPresent =
+    rawStatus === "present" ||
+    rawStatus === "p" ||
+    rawStatus.startsWith("pres");
+  const isAbsent =
+    rawStatus === "absent" ||
+    rawStatus === "a" ||
+    rawStatus.startsWith("abs");
   if (!isPresent && !isAbsent) return null;
 
   return {

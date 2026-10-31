@@ -12,22 +12,39 @@ export interface AttendanceDetailsState {
   error: { message: string; code?: string } | null;
 }
 
-// In-memory module-level cache: key is `${subject}:${link}`
-interface CacheItem {
-  data: AttendanceDetailsResponse;
-  timestamp: number;
-}
-const detailsMemoryCache = new Map<string, CacheItem>();
-const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// Re-export cache utilities for consumers
+export {
+  detailsMemoryCache,
+  inFlightDetailsRequests,
+  CLIENT_CACHE_TTL_MS,
+  CLIENT_STALE_THRESHOLD_MS,
+  getAttendanceStorageKey,
+  getStoredAttendanceDetail,
+  setStoredAttendanceDetail,
+  clearAttendanceDetailCache,
+  fetchAttendanceDetailDirect,
+} from "@/utils/attendanceCache";
+import {
+  getStoredAttendanceDetail,
+  fetchAttendanceDetailDirect,
+} from "@/utils/attendanceCache";
 
 export function useAttendanceDetails(
   subject: string,
   link: string | null
 ) {
   const [state, setState] = useState<AttendanceDetailsState>(() => {
-    const cacheKey = subject && link ? `${subject}:${link}` : null;
-    const cached = cacheKey ? detailsMemoryCache.get(cacheKey) : null;
-    if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL_MS) {
+    if (!subject || !link) {
+      return {
+        data: null,
+        isLoading: false,
+        isRetrying: false,
+        error: null,
+      };
+    }
+
+    const cached = getStoredAttendanceDetail(subject, link);
+    if (cached) {
       return {
         data: cached.data,
         isLoading: false,
@@ -35,6 +52,7 @@ export function useAttendanceDetails(
         error: null,
       };
     }
+
     return {
       data: null,
       isLoading: true,
@@ -58,28 +76,32 @@ export function useAttendanceDetails(
         return;
       }
 
-      const cacheKey = `${subject}:${link}`;
-
-      // If not retrying, check client memory cache
+      // Check client cache if not retrying
       if (!isRetry) {
-        const cached = detailsMemoryCache.get(cacheKey);
-        if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL_MS) {
-          setState({
+        const cached = getStoredAttendanceDetail(subject, link);
+        if (cached) {
+          // Immediately display cached data
+          setState((prev) => ({
+            ...prev,
             data: cached.data,
             isLoading: false,
             isRetrying: false,
             error: null,
-          });
-          return;
+          }));
+
+          // If cache is still within the fresh window, no background refresh needed
+          if (!cached.isStale) {
+            return;
+          }
         }
       }
 
-      // Avoid overlapping duplicate requests
+      // Avoid overlapping requests in the same component
       if (inFlightRef.current && !isRetry) {
         return;
       }
 
-      // Cancel any existing in-flight request
+      // Cancel previous component controller
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -88,37 +110,23 @@ export function useAttendanceDetails(
       abortControllerRef.current = controller;
       inFlightRef.current = true;
 
+      // Only show full loading spinner if we have no existing cached data to display
       setState((prev) => ({
         ...prev,
-        isLoading: true,
+        isLoading: !prev.data,
         isRetrying: isRetry,
         error: null,
       }));
 
       try {
-        const queryParams = new URLSearchParams({
+        const enrollment = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
+        const responseData = await fetchAttendanceDetailDirect(
           subject,
           link,
-        });
-        if (isRetry) {
-          queryParams.set("refresh", "true");
-        }
-
-        const response = await apiClient.get(
-          `/api/attendance/details?${queryParams.toString()}`,
-          {
-            signal: controller.signal,
-            timeout: 60000,
-          }
+          enrollment,
+          isRetry,
+          controller.signal
         );
-
-        const responseData: AttendanceDetailsResponse = response.data.data;
-
-        // Cache the successful result
-        detailsMemoryCache.set(cacheKey, {
-          data: responseData,
-          timestamp: Date.now(),
-        });
 
         setState({
           data: responseData,

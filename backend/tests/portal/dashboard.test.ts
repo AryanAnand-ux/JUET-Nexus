@@ -222,7 +222,7 @@ describe("mapRecentMarks", () => {
   test("takes the first ten rows as subject/mark pairs", () => {
     const recent = mapRecentMarks(marksFixture.response.viewmarksbystudent);
     expect(recent).toHaveLength(6);
-    expect(recent[0]).toEqual({ subject: "COMPUTER NETWORKS", marks: 10 });
+    expect(recent[0]).toMatchObject({ subject: "COMPUTER NETWORKS", marks: 10, event: "TEST-1", max: 15 });
   });
 });
 

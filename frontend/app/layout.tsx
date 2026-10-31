@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Script from "next/script";
 import { Plus_Jakarta_Sans, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "../context/ThemeContext";
+import { ToastProvider } from "../context/ToastContext";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -17,8 +18,6 @@ const jakarta = Plus_Jakarta_Sans({
 const playfair = Playfair_Display({
   subsets: ["latin"],
   display: "swap",
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600", "700"],
   variable: "--font-next-playfair",
 });
 
@@ -164,7 +163,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to main content
         </a>
         <ThemeProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

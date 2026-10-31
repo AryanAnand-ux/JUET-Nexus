@@ -4,8 +4,9 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { Settings, RotateCw } from "lucide-react";
+import { Settings, RefreshCw } from "lucide-react";
 import { MobileBottomNav } from "./MobileBottomNav";
+import { useAttendancePrefetch } from "@/hooks/useAttendancePrefetch";
 
 export interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -23,6 +24,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onRefresh,
   isRefreshing = false,
 }) => {
+  // Background prefetch — drives refresh icon spin automatically
+  const prefetchStatus = useAttendancePrefetch(undefined, enrollment);
+  const isSyncing = isRefreshing || prefetchStatus.isPrefetching;
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
   const sidebarRef = React.useRef<HTMLDivElement>(null);
@@ -145,7 +150,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         )}>
           {sidebarCollapsed ? (
             <div className="flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-100 font-bold flex items-center justify-center text-sm shadow-sm" title={studentName}>
+              <div className="w-10 h-10 rounded-full bg-[var(--surface-subtle)] border border-[var(--line-subtle)] text-[var(--ink-strong)] font-bold flex items-center justify-center text-sm shadow-sm" title={studentName}>
                 {getInitials(studentName)}
               </div>
             </div>
@@ -181,7 +186,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 className={clsx(
                   "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium tracking-wide transition-all text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)]",
                   isActive
-                    ? "bg-midnight dark:bg-brand-600 text-white shadow-sm"
+                    ? "bg-midnight dark:bg-neutral-800 text-white shadow-sm"
                     : "text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)]",
                   sidebarCollapsed && "justify-center"
                 )}
@@ -200,15 +205,30 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <button
               type="button"
               onClick={onRefresh}
-              disabled={isRefreshing}
+              disabled={isSyncing}
               className={clsx(
-                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)] transition-colors disabled:opacity-50",
+                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-colors",
+                isSyncing
+                  ? "text-[var(--accent-text)] bg-[var(--accent-subtle,#eff6ff)] dark:bg-blue-950/30 opacity-90"
+                  : "text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)]",
                 sidebarCollapsed && "justify-center"
               )}
-              title={sidebarCollapsed ? "Refresh" : undefined}
+              title={
+                sidebarCollapsed
+                  ? isSyncing
+                    ? `Syncing… ${prefetchStatus.completed}/${prefetchStatus.total}`
+                    : "Refresh"
+                  : undefined
+              }
             >
-              <RotateCw className={clsx("w-4 h-4 shrink-0", isRefreshing && "animate-spin")} />
-              {!sidebarCollapsed && <span className="truncate">Refresh</span>}
+              <RefreshCw className={clsx("w-4 h-4 shrink-0", isSyncing && "animate-spin")} />
+              {!sidebarCollapsed && (
+                <span className="truncate flex-1">
+                  {isSyncing && prefetchStatus.total > 0
+                    ? `Syncing ${prefetchStatus.completed}/${prefetchStatus.total}`
+                    : "Refresh"}
+                </span>
+              )}
             </button>
           )}
           <button

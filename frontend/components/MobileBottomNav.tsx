@@ -28,7 +28,7 @@ export function MobileBottomNav() {
     },
     {
       href: "/dashboard/performance",
-      label: "GPA",
+      label: "Marks",
       icon: <TrendingUp className="w-5 h-5" />,
     },
     {
@@ -68,20 +68,20 @@ export function MobileBottomNav() {
               aria-current={isActive ? "page" : undefined}
               className={`flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-transform duration-100 active:scale-95 relative touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)] ${
                 isActive
-                  ? "text-brand-600 dark:text-brand-100 font-bold"
+                  ? "text-brand-600 dark:text-white font-bold"
                   : "text-[var(--ink-muted)] hover:text-[var(--ink-strong)] font-medium"
               }`}
             >
               <div
                 className={`p-1 rounded-lg transition-all ${
-                  isActive ? "bg-brand-50 dark:bg-brand-500/20 scale-105" : ""
+                  isActive ? "bg-brand-50 dark:bg-neutral-800 scale-105" : ""
                 }`}
               >
                 {item.icon}
               </div>
               <span className="text-[10px] tracking-tight mt-0.5">{item.label}</span>
               {isActive && (
-                <span className="absolute bottom-0 w-1.5 h-1.5 rounded-full bg-brand-600 dark:bg-brand-100" />
+                <span className="absolute bottom-0 w-1.5 h-1.5 rounded-full bg-brand-600 dark:bg-white" />
               )}
             </Link>
           );

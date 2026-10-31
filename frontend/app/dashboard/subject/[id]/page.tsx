@@ -159,12 +159,12 @@ function SubjectDetailContent() {
           ← Back to Dashboard
         </button>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl sm:text-3xl font-editorial-italic font-normal text-[var(--ink-strong)] tracking-normal break-words">
+          <div className="flex-1 min-w-0 pr-2">
+            <h2 className="text-xl sm:text-3xl font-editorial-italic font-normal text-[var(--ink-strong)] tracking-normal break-words leading-snug">
               {subjectName}
             </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border ${getStatusBadgeColor(officialPct)}`}>
               {officialPct % 1 === 0 ? officialPct.toFixed(0) : officialPct.toFixed(1)}% Overall
             </span>
@@ -219,12 +219,13 @@ function SubjectDetailContent() {
                     className={`transition-all duration-700 ${getRingColor(displayPercent)}`}
                   />
                 </svg>
-                <div className="absolute flex flex-col items-center">
-                  <span className="text-5xl font-black tracking-tighter text-[var(--ink-strong)] leading-none">
-                    {displayPercent % 1 === 0 ? displayPercent.toFixed(0) : displayPercent.toFixed(1)}
-                  </span>
-                  <span className="text-xs font-bold text-gray-400 dark:text-slate-500 font-nunito">
-                    %
+                <div className="absolute inset-0 flex items-center justify-center p-2 text-center pointer-events-none">
+                  <span className={`${
+                    (displayPercent % 1 === 0 ? displayPercent.toFixed(0) : displayPercent.toFixed(1)).length >= 4
+                      ? "text-3xl sm:text-4xl"
+                      : "text-4xl sm:text-5xl"
+                  } font-black tracking-tight text-[var(--ink-strong)] leading-none tabular-nums select-none`}>
+                    {displayPercent % 1 === 0 ? displayPercent.toFixed(0) : displayPercent.toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -497,16 +498,16 @@ function SubjectDetailContent() {
             </div>
           ) : data && data.logs && data.logs.length > 0 ? (
             <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-2xl overflow-x-auto shadow-card">
-              <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-0">
+              <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[var(--surface-subtle)] border-b border-[var(--line-subtle)]">
-                    <th className="p-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
+                    <th className="p-3 sm:p-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
                       Date
                     </th>
-                    <th className="p-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
+                    <th className="p-3 sm:p-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
                       Type
                     </th>
-                    <th className="p-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)]">
+                    <th className="p-3 sm:p-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] text-right sm:text-left">
                       Status
                     </th>
                   </tr>
@@ -530,33 +531,46 @@ function SubjectDetailContent() {
                       );
                     }
                     
-                    return filteredLogs.map((log, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-[var(--line-subtle)] hover:bg-[var(--surface-subtle)] transition-colors last:border-0"
-                      >
-                        <td className="p-4 text-sm font-semibold text-[var(--ink-strong)] whitespace-nowrap">
-                          {log.date}
-                        </td>
-                        <td className="p-4 text-sm text-[var(--ink-muted)]">
-                          {log.type}
-                        </td>
-                        <td className="p-4">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] ${
-                              log.status === "Present"
-                                ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
-                                : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
-                            }`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              log.status === "Present" ? "bg-green-500 animate-pulse" : "bg-red-500"
-                            }`} />
-                            {log.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ));
+                    return filteredLogs.map((log, i) => {
+                      const match = log.date.match(/^(\d{1,2}\/\d{1,2}\/\d{4})(?:\s*\((.*?)\))?/);
+                      const displayDate = match ? match[1] : log.date;
+                      const displayTime = match ? match[2]?.replace(/\s+/g, " ") : undefined;
+
+                      return (
+                        <tr
+                          key={i}
+                          className="border-b border-[var(--line-subtle)] hover:bg-[var(--surface-subtle)] transition-colors last:border-0"
+                        >
+                          <td className="p-3 sm:p-4 text-xs sm:text-sm font-semibold text-[var(--ink-strong)]">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-[var(--ink-strong)] whitespace-nowrap">{displayDate}</span>
+                              {displayTime && (
+                                <span className="text-[10px] font-normal text-[var(--ink-muted)] whitespace-nowrap">
+                                  {displayTime}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3 sm:p-4 text-xs sm:text-sm text-[var(--ink-muted)] font-medium">
+                            {log.type}
+                          </td>
+                          <td className="p-3 sm:p-4 text-right sm:text-left">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] whitespace-nowrap ${
+                                log.status === "Present"
+                                  ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+                                  : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                log.status === "Present" ? "bg-green-500 animate-pulse" : "bg-red-500"
+                              }`} />
+                              {log.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    });
                   })()}
                 </tbody>
               </table>

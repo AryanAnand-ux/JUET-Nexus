@@ -53,6 +53,9 @@ export interface PerformanceData {
   recentMarks?: Array<{
     subject: string;
     marks: number;
+    code?: string;
+    event?: string;
+    max?: number;
   }>;
 }
 

@@ -29,11 +29,11 @@ export interface DashboardState {
 
 export interface UseDashboardReturn extends DashboardState {
   refresh: () => Promise<void>;
-  invalidateCache: () => Promise<void>;
+  invalidateCache: () => Promise<boolean>;
   checkCacheStatus: () => Promise<void>;
 }
 
-const STORAGE_KEY_PREFIX = "juet_dashboard_cache_";
+const STORAGE_KEY_PREFIX = "juet_dashboard_cache_v3_";
 
 /** Grace period to let `useSessionKeepAlive` recover the token before we hit the API. */
 const SESSION_RECOVERY_GRACE_MS = 3_500;
@@ -77,6 +77,15 @@ function loadCachedDashboard(enrollment: string | null): { data: DashboardRespon
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed?.data) {
+        // If cached data lacks multi-event evaluation history, drop it so fresh data is fetched
+        const hasMulti = parsed.data.detailedMarks?.some(
+          (m: any) => m.components && m.components.length > 1
+        );
+        if (!hasMulti) {
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}${enrollment.toUpperCase()}`);
+          return null;
+        }
+
         const fetchedAt = parsed.fetchedAt ? new Date(parsed.fetchedAt) : new Date();
         const result = {
           data: parsed.data,
@@ -300,12 +309,17 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
   /**
    * Manually invalidate cache
    */
-  const invalidateCache = useCallback(async () => {
-    if (!enrollment) return;
+  const invalidateCache = useCallback(async (): Promise<boolean> => {
+    if (!enrollment) return false;
 
     // Drop the cross-page snapshot so other dashboard pages cannot serve the
     // data the user just asked us to discard.
     clearSharedDashboard(enrollment);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(`${STORAGE_KEY_PREFIX}${enrollment.toUpperCase()}`);
+      } catch {}
+    }
 
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
@@ -316,6 +330,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       );
       // Fetch fresh data
       await fetchDashboard();
+      return true;
     } catch (error: any) {
       console.error("[Dashboard] Cache invalidation error:", error);
       if (error.response?.status === 401) {
@@ -329,7 +344,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
             code: error.response?.data?.code || "SESSION_RENEWING",
           },
         }));
-        return;
+        return false;
       }
       setState((prev) => ({
         ...prev,
@@ -339,6 +354,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
           code: error.response?.data?.code,
         },
       }));
+      return false;
     }
   }, [enrollment, fetchDashboard]);
 
@@ -382,10 +398,14 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
 
     // Another dashboard page already fetched this payload moments ago — reuse
     // it instead of re-downloading the whole dashboard on every route change.
+    const sharedHasMulti = sharedData?.data?.detailedMarks?.some(
+      (m: any) => m.components && m.components.length > 1
+    );
     if (
       sharedData &&
       sharedData.enrollment === key &&
-      Date.now() - sharedData.fetchedAt.getTime() < SHARED_DATA_MAX_AGE_MS
+      Date.now() - sharedData.fetchedAt.getTime() < SHARED_DATA_MAX_AGE_MS &&
+      Boolean(sharedHasMulti)
     ) {
       const fresh = sharedData;
       setState((prev) => ({
@@ -403,7 +423,13 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     }
 
     const cached = loadCachedDashboard(enrollment);
-    const isFresh = cached && (Date.now() - cached.fetchedAt.getTime() < SHARED_DATA_MAX_AGE_MS);
+    const hasMultipleComponents = cached?.data?.detailedMarks?.some(
+      (m) => m.components && m.components.length > 1
+    );
+    const isFresh =
+      cached &&
+      Date.now() - cached.fetchedAt.getTime() < SHARED_DATA_MAX_AGE_MS &&
+      Boolean(hasMultipleComponents);
 
     // If cached data is fresh (< 5 minutes), do not trigger an unneeded network fetch
     if (isFresh) {

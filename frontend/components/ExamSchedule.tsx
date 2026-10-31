@@ -202,7 +202,7 @@ function getExamStatus(dateStr: string) {
       return { label: "Today", variant: "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800 animate-pulse" };
     }
     if (diffDays === 1) {
-      return { label: "Tomorrow", variant: "bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-100 border-brand-300 dark:border-brand-500/40" };
+      return { label: "Tomorrow", variant: "bg-neutral-100 dark:bg-neutral-800 text-[var(--ink-strong)] border-neutral-300 dark:border-neutral-600" };
     }
     return { label: `In ${diffDays} days`, variant: "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800" };
   } catch {
@@ -272,7 +272,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
                 onClick={() => onSelectEvent(ev.exameventid)}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all touch-manipulation active:scale-95 ${
                   isSelected
-                    ? "bg-midnight dark:bg-brand-600 text-white shadow-sm"
+                    ? "bg-midnight text-white shadow-sm"
                     : "text-[var(--ink-muted)] hover:text-[var(--ink-strong)] hover:bg-[var(--surface-card)]"
                 }`}
               >
@@ -305,7 +305,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
       {/* Exam Items Grid */}
       {items.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-12 text-center">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-brand-50 dark:bg-brand-500/15 flex items-center justify-center text-brand-600 mb-4">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-[var(--surface-subtle)] flex items-center justify-center text-[var(--ink-muted)] mb-4">
             <Calendar className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-bold text-[var(--ink-strong)]">
@@ -333,12 +333,12 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
             return (
               <div
                 key={`${item.subject}-${index}`}
-                className="group relative flex flex-col justify-between rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-5 shadow-card hover:shadow-elevated hover:border-brand-500/40 transition-all duration-200"
+                className="group relative flex flex-col justify-between rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-5 shadow-card hover:shadow-elevated hover:border-neutral-300 dark:hover:border-neutral-600 transition-all duration-200"
               >
                 <div>
                   {/* Top tags row */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-100 border border-brand-100 dark:border-brand-500/30">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--surface-subtle)] text-[var(--ink-muted)] border border-[var(--line-subtle)]">
                       <BookOpen className="w-3 h-3" />
                       Paper {paperNum}
                     </span>
@@ -353,7 +353,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
                   </div>
 
                   {/* Subject Name */}
-                  <h4 className="text-base font-semibold text-[var(--ink-strong)] line-clamp-2 group-hover:text-[var(--accent-text)] transition-colors">
+                  <h4 className="text-base font-semibold text-[var(--ink-strong)] break-words leading-snug transition-colors">
                     {cleanSubjectName(item.subject, courseMap)}
                   </h4>
 

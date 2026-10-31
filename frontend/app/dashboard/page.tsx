@@ -97,9 +97,19 @@ export default function DashboardPage() {
     invalidateCache,
     cachedAt,
   } = useDashboard(enrollment);
+
   const recovery = usePortalRecovery(enrollment, async () => {
     await refresh();
   });
+
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
+
+  const handleRefresh = async () => {
+    if (isRefreshingData || isLoading) return;
+    setIsRefreshingData(true);
+    await invalidateCache();
+    setIsRefreshingData(false);
+  };
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
@@ -167,8 +177,8 @@ export default function DashboardPage() {
       studentName={data?.student.name || "Student"}
       enrollment={data?.student.enrollment || enrollment}
       onLogout={handleLogout}
-      onRefresh={invalidateCache}
-      isRefreshing={isLoading}
+      onRefresh={handleRefresh}
+      isRefreshing={isRefreshingData || isLoading}
     >
       {/* Header Section — Compact welcome banner */}
       <div className="relative overflow-hidden bg-midnight dark:bg-carbon rounded-[20px] px-5 py-4 sm:px-6 sm:py-5 mb-6 border border-white/5 shadow-banner">
@@ -176,7 +186,7 @@ export default function DashboardPage() {
           <div className="min-w-0">
             <h2 className="text-xl sm:text-2xl text-white leading-tight font-editorial-italic">
               {data?.student.name
-                ? <span>Welcome back, <span className="text-brand-100">{data.student.name}</span>.</span>
+                ? <span>Welcome back, <span className="text-white font-medium">{data.student.name}</span>.</span>
                 : <span>Welcome back.</span>}
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1 truncate">
@@ -262,7 +272,11 @@ export default function DashboardPage() {
           )}
 
           {/* Attendance Tracker Component */}
-          <AttendanceTracker attendanceRecords={data.attendance} />
+          <AttendanceTracker
+            attendanceRecords={data.attendance}
+            onRefresh={handleRefresh}
+            isRefreshing={isRefreshingData || isLoading}
+          />
 
           {/* Footer Info */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--line-subtle)] pt-6">

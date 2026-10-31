@@ -30,16 +30,17 @@
   --accent-text: #6355D8;
 }
 
-:root.dark {
-  --surface-page: #0F0F10;
-  --surface-card: #191919;
-  --surface-subtle: #232325;
-  --ink-strong: #F4F4F5;
-  --ink-body: #D4D4D8;
-  --ink-muted: #A1A1AA;
-  --line-subtle: #2C2C2E;
-  --focus-ring: #8B7FF0;
-  --accent-text: #C4B5FD;
+:root.dark,
+:root.dark.accent-indigo {
+  --surface-page: #121212;
+  --surface-card: #1C1C1C;
+  --surface-subtle: #242424;
+  --ink-strong: #FFFFFF;
+  --ink-body: #E0E0E0;
+  --ink-muted: #9E9E9E;
+  --line-subtle: #2C2C2C;
+  --focus-ring: #FFFFFF;
+  --accent-text: #FFFFFF;
 }
 
 /* Global Base Styles */
