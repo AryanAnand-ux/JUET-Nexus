@@ -303,36 +303,25 @@ const PerformanceHubComponent: React.FC<PerformanceHubProps> = ({
 
   return (
     <FigmaCard
-      heading={
-        <span className="flex items-baseline gap-2.5">
-          <span className="font-editorial-italic text-2xl text-[var(--ink-strong)] font-normal">Marks &amp; Evaluations</span>
-          <ClipboardList className="w-4 h-4 text-[var(--ink-muted)] self-center ml-auto" />
-        </span>
-      }
       className="border border-[var(--line-subtle)] shadow-card rounded-[24px] p-6 md:p-8"
     >
       {/* Assessment Filter Segmented Control */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <p className="text-xs font-semibold text-[var(--ink-muted)]">
-          Filter evaluation results by assessment stage
-        </p>
-        <div className="flex items-center gap-1 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-[12px] p-1 overflow-x-auto">
-          {ASSESSMENT_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => setSelectedAssessment(option.id)}
-              title={option.fullLabel}
-              className={`px-3 py-1.5 rounded-[9px] text-[11px] font-bold whitespace-nowrap transition-all duration-150 cursor-pointer ${
-                selectedAssessment === option.id
-                  ? "bg-[var(--surface-card)] text-[var(--accent-text)] shadow-sm border border-[var(--line-subtle)]"
-                  : "text-[var(--ink-muted)] hover:text-[var(--ink-body)]"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center gap-1 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-[12px] p-1 overflow-x-auto mb-6 w-fit max-w-full">
+        {ASSESSMENT_OPTIONS.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => setSelectedAssessment(option.id)}
+            title={option.fullLabel}
+            className={`px-3 py-1.5 rounded-[9px] text-[11px] font-bold whitespace-nowrap transition-all duration-150 cursor-pointer ${
+              selectedAssessment === option.id
+                ? "bg-[var(--surface-card)] text-[var(--accent-text)] shadow-sm border border-[var(--line-subtle)]"
+                : "text-[var(--ink-muted)] hover:text-[var(--ink-body)]"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
 
       {!hasAnyMarks ? (
