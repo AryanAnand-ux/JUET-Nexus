@@ -153,12 +153,14 @@ export class PortalClient {
   private async send(
     path: string,
     body: string | undefined,
-    headers: Record<string, string>
+    headers: Record<string, string>,
+    timeoutMs?: number
   ): Promise<string> {
     try {
       const response = await this.http.post<string>(path, body ?? "", {
         headers,
         transformRequest: [(data: unknown) => data],
+        ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
       });
       return typeof response.data === "string" ? response.data : "";
     } catch (error: any) {
@@ -290,7 +292,8 @@ export class PortalClient {
   async postEncrypted(
     path: string,
     payload: Record<string, unknown>,
-    identity: PortalIdentity
+    identity: PortalIdentity,
+    options?: { timeout?: number }
   ): Promise<unknown> {
     const token = identity.token;
     if (!token) {
@@ -298,10 +301,15 @@ export class PortalClient {
     }
 
     const now = new Date();
-    const text = await this.send(path, encryptBody(payload, deriveKey(now)), {
-      ...ANONYMOUS_HEADERS(now),
-      Authorization: `Bearer ${token}`,
-    });
+    const text = await this.send(
+      path,
+      encryptBody(payload, deriveKey(now)),
+      {
+        ...ANONYMOUS_HEADERS(now),
+        Authorization: `Bearer ${token}`,
+      },
+      options?.timeout
+    );
 
     if (!text || !text.trim()) {
       // On an AUTHENTICATED call the portal answers an expired/invalid JWT with
@@ -352,6 +360,31 @@ export class PortalClient {
       throw new PortalError(`The portal session expired for ${path}.`, 401);
     }
     return parseJson(text);
+  }
+
+  async getBuffer(path: string, identity: PortalIdentity): Promise<Buffer> {
+    const token = identity.token;
+    if (!token) {
+      throw new PortalError("Missing CampusLynx session token.", 401);
+    }
+
+    try {
+      const response = await this.http.get(path, {
+        responseType: "arraybuffer",
+        headers: {
+          ...ANONYMOUS_HEADERS(new Date()),
+          Accept: "application/pdf, application/json, text/plain, */*",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return Buffer.from(response.data);
+    } catch (error: any) {
+      throw new PortalError(
+        `CampusLynx buffer request to ${path} failed: ${error?.message || "network error"}`,
+        error?.response?.status,
+        error?.response?.data
+      );
+    }
   }
 
   /**
@@ -416,6 +449,20 @@ export class PortalClient {
 /** Convenience factory so callers can inject a base URL in tests. */
 export function createPortalClient(options?: PortalClientOptions): PortalClient {
   return new PortalClient(options);
+}
+
+/**
+ * Module-level shared client for production use.
+ * Reuses the same HTTPS agent (keepAlive + pooled sockets) across requests
+ * instead of creating and destroying one per handler invocation.
+ */
+let _sharedClient: PortalClient | undefined;
+
+export function getSharedPortalClient(): PortalClient {
+  if (!_sharedClient) {
+    _sharedClient = new PortalClient();
+  }
+  return _sharedClient;
 }
 
 export { isTokenExpired };

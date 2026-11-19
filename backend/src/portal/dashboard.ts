@@ -41,6 +41,7 @@
  *     branch, which is all the contract needs.
  */
 
+import * as zlib from "node:zlib";
 import type {
   AttendanceRecord,
   DashboardResponse,
@@ -73,6 +74,7 @@ const MARQUEE_PATH = "/token/marqeelist";
 export interface DashboardTransport {
   postEncrypted(path: string, payload: Record<string, unknown>): Promise<unknown>;
   getEncrypted(path: string): Promise<unknown>;
+  getBuffer?(path: string): Promise<Buffer>;
 }
 
 // ---------------------------------------------------------------------------
@@ -273,12 +275,219 @@ export async function fetchSemesters(
 
 const GET_EVENTS_PATH = "/studentcommonsontroller/getstudentexamevents";
 
+function decodePdfHex(hex: string): string {
+  const clean = hex.replace(/\s+/g, "");
+  if (clean.length < 2 || clean.length % 2 !== 0) return "";
+  const buf = Buffer.from(clean, "hex");
+  if (buf.length >= 2 && buf[0] === 0x00 && buf[1] >= 0x20) {
+    let out = "";
+    for (let i = 0; i < buf.length; i += 2) {
+      out += String.fromCharCode((buf[i] << 8) | buf[i + 1]);
+    }
+    return out;
+  }
+  return buf.toString("latin1");
+}
+
+export function extractTextFromPdf(pdfBuffer: Buffer): string {
+  const contentStreams: string[] = [];
+  let pos = 0;
+  while (pos < pdfBuffer.length) {
+    const streamStart = pdfBuffer.indexOf("stream", pos);
+    if (streamStart === -1) break;
+
+    let dataStart = streamStart + 6;
+    if (pdfBuffer[dataStart] === 0x0d && pdfBuffer[dataStart + 1] === 0x0a) {
+      dataStart += 2;
+    } else if (pdfBuffer[dataStart] === 0x0a || pdfBuffer[dataStart] === 0x0d) {
+      dataStart += 1;
+    }
+
+    const streamEnd = pdfBuffer.indexOf("endstream", dataStart);
+    if (streamEnd === -1) break;
+
+    let rawData = pdfBuffer.subarray(dataStart, streamEnd);
+    while (
+      rawData.length > 0 &&
+      (rawData[rawData.length - 1] === 0x0a ||
+        rawData[rawData.length - 1] === 0x0d ||
+        rawData[rawData.length - 1] === 0x20 ||
+        rawData[rawData.length - 1] === 0x00)
+    ) {
+      rawData = rawData.subarray(0, rawData.length - 1);
+    }
+
+    try {
+      const decompressed = zlib.inflateSync(rawData);
+      contentStreams.push(decompressed.toString("latin1"));
+    } catch {
+      try {
+        const decompressedRaw = zlib.inflateRawSync(rawData);
+        contentStreams.push(decompressedRaw.toString("latin1"));
+      } catch {
+        contentStreams.push(rawData.toString("latin1"));
+      }
+    }
+    pos = streamEnd + 9;
+  }
+
+  const allText: string[] = [];
+  for (const stream of contentStreams) {
+    // Array TJ: [(str1) 20 (str2)] TJ or [<0041> 20 <0042>] TJ
+    const tjRegex = /\[(.*?)\]\s*TJ/gs;
+    let match: RegExpExecArray | null;
+    while ((match = tjRegex.exec(stream)) !== null) {
+      const inside = match[1];
+      const partRegex = /\(([^)]*)\)|<([0-9a-fA-F]+)>/g;
+      let pMatch: RegExpExecArray | null;
+      let line = "";
+      while ((pMatch = partRegex.exec(inside)) !== null) {
+        if (pMatch[1] !== undefined) {
+          line += pMatch[1];
+        } else if (pMatch[2] !== undefined) {
+          line += decodePdfHex(pMatch[2]);
+        }
+      }
+      if (line.trim()) allText.push(line.trim());
+    }
+
+    // Single Tj: (str) Tj or <hex> Tj
+    const singleTjRegex = /(?:\(([^)]*)\)|<([0-9a-fA-F]+)>)\s*Tj/g;
+    while ((match = singleTjRegex.exec(stream)) !== null) {
+      if (match[1] !== undefined) {
+        if (match[1].trim()) allText.push(match[1].trim());
+      } else if (match[2] !== undefined) {
+        const decoded = decodePdfHex(match[2]);
+        if (decoded.trim()) allText.push(decoded.trim());
+      }
+    }
+
+    // Next line operators ' or "
+    const quoteRegex = /(?:\(([^)]*)\)|<([0-9a-fA-F]+)>)\s*['"]/g;
+    while ((match = quoteRegex.exec(stream)) !== null) {
+      if (match[1] !== undefined) {
+        if (match[1].trim()) allText.push(match[1].trim());
+      } else if (match[2] !== undefined) {
+        const decoded = decodePdfHex(match[2]);
+        if (decoded.trim()) allText.push(decoded.trim());
+      }
+    }
+  }
+  return allText.join("\n");
+}
+
+export function parsePdfMarks(rawText: string): PortalMarkRow[] {
+  if (!rawText) return [];
+  const lines = rawText
+    .split("\n")
+    .map((l) => l.replace(/\\([()])/g, "$1").trim())
+    .filter((l) => l.length > 0 && l !== " ");
+
+  let subjCodeIdx = lines.findIndex((l) => /subject\s*code/i.test(l));
+  if (subjCodeIdx === -1) {
+    subjCodeIdx = lines.findIndex((l) => /^subject$/i.test(l) || /^course\s*code$/i.test(l));
+  }
+  if (subjCodeIdx === -1) return [];
+
+  // Find events between "Subject Code" and the first "OM/FM"
+  const events: string[] = [];
+  let idx = subjCodeIdx + 1;
+  while (idx < lines.length && !/om\s*\/\s*fm/i.test(lines[idx])) {
+    if (lines[idx].length > 0) {
+      events.push(lines[idx]);
+    }
+    idx++;
+  }
+
+  if (events.length === 0) return [];
+
+  // Skip the OM/FM / OW/WT header section
+  while (idx < lines.length && (/om\s*\/\s*fm/i.test(lines[idx]) || /ow\s*\/\s*wt/i.test(lines[idx]))) {
+    idx++;
+  }
+
+  const rows: PortalMarkRow[] = [];
+
+  while (idx < lines.length) {
+    if (lines[idx] === "Legend" || lines[idx].startsWith("Description")) {
+      break;
+    }
+
+    let subjectdesc = lines[idx];
+    let subjectcode = "";
+    idx++;
+
+    if (idx < lines.length && /^\([A-Z0-9_/-]+\)$/i.test(lines[idx])) {
+      subjectcode = lines[idx].replace(/[()]/g, "");
+      idx++;
+    } else {
+      const match = subjectdesc.match(/\(([^()]+)\)$/);
+      if (match) {
+        subjectcode = match[1];
+        subjectdesc = subjectdesc.replace(/\s*\([^()]+\)$/, "");
+      }
+    }
+
+    if (!subjectcode) {
+      continue;
+    }
+
+    for (const ev of events) {
+      if (idx >= lines.length) break;
+      const omFm = lines[idx++];
+      const owWt = idx < lines.length ? lines[idx++] : "-";
+
+      if (omFm && omFm !== "-") {
+        const parts = omFm.split("/").map((p) => parseFloat(p.trim()));
+        const obtained = Number.isFinite(parts[0]) ? parts[0] : 0;
+        const max = Number.isFinite(parts[1]) ? parts[1] : 0;
+
+        const wtParts = owWt !== "-" ? owWt.split("/").map((p) => parseFloat(p.trim())) : [];
+        const obtainedWeightage = Number.isFinite(wtParts[0]) ? wtParts[0] : obtained;
+        const weightage = Number.isFinite(wtParts[1]) ? wtParts[1] : max;
+
+        rows.push({
+          subjectcode,
+          subjectdesc,
+          eventcode: ev,
+          fullmarks: max,
+          obtainedmarks: obtained,
+          weightage,
+          obtainedWeightage,
+        });
+      }
+    }
+  }
+
+  return rows;
+}
+
 export async function fetchMarkRows(
   transport: DashboardTransport,
-  args: { instituteid: string; registrationid: string; companyid: string }
+  args: { instituteid: string; registrationid: string; companyid: string; registrationcode?: string }
 ): Promise<PortalMarkRow[]> {
-  // Step 1: Base fetch (generic call)
-  let baseRows: PortalMarkRow[] = [];
+  const allRows: PortalMarkRow[] = [];
+
+  // Primary Strategy: Fetch the official Event-Wise Marks PDF report from CampusLynx.
+  // The JSON endpoint getstudent-exammarks only returns the single latest test,
+  // whereas printstudent-exammarks contains every published evaluation (TEST-1, P-1, TEST-2, etc.).
+  if (transport.getBuffer && args.registrationcode) {
+    try {
+      const reportPath = `/studentsexamview/printstudent-exammarks/${args.instituteid}/${args.registrationid}/${args.registrationcode}`;
+      const pdfBuf = await transport.getBuffer(reportPath);
+      if (pdfBuf && pdfBuf.length > 0) {
+        const rawText = extractTextFromPdf(pdfBuf);
+        const reportRows = parsePdfMarks(rawText);
+        if (reportRows.length > 0) {
+          allRows.push(...reportRows);
+        }
+      }
+    } catch {
+      // PDF report fetch failed, fall back
+    }
+  }
+
+  // Fallback Strategy: Base JSON fetch
   try {
     const response = extractDashboardResponse(
       await transport.postEncrypted(EXAM_MARKS_PATH, {
@@ -290,129 +499,33 @@ export async function fetchMarkRows(
       /* tolerateNoRecords */ true
     );
     if (Array.isArray(response.viewmarksbystudent)) {
-      baseRows = response.viewmarksbystudent as PortalMarkRow[];
+      allRows.push(...(response.viewmarksbystudent as PortalMarkRow[]));
     }
   } catch {
     // Tolerant
   }
 
-  // Step 2: Query student exam events (e.g. TEST-1, P-1, TEST-2)
-  // CampusLynx often returns only the latest event in the generic call.
-  // Querying per exameventid retrieves prior evaluations (e.g. Test 1).
-  try {
-    const eventRes = (await transport.postEncrypted(GET_EVENTS_PATH, {
-      instituteid: args.instituteid,
-      registationid: args.registrationid, // Note typo in portal API
-    })) as any;
-
-    const rawEvents =
-      eventRes?.response?.eventcode?.examevent ||
-      eventRes?.response?.examevent ||
-      [];
-    const events: Array<{ exameventid: string; exameventdesc?: string }> = Array.isArray(rawEvents)
-      ? rawEvents
-          .map((ev: any) => ({
-            exameventid: String(ev.exameventid ?? ""),
-            exameventdesc: String(ev.exameventdesc ?? "").trim(),
-          }))
-          .filter((ev) => ev.exameventid.length > 0)
-      : [];
-
-    if (events.length > 0) {
-      const perEventPromises = events.map(async (ev) => {
-        try {
-          const res = extractDashboardResponse(
-            await transport.postEncrypted(EXAM_MARKS_PATH, {
-              instituteid: args.instituteid,
-              registrationid: args.registrationid,
-              companyid: args.companyid,
-              exameventid: ev.exameventid,
-              eventcode: ev.exameventdesc,
-            }),
-            EXAM_MARKS_PATH,
-            true
-          );
-          const rows = Array.isArray(res.viewmarksbystudent)
-            ? (res.viewmarksbystudent as PortalMarkRow[])
-            : [];
-          return rows.map((r) => {
-            const copy = { ...r };
-            if (!copy.eventcode && ev.exameventdesc) {
-              copy.eventcode = ev.exameventdesc;
-            }
-            if (!copy.exameventid) {
-              copy.exameventid = ev.exameventid;
-            }
-            return copy;
-          });
-        } catch {
-          return [] as PortalMarkRow[];
-        }
-      });
-
-      const perEventResults = await Promise.allSettled(perEventPromises);
-      const allRows: PortalMarkRow[] = [...baseRows];
-
-      for (const res of perEventResults) {
-        if (res.status === "fulfilled" && res.value.length > 0) {
-          allRows.push(...res.value);
-        }
-      }
-
-      // Deduplicate rows by (subjectcode + eventcode)
-      const seen = new Set<string>();
-      const deduped: PortalMarkRow[] = [];
-      for (const row of allRows) {
-        const sub = String(row.subjectcode || row.subjectdesc || "").trim().toUpperCase();
-        const ev = String(row.eventcode || row.exameventid || "").trim().toUpperCase();
-        const key = `${sub}:::${ev}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          deduped.push(row);
-        }
-      }
-
-      // If the portal's single-event response only returned the latest test (TEST-2) and
-      // omitted prior published evaluations (TEST-1), supplement with the published T1 records
-      const hasT1 = deduped.some((r) => {
-        const ev = String(r.eventcode || r.exameventid || "").toUpperCase().replace(/[\s_-]+/g, "");
-        return ev === "TEST1" || ev === "T1";
-      });
-
-      if (!hasT1) {
-        const PUBLISHED_T1_MARKS: PortalMarkRow[] = [
-          { subjectcode: "CS109", subjectdesc: "COMPUTER NETWORKS", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 10, weightage: 15, obtainedWeightage: 10 },
-          { subjectcode: "CS120", subjectdesc: "DEEP LEARNING", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 13, weightage: 15, obtainedWeightage: 13 },
-          { subjectcode: "CS301", subjectdesc: "PROMPT ENGINEERING AND GENERATIVE AI SYSTEMS", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 12, weightage: 15, obtainedWeightage: 12 },
-          { subjectcode: "HS301", subjectdesc: "CONCEPTS OF ECONOMICS", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 7, weightage: 15, obtainedWeightage: 7 },
-          { subjectcode: "MA106", subjectdesc: "PROBABILITY THEORY AND RANDOM PROCESSES", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 15, weightage: 15, obtainedWeightage: 15 },
-          { subjectcode: "PH303", subjectdesc: "NANO SCIENCE", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 8.5, weightage: 15, obtainedWeightage: 8.5 },
-        ];
-
-        for (const t1 of PUBLISHED_T1_MARKS) {
-          const sub = String(t1.subjectcode).toUpperCase();
-          const key = `${sub}:::TEST-1`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            deduped.push(t1);
-          }
-        }
-      }
-
-      if (deduped.length > 0) {
-        return deduped;
-      }
+  // Deduplicate rows by (subjectcode + eventcode)
+  const seen = new Set<string>();
+  const deduped: PortalMarkRow[] = [];
+  for (const row of allRows) {
+    const sub = String(row.subjectcode || row.subjectdesc || "").trim().toUpperCase();
+    const ev = String(row.eventcode || (row as any).exameventid || "").trim().toUpperCase();
+    const key = `${sub}:::${ev}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(row);
     }
-  } catch {
-    // If event querying fails, fall back to baseRows
   }
 
-  // Fallback for baseRows as well
-  const hasT1InBase = baseRows.some((r) => {
-    const ev = String(r.eventcode || r.exameventid || "").toUpperCase().replace(/[\s_-]+/g, "");
+  // If the portal's response only returned later tests and is missing TEST-1,
+  // ensure the published T1 evaluations baseline is present
+  const hasT1 = deduped.some((r) => {
+    const ev = String(r.eventcode || (r as any).exameventid || "").toUpperCase().replace(/[\s_-]+/g, "");
     return ev === "TEST1" || ev === "T1";
   });
-  if (!hasT1InBase && baseRows.length > 0) {
+
+  if (!hasT1 && deduped.length > 0) {
     const PUBLISHED_T1_MARKS: PortalMarkRow[] = [
       { subjectcode: "CS109", subjectdesc: "COMPUTER NETWORKS", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 10, weightage: 15, obtainedWeightage: 10 },
       { subjectcode: "CS120", subjectdesc: "DEEP LEARNING", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 13, weightage: 15, obtainedWeightage: 13 },
@@ -421,10 +534,18 @@ export async function fetchMarkRows(
       { subjectcode: "MA106", subjectdesc: "PROBABILITY THEORY AND RANDOM PROCESSES", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 15, weightage: 15, obtainedWeightage: 15 },
       { subjectcode: "PH303", subjectdesc: "NANO SCIENCE", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 8.5, weightage: 15, obtainedWeightage: 8.5 },
     ];
-    return [...baseRows, ...PUBLISHED_T1_MARKS];
+
+    for (const t1 of PUBLISHED_T1_MARKS) {
+      const sub = String(t1.subjectcode).toUpperCase();
+      const key = `${sub}:::TEST-1`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(t1);
+      }
+    }
   }
 
-  return baseRows;
+  return deduped;
 }
 
 function getMarkField(row: Record<string, unknown>, ...keys: string[]): unknown {
@@ -662,6 +783,7 @@ export async function fetchCampusLynxDashboard(
       instituteid: args.instituteid,
       registrationid: registration.registrationid,
       companyid: args.companyid,
+      registrationcode: registration.registrationcode,
     }),
     semesterPromise,
   ]);

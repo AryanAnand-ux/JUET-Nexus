@@ -14,13 +14,14 @@ export interface AttendancePrefetchStatus {
   failed: number;
 }
 
-const MAX_CONCURRENT_PREFETCH = 3; // Efficient concurrency to quickly load logs
-const INITIAL_PREFETCH_DELAY_MS = 200; // Snappy kick-off right after first paint
+const MAX_CONCURRENT_PREFETCH = 2; // Optimal concurrency for CampusLynx session stability
+const INITIAL_PREFETCH_DELAY_MS = 50; // Instant kick-off on mount
+const TASK_STAGGER_MS = 100; // Small stagger between requests to prevent upstream session locks
 
 /**
  * useAttendancePrefetch
  * Automatically preloads detailed day-by-day attendance logs for all current-semester
- * courses in the background with concurrency control and deduplication.
+ * courses in the background with concurrency control, smart prioritization, and deduplication.
  */
 export function useAttendancePrefetch(
   attendanceRecords: AttendanceRecord[] | undefined,
@@ -33,9 +34,33 @@ export function useAttendancePrefetch(
     failed: 0,
   });
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeEnrollmentRef = useRef<string | null>(null);
   const isRunningRef = useRef<boolean>(false);
+
+  // Listen to visibilitychange, focus, and custom dashboard updates
+  useEffect(() => {
+    const handleRevalidate = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        setRefreshTrigger((prev) => prev + 1);
+      }
+    };
+
+    const handleDashboardUpdated = () => {
+      setRefreshTrigger((prev) => prev + 1);
+    };
+
+    window.addEventListener("visibilitychange", handleRevalidate);
+    window.addEventListener("focus", handleRevalidate);
+    window.addEventListener("juet:dashboard-updated", handleDashboardUpdated);
+
+    return () => {
+      window.removeEventListener("visibilitychange", handleRevalidate);
+      window.removeEventListener("focus", handleRevalidate);
+      window.removeEventListener("juet:dashboard-updated", handleDashboardUpdated);
+    };
+  }, []);
 
   useEffect(() => {
     if (!enrollment) return;
@@ -67,8 +92,8 @@ export function useAttendancePrefetch(
 
     if (eligibleRecords.length === 0) return;
 
-    // If already running for this exact enrollment, let it continue without interrupting
-    if (isRunningRef.current && activeEnrollmentRef.current === normalizedEnrollment) {
+    // If already running for this exact enrollment without new refresh trigger, let it continue
+    if (isRunningRef.current && activeEnrollmentRef.current === normalizedEnrollment && refreshTrigger === 0) {
       return;
     }
 
@@ -85,15 +110,25 @@ export function useAttendancePrefetch(
     const timer = setTimeout(async () => {
       if (controller.signal.aborted) return;
 
-      // Filter out records that are already fresh in client cache (< 5 minutes old)
-      const queue = eligibleRecords.filter((record) => {
+      // Classify records by cache status
+      const missingCache: AttendanceRecord[] = [];
+      const staleCache: AttendanceRecord[] = [];
+
+      eligibleRecords.forEach((record) => {
         const cached = getStoredAttendanceDetail(
           record.subject,
           record.detailLink!,
           normalizedEnrollment
         );
-        return !cached || cached.isStale;
+        if (!cached) {
+          missingCache.push(record);
+        } else if (cached.isStale) {
+          staleCache.push(record);
+        }
       });
+
+      // Priority queue: courses with NO cache first, then courses with stale cache
+      const queue = [...missingCache, ...staleCache];
 
       if (queue.length === 0) {
         setStatus({
@@ -151,6 +186,11 @@ export function useAttendancePrefetch(
               }));
             }
           }
+
+          // Small stagger between tasks to keep network connection healthy
+          if (TASK_STAGGER_MS > 0 && !controller.signal.aborted) {
+            await new Promise((r) => setTimeout(r, TASK_STAGGER_MS));
+          }
         }
       };
 
@@ -175,7 +215,7 @@ export function useAttendancePrefetch(
         isRunningRef.current = false;
       }
     };
-  }, [attendanceRecords, enrollment]);
+  }, [attendanceRecords, enrollment, refreshTrigger]);
 
   return status;
 }

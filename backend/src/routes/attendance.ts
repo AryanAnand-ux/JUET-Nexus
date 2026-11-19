@@ -1,14 +1,14 @@
 import { FastifyInstance } from 'fastify';
 import { getOrRenewCampusLynxIdentity } from './session';
-import { createPortalClient } from '../portal/client';
+import { createPortalClient, getSharedPortalClient } from '../portal/client';
 import { fetchAttendanceDetail, parseDetailLink } from '../portal/attendance';
 import { PortalError } from '../portal/types';
 import { CacheService } from '../utils/cache';
 import { decryptSessionData } from '../utils/encryption';
 import type { AttendanceDetailsResponse } from '../../../shared/types';
 
-const ATTENDANCE_CACHE_TTL_SEC = 600; // 10 minutes
-const ATTENDANCE_PORTAL_TIMEOUT_MS = 28000; // 28 seconds
+const ATTENDANCE_CACHE_TTL_SEC = 86400; // 24 hours (long retention for historical logs, revalidated via SWR)
+const ATTENDANCE_PORTAL_TIMEOUT_MS = 25000; // 25 seconds
 
 export async function registerAttendanceRoutes(
   fastify: FastifyInstance,
@@ -116,10 +116,13 @@ export async function registerAttendanceRoutes(
           }
         }
 
-        const client = createPortalClient({ timeout: ATTENDANCE_PORTAL_TIMEOUT_MS });
+        const shared = typeof getSharedPortalClient === 'function' ? getSharedPortalClient() : null;
+        const client = shared || createPortalClient({ timeout: ATTENDANCE_PORTAL_TIMEOUT_MS });
         const transport = {
-          postEncrypted: (path: string, payload: Record<string, unknown>) =>
-            client.postEncrypted(path, payload, identity),
+          postEncrypted: (path: string, payload: Record<string, unknown>, options?: { timeout?: number }) =>
+            client.postEncrypted(path, payload, identity, {
+              timeout: options?.timeout || ATTENDANCE_PORTAL_TIMEOUT_MS,
+            }),
         };
 
         try {
@@ -209,7 +212,9 @@ export async function registerAttendanceRoutes(
             code,
           });
         } finally {
-          client.destroy();
+          if (!shared && typeof client.destroy === 'function') {
+            client.destroy();
+          }
         }
       } catch (error: any) {
         request.log.error(error, '[AttendanceDetails] Unexpected error');

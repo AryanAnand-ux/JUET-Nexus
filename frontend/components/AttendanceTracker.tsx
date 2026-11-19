@@ -10,7 +10,8 @@ import Link from "next/link";
 import { FigmaCard } from "./base";
 import type { AttendanceRecord } from "@/types";
 import { calculateBunkStatus } from "@/utils/bunkHelpers";
-import { CheckCircle2, AlertTriangle, XCircle, HelpCircle, Loader2, RefreshCw } from "lucide-react";
+import { fetchAttendanceDetailDirect } from "@/utils/attendanceCache";
+import { CheckCircle2, AlertTriangle, XCircle, HelpCircle, Loader2 } from "lucide-react";
 
 export interface AttendanceTrackerProps {
   attendanceRecords: AttendanceRecord[];
@@ -80,28 +81,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
   return (
     <FigmaCard 
-      heading={
-        <div className="flex items-center justify-between w-full">
-          <span className="font-editorial-italic text-2xl text-[var(--ink-strong)] font-normal">Attendance</span>
-          {onRefresh && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (!isRefreshing) onRefresh();
-              }}
-              disabled={isRefreshing}
-              aria-label="Refresh attendance"
-              title="Refresh attendance"
-              className="p-1.5 sm:p-2 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-subtle)] hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[var(--ink-strong)] transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing ? "animate-spin text-accent-primary dark:text-white" : ""}`} />
-              <span className="hidden sm:inline text-xs font-semibold">Sync</span>
-            </button>
-          )}
-        </div>
-      } 
+      heading={<span className="font-editorial-italic text-2xl text-[var(--ink-strong)] font-normal">Attendance</span>} 
       className="border border-[var(--line-subtle)] shadow-card rounded-[24px] p-4 sm:p-6 md:p-8"
     >
       {attendanceRecords.length === 0 ? (
@@ -171,10 +151,19 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
               return (
                 <Link
-                  prefetch={false}
                   href={`/dashboard/subject/${encodeURIComponent(record.subject)}?pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
                   key={record.subject}
                   onClick={() => setNavigatingSubject(record.subject)}
+                  onMouseEnter={() => {
+                    if (record.detailLink) {
+                      fetchAttendanceDetailDirect(record.subject, record.detailLink);
+                    }
+                  }}
+                  onTouchStart={() => {
+                    if (record.detailLink) {
+                      fetchAttendanceDetailDirect(record.subject, record.detailLink);
+                    }
+                  }}
                   className="group relative block bg-[var(--surface-card)] hover:bg-neutral-50 dark:hover:bg-[#202020] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-[20px] p-3.5 sm:p-5 transition-all duration-200 hover:shadow-elevated active:scale-[0.995] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-600"
                 >
                   {/* Mobile Layout (< md): Progress circle beside course name, metrics row below */}

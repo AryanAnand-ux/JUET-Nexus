@@ -11,6 +11,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { performLogout } from "@/utils/logout";
 import { PerformanceHub } from "@/components/PerformanceHub";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useHydrated } from "@/hooks/useHydrated";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Typing } from "@/components/loading-ui/typing";
@@ -38,18 +39,24 @@ const LoadingSkeleton: React.FC = () => (
 
 export default function PerformancePage() {
   const router = useRouter();
+  const isHydrated = useHydrated();
   const [enrollment, setEnrollment] = React.useState<string | null>(null);
 
+  const activeEnrollment = isHydrated
+    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    : null;
+
   useEffect(() => {
-    const storedEnrollment = localStorage.getItem("enrollment");
+    if (!isHydrated) return;
+    const storedEnrollment = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
     if (!storedEnrollment) {
       router.push("/login");
     } else {
       setEnrollment(storedEnrollment);
     }
-  }, [router]);
+  }, [router, isHydrated]);
 
-  const { data, isLoading, error, invalidateCache } = useDashboard(enrollment);
+  const { data, isLoading, isRefreshing, error, invalidateCache } = useDashboard(activeEnrollment);
   const toast = useToast();
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -70,22 +77,21 @@ export default function PerformancePage() {
     router.push("/login");
   };
 
-  if (!enrollment) return null;
+  if (!activeEnrollment) return null;
 
   return (
     <DashboardLayout
       studentName={data?.student.name || "Loading..."}
-      enrollment={enrollment}
+      enrollment={activeEnrollment}
       onLogout={handleLogout}
       onRefresh={handleSync}
-      isRefreshing={isSyncing || isLoading}
+      isRefreshing={isSyncing || isLoading || isRefreshing}
     >
       {/* Header bar and Navigation */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">
           <Link 
             href="/dashboard" 
-            prefetch={false}
             className="text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink-strong)] flex items-center gap-1 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Attendance

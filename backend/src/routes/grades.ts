@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { getOrRenewCampusLynxIdentity } from "./session";
-import { createPortalClient } from "../portal/client";
+import { createPortalClient, getSharedPortalClient } from "../portal/client";
 import { fetchGradeCard } from "../portal/grades";
 import { PortalError } from "../portal/types";
 import { CacheService } from "../utils/cache";
@@ -54,7 +54,8 @@ export async function registerGradesRoutes(
       }
     }
 
-    const client = createPortalClient();
+    const shared = typeof getSharedPortalClient === "function" ? getSharedPortalClient() : null;
+    const client = shared || createPortalClient();
     const transport = {
       postEncrypted: (path: string, payload: Record<string, unknown>) =>
         client.postEncrypted(path, payload, identity),
@@ -81,7 +82,9 @@ export async function registerGradesRoutes(
         code: error instanceof PortalError && error.status === 401 ? "SESSION_EXPIRED" : "PORTAL_ERROR",
       });
     } finally {
-      client.destroy?.();
+      if (!shared && typeof client.destroy === "function") {
+        client.destroy();
+      }
     }
   });
 }

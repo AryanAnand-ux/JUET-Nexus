@@ -9,6 +9,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useHydrated } from "@/hooks/useHydrated";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { performLogout } from "@/utils/logout";
@@ -16,15 +17,30 @@ import { ChevronRight, LogOut, MessageSquare, Palette } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const isHydrated = useHydrated();
   const [studentName, setStudentName] = useState("Student");
   const [enrollment, setEnrollment] = useState("");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setStudentName(localStorage.getItem("studentName") || "Student");
-    setEnrollment(localStorage.getItem("enrollment") || "");
+    const storedName = localStorage.getItem("studentName");
+    if (storedName) setStudentName(storedName);
+    const storedEnr = localStorage.getItem("enrollment");
+    if (storedEnr) setEnrollment(storedEnr);
   }, []);
+
+  const activeName = isHydrated
+    ? studentName !== "Student"
+      ? studentName
+      : typeof window !== "undefined"
+      ? localStorage.getItem("studentName") || "Student"
+      : "Student"
+    : "Student";
+
+  const activeEnrollment = isHydrated
+    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") || "" : "")
+    : "";
 
   const handleLogout = async () => {
     await performLogout();
@@ -33,8 +49,8 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout
-      studentName={studentName}
-      enrollment={enrollment}
+      studentName={activeName}
+      enrollment={activeEnrollment}
       onLogout={handleLogout}
     >
       <div className="mx-auto w-full max-w-lg">

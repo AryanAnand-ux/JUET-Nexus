@@ -19,8 +19,8 @@ export const detailsMemoryCache = new Map<string, CacheItem>();
 // Global in-flight requests map to prevent duplicate network calls across hooks/prefetchers
 export const inFlightDetailsRequests = new Map<string, Promise<AttendanceDetailsResponse>>();
 
-export const CLIENT_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes (matches backend ATTENDANCE_CACHE_TTL_SEC)
-export const CLIENT_STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes for background SWR revalidation
+export const CLIENT_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (persist historical logs across sessions)
+export const CLIENT_STALE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes for background SWR revalidation
 
 /**
  * Generate a safe localStorage cache key scoped to the user enrollment
@@ -51,7 +51,7 @@ export function getStoredAttendanceDetail(
 
   // 1. Check in-memory cache first (fastest)
   const mem = detailsMemoryCache.get(cacheKey);
-  if (mem && now - mem.timestamp < CLIENT_CACHE_TTL_MS) {
+  if (mem) {
     return {
       data: mem.data,
       isStale: now - mem.timestamp > CLIENT_STALE_THRESHOLD_MS,
@@ -67,11 +67,6 @@ export function getStoredAttendanceDetail(
 
     const parsed = JSON.parse(item) as { data: AttendanceDetailsResponse; timestamp: number };
     if (!parsed || !parsed.data || typeof parsed.timestamp !== "number") return null;
-
-    if (now - parsed.timestamp > CLIENT_CACHE_TTL_MS) {
-      localStorage.removeItem(key);
-      return null;
-    }
 
     // Populate memory cache for subsequent instant reads
     detailsMemoryCache.set(cacheKey, { data: parsed.data, timestamp: parsed.timestamp });

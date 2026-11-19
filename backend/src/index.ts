@@ -8,6 +8,7 @@ import Fastify from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
+import fastifyCompress from '@fastify/compress';
 import { registerAuthRoutes } from './routes/auth';
 import { registerDashboardRoutes } from './routes/dashboard';
 import { registerAttendanceRoutes } from './routes/attendance';
@@ -72,6 +73,10 @@ export async function createServer() {
 
   const globalCache = new CacheService(getRedisUrl());
 
+  await fastify.register(fastifyCompress, {
+    global: true,
+    threshold: 1024,
+  });
   await fastify.register(fastifyCookie);
   await fastify.register(fastifyCors, {
     origin: (origin, cb) => {

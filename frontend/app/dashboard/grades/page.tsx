@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useHydrated } from "@/hooks/useHydrated";
 import { useGrades } from "@/hooks/useGrades";
 import { GradeCard } from "@/components/GradeCard";
 import { performLogout } from "@/utils/logout";
@@ -38,18 +39,24 @@ const LoadingSkeleton: React.FC = () => (
 
 export default function GradesPage() {
   const router = useRouter();
+  const isHydrated = useHydrated();
   const [enrollment, setEnrollment] = useState<string | null>(null);
 
+  const activeEnrollment = isHydrated
+    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    : null;
+
   useEffect(() => {
+    if (!isHydrated) return;
     const storedEnrollment = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
     if (!storedEnrollment) {
       router.push("/login");
     } else {
       setEnrollment(storedEnrollment);
     }
-  }, [router]);
+  }, [router, isHydrated]);
 
-  const { data: dashboardData } = useDashboard(enrollment);
+  const { data: dashboardData, isRefreshing: isDashboardRefreshing } = useDashboard(activeEnrollment);
   const { data: gradesData, isLoading, error, refresh } = useGrades();
 
   const handleLogout = async () => {
@@ -57,13 +64,15 @@ export default function GradesPage() {
     router.push("/login");
   };
 
-  if (!enrollment) return null;
+  if (!activeEnrollment) return null;
 
   return (
     <DashboardLayout
       studentName={dashboardData?.student?.name || "Student"}
-      enrollment={enrollment}
+      enrollment={activeEnrollment}
       onLogout={handleLogout}
+      onRefresh={refresh}
+      isRefreshing={isLoading || isDashboardRefreshing}
     >
       <div className="space-y-6">
         {/* Top Action Bar */}
@@ -71,7 +80,6 @@ export default function GradesPage() {
           <div>
             <Link
               href="/dashboard"
-              prefetch={false}
               className="inline-flex items-center gap-2 text-xs font-semibold text-brand-600 dark:text-brand-100 hover:text-brand-700 transition-colors w-fit mb-2"
             >
               <ArrowLeft className="w-4 h-4" />

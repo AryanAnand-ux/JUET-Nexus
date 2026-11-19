@@ -4,6 +4,7 @@
  */
 
 import { clearAttendanceDetailCache } from "@/utils/attendanceCache";
+import { clearSharedDashboard } from "@/hooks/useDashboard";
 
 const API_URL = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
@@ -26,7 +27,12 @@ export function clearStoredSession(): void {
   localStorage.removeItem("sessionToken");
   localStorage.removeItem("studentName");
   if (currentEnrollment) {
-    localStorage.removeItem(`juet_dashboard_cache_${currentEnrollment.toUpperCase()}`);
+    const key = currentEnrollment.trim().toUpperCase();
+    localStorage.removeItem(`juet_dashboard_cache_${key}`);
+    localStorage.removeItem(`juet_dashboard_cache_v3_${key}`);
+    clearSharedDashboard(key);
+  } else {
+    clearSharedDashboard();
   }
   clearAttendanceDetailCache(currentEnrollment);
 }

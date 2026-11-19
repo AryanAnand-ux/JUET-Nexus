@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AttendanceTracker } from "@/components/AttendanceTracker";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useHydrated } from "@/hooks/useHydrated";
 import { usePortalRecovery } from "@/hooks/usePortalRecovery";
 import { performLogout } from "@/utils/logout";
 import { apiClient } from "@/utils/api";
@@ -87,18 +88,24 @@ const LoadingSkeleton: React.FC = () => (
 
 export default function DashboardPage() {
   const router = useRouter();
+  const isHydrated = useHydrated();
   const [enrollment, setEnrollment] = useState<string | null>(null);
+
+  const activeEnrollment = isHydrated
+    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    : null;
 
   const {
     data,
     isLoading,
+    isRefreshing,
     error,
     refresh,
     invalidateCache,
     cachedAt,
-  } = useDashboard(enrollment);
+  } = useDashboard(activeEnrollment);
 
-  const recovery = usePortalRecovery(enrollment, async () => {
+  const recovery = usePortalRecovery(activeEnrollment, async () => {
     await refresh();
   });
 
@@ -157,11 +164,11 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
-  if (!enrollment) {
+  if (!activeEnrollment) {
     return (
       <div className="min-h-screen bg-[var(--surface-page)] flex items-center justify-center font-nunito">
         <div className="text-center">
-                      <div className="w-10 h-10 border-4 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-10 h-10 border-4 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-sm font-bold text-[var(--ink-muted)]">Checking session...</p>
         </div>
       </div>
@@ -175,10 +182,11 @@ export default function DashboardPage() {
   return (
     <DashboardLayout
       studentName={data?.student.name || "Student"}
-      enrollment={data?.student.enrollment || enrollment}
+      enrollment={data?.student.enrollment || activeEnrollment}
+      attendanceRecords={data?.attendance}
       onLogout={handleLogout}
       onRefresh={handleRefresh}
-      isRefreshing={isRefreshingData || isLoading}
+      isRefreshing={isRefreshingData || isLoading || isRefreshing}
     >
       {/* Header Section — Compact welcome banner */}
       <div className="relative overflow-hidden bg-midnight dark:bg-carbon rounded-[20px] px-5 py-4 sm:px-6 sm:py-5 mb-6 border border-white/5 shadow-banner">
@@ -275,7 +283,7 @@ export default function DashboardPage() {
           <AttendanceTracker
             attendanceRecords={data.attendance}
             onRefresh={handleRefresh}
-            isRefreshing={isRefreshingData || isLoading}
+            isRefreshing={isRefreshingData || isLoading || isRefreshing}
           />
 
           {/* Footer Info */}

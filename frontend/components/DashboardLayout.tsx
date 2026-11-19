@@ -12,6 +12,7 @@ export interface DashboardLayoutProps {
   children: React.ReactNode;
   studentName: string;
   enrollment: string;
+  attendanceRecords?: import("@/types").AttendanceRecord[];
   onLogout?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
@@ -21,11 +22,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   studentName,
   enrollment,
+  attendanceRecords,
   onRefresh,
   isRefreshing = false,
 }) => {
   // Background prefetch — drives refresh icon spin automatically
-  const prefetchStatus = useAttendancePrefetch(undefined, enrollment);
+  const prefetchStatus = useAttendancePrefetch(attendanceRecords, enrollment);
   const isSyncing = isRefreshing || prefetchStatus.isPrefetching;
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -83,15 +85,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     {
       href: "/dashboard/performance",
       label: "Performance",
-      icon: (
-        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      ),
-    },
-    {
-      href: "/dashboard/courses",
-      label: "Registered Courses",
       icon: (
         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -181,7 +174,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={false}
                 aria-current={isActive ? "page" : undefined}
                 className={clsx(
                   "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium tracking-wide transition-all text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)]",
@@ -207,10 +199,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               onClick={onRefresh}
               disabled={isSyncing}
               className={clsx(
-                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-colors",
-                isSyncing
-                  ? "text-[var(--accent-text)] bg-[var(--accent-subtle,#eff6ff)] dark:bg-blue-950/30 opacity-90"
-                  : "text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)]",
+                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-colors text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)]",
                 sidebarCollapsed && "justify-center"
               )}
               title={
@@ -221,7 +210,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   : undefined
               }
             >
-              <RefreshCw className={clsx("w-4 h-4 shrink-0", isSyncing && "animate-spin")} />
+              <RefreshCw className={clsx("w-4 h-4 shrink-0 transition-transform duration-500", isSyncing && "animate-spin")} />
               {!sidebarCollapsed && (
                 <span className="truncate flex-1">
                   {isSyncing && prefetchStatus.total > 0
@@ -252,6 +241,41 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile Top Header */}
+        <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-[var(--surface-card)] border-b border-[var(--line-subtle)] shrink-0 z-20">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img src="/icon-192x192.png" alt="" className="h-7 w-7 rounded-lg shrink-0" />
+            <span className="font-nunito text-base font-extrabold tracking-tight text-[var(--ink-strong)] truncate">
+              JUET <span className="text-accent-primary">Nexus</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {enrollment && (
+              <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[var(--surface-subtle)] text-[var(--ink-muted)] border border-[var(--line-subtle)]">
+                {enrollment}
+              </span>
+            )}
+            {onRefresh && (
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={isSyncing}
+                aria-label="Refresh"
+                title="Refresh dashboard"
+                className="p-1.5 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-subtle)] text-[var(--ink-strong)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all active:scale-95 disabled:opacity-50 touch-manipulation cursor-pointer"
+              >
+                <RefreshCw
+                  className={clsx(
+                    "w-4 h-4 transition-transform duration-500 text-[var(--ink-strong)]",
+                    isSyncing && "animate-spin"
+                  )}
+                />
+              </button>
+            )}
+          </div>
+        </header>
+
         {/* Content body */}
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto bg-[var(--surface-page)] p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 touch-scroll-momentum transition-colors duration-200">
           <div ref={contentRef} className="max-w-7xl mx-auto animate-page-enter">

@@ -10,13 +10,23 @@ import { performLogout } from "@/utils/logout";
 import { Typing } from "@/components/loading-ui/typing";
 import { AlertTriangle, Clock, Lock, RefreshCw, Calendar } from "lucide-react";
 
+function safeDecodeSubject(val: string | string[] | undefined): string {
+  const str = Array.isArray(val) ? val[0] : val;
+  if (!str) return "Subject Details";
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
 function SubjectDetailContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const subjectName = decodeURIComponent(rawId || "Subject Details");
+  const rawId = params.id as string | string[] | undefined;
+  const subjectName = safeDecodeSubject(rawId);
   const detailLink = searchParams.get("link");
 
   // URL-passed percentages (available immediately)
@@ -26,6 +36,17 @@ function SubjectDetailContent() {
   const urlPp = parseFloat(searchParams.get("pp") || "0");
 
   const [enrollment, setEnrollment] = useState<string | null>(null);
+  const [recoveredLink, setRecoveredLink] = useState<string | null>(null);
+  const [recoveredPct, setRecoveredPct] = useState<number | null>(null);
+  const [recoveredLp, setRecoveredLp] = useState<number | null>(null);
+  const [recoveredTp, setRecoveredTp] = useState<number | null>(null);
+  const [recoveredPp, setRecoveredPp] = useState<number | null>(null);
+
+  const activeDetailLink = detailLink || recoveredLink;
+  const activePct = urlPct || (recoveredPct ?? 0);
+  const activeLp = urlLp || (recoveredLp ?? 0);
+  const activeTp = urlTp || (recoveredTp ?? 0);
+  const activePp = urlPp || (recoveredPp ?? 0);
 
   // Interactive Calculator State
   const [targetPercentage, setTargetPercentage] = useState(75);
@@ -37,21 +58,50 @@ function SubjectDetailContent() {
 
   const { data, isLoading, isRetrying, error, fetchDetails } = useAttendanceDetails(
     subjectName,
-    detailLink
+    activeDetailLink
   );
 
   useEffect(() => {
     const stored = localStorage.getItem("enrollment");
-    if (!stored) router.push("/login");
-    else setEnrollment(stored);
-  }, [router]);
+    if (!stored) {
+      router.push("/login");
+      return;
+    }
+    setEnrollment(stored);
+
+    // If detailLink was not provided in the URL query string (direct visit or bookmark), recover from dashboard cache
+    if (!detailLink) {
+      try {
+        const rawCache = localStorage.getItem(`juet_dashboard_cache_v3_${stored.trim().toUpperCase()}`);
+        if (rawCache) {
+          const parsed = JSON.parse(rawCache);
+          if (Array.isArray(parsed?.data?.attendance)) {
+            const match = parsed.data.attendance.find(
+              (r: any) =>
+                r.subject &&
+                (r.subject.toLowerCase() === subjectName.toLowerCase() ||
+                 r.subject.toLowerCase().includes(subjectName.toLowerCase()) ||
+                 subjectName.toLowerCase().includes(r.subject.toLowerCase()))
+            );
+            if (match && match.detailLink) {
+              setRecoveredLink(match.detailLink);
+              if (match.percentage !== undefined) setRecoveredPct(match.percentage);
+              if (match.lecturePercent !== undefined) setRecoveredLp(match.lecturePercent);
+              if (match.tutorialPercent !== undefined) setRecoveredTp(match.tutorialPercent);
+              if (match.practicalPercent !== undefined) setRecoveredPp(match.practicalPercent);
+            }
+          }
+        }
+      } catch {}
+    }
+  }, [router, detailLink, subjectName]);
 
   useEffect(() => {
-    if (enrollment && detailLink) fetchDetails();
-  }, [enrollment, detailLink, fetchDetails]);
+    if (enrollment && activeDetailLink) fetchDetails();
+  }, [enrollment, activeDetailLink, fetchDetails]);
 
   // Official baseline percentage from portal (authoritative API response takes precedence over URL param)
-  const officialPct = data?.percentage !== undefined && data.percentage > 0 ? data.percentage : urlPct;
+  const officialPct = data?.percentage !== undefined && data.percentage > 0 ? data.percentage : activePct;
 
   // The headline ring must match the dashboard exactly. The portal computes its
   // official percentage (`LTpercantage`) over a held-count the day-by-day logs
@@ -168,19 +218,19 @@ function SubjectDetailContent() {
             <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border ${getStatusBadgeColor(officialPct)}`}>
               {officialPct % 1 === 0 ? officialPct.toFixed(0) : officialPct.toFixed(1)}% Overall
             </span>
-            {urlLp > 0 && (
+            {activeLp > 0 && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-muted)]">
-                L: {urlLp}%
+                L: {activeLp}%
               </span>
             )}
-            {urlTp > 0 && (
+            {activeTp > 0 && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-muted)]">
-                T: {urlTp}%
+                T: {activeTp}%
               </span>
             )}
-            {urlPp > 0 && (
+            {activePp > 0 && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-muted)]">
-                P: {urlPp}%
+                P: {activePp}%
               </span>
             )}
           </div>
@@ -382,7 +432,11 @@ function SubjectDetailContent() {
         {/* RIGHT: Daily Log */}
         <div className="xl:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-            <h3 className="text-xl font-editorial-italic font-normal text-[var(--ink-strong)]">Day-by-Day Log
+            <h3 className="text-xl font-editorial-italic font-normal text-[var(--ink-strong)] flex items-center gap-2">
+              <span>Day-by-Day Log</span>
+              {(isRetrying || (isLoading && data)) && (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-accent-primary shrink-0" />
+              )}
             </h3>
             
             {data && data.logs.length > 0 && (
@@ -421,7 +475,7 @@ function SubjectDetailContent() {
             )}
           </div>
 
-          {isLoading ? (
+          {isLoading && !data ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--surface-subtle)] border border-[var(--line-subtle)]">
                 <div className="flex items-center gap-3">
@@ -454,7 +508,7 @@ function SubjectDetailContent() {
                 </div>
               </div>
             </div>
-          ) : error ? (
+          ) : error && !data ? (
             <div className="border border-red-200/80 dark:border-red-900/40 rounded-2xl bg-red-50/60 dark:bg-red-950/20 p-6 sm:p-8 text-center shadow-card space-y-4">
               <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto shadow-sm">
                 {error.code === "SESSION_EXPIRED" ? (
@@ -498,6 +552,21 @@ function SubjectDetailContent() {
             </div>
           ) : data && data.logs && data.logs.length > 0 ? (
             <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-2xl overflow-x-auto shadow-card">
+              {error && (
+                <div className="p-3 bg-amber-500/10 border-b border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 shrink-0" />
+                    <span>CampusLynx is busy. Showing latest cached logs.</span>
+                  </div>
+                  <button
+                    onClick={() => fetchDetails(true)}
+                    disabled={isRetrying}
+                    className="font-bold underline hover:no-underline shrink-0 cursor-pointer"
+                  >
+                    {isRetrying ? "Retrying..." : "Refresh"}
+                  </button>
+                </div>
+              )}
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[var(--surface-subtle)] border-b border-[var(--line-subtle)]">
@@ -532,7 +601,7 @@ function SubjectDetailContent() {
                     }
                     
                     return filteredLogs.map((log, i) => {
-                      const match = log.date.match(/^(\d{1,2}\/\d{1,2}\/\d{4})(?:\s*\((.*?)\))?/);
+                      const match = log.date.match(/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})(?:\s*\((.*?)\))?/);
                       const displayDate = match ? match[1] : log.date;
                       const displayTime = match ? match[2]?.replace(/\s+/g, " ") : undefined;
 

@@ -20,7 +20,12 @@
 import axios from "axios";
 import { solveCampusLynxCaptcha } from "@/utils/captchaSolver";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/+$/, "");
+const recoveryClient = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+  timeout: 30000,
+});
 const MAX_CAPTCHA_ATTEMPTS = 5;
 
 const RECOVERY_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
@@ -67,10 +72,10 @@ async function runRecovery(): Promise<boolean> {
 
   // Tier 1 — lightweight refresh.
   try {
-    const refreshRes = await axios.post(
-      `${API_URL}/api/auth/refresh`,
+    const refreshRes = await recoveryClient.post(
+      "/api/auth/refresh",
       {},
-      { withCredentials: true, timeout: 30000, headers }
+      { headers }
     );
     saveRecoveredToken(refreshRes.data?.sessionToken);
     return true;
@@ -106,9 +111,7 @@ async function runRecovery(): Promise<boolean> {
     let captchaImage = "";
     let sessionToken = "";
     try {
-      const init = await axios.get(`${API_URL}/api/init`, {
-        withCredentials: true,
-        timeout: 30000,
+      const init = await recoveryClient.get("/api/init", {
         headers,
       });
       captchaImage = init.data?.captchaImage || "";
@@ -127,10 +130,10 @@ async function runRecovery(): Promise<boolean> {
     if (!captchaText) continue;
 
     try {
-      const silentRes = await axios.post(
-        `${API_URL}/api/auth/silent-login`,
+      const silentRes = await recoveryClient.post(
+        "/api/auth/silent-login",
         { captcha: captchaText, sessionToken },
-        { withCredentials: true, timeout: 30000, headers }
+        { headers }
       );
       saveRecoveredToken(silentRes.data?.sessionToken);
       return true;

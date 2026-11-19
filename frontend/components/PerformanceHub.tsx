@@ -21,6 +21,59 @@ export const ASSESSMENT_OPTIONS: { id: AssessmentType; label: string; fullLabel:
   { id: "T3", label: "T3", fullLabel: "Test 3 (T3)" },
 ];
 
+const RE_T1 = [
+  /\bT[-_\s]?1(?![0-9])/i,
+  /\bTEST[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i,
+  /\bEXAM[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i,
+  /\bTHEORY[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i,
+  /\bSESSIONAL[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i,
+  /\bINTERNAL[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i,
+  /\b(?:1ST|FIRST)\s*(?:TEST|EXAM|EVALUATION|ASSESSMENT)\b/i,
+  /\bMINOR[-_\s]?1\b/i,
+  /\bMID[-_\s]?TERM[-_\s]?1\b/i,
+  /\bPERIODIC[-_\s]?TEST[-_\s]?1\b/i,
+  /\bPT[-_\s]?1(?![0-9])/i,
+];
+
+const RE_P1 = [
+  /\bP[-_\s]?1(?![0-9])/i,
+  /\bPRACTICAL[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i,
+  /\bPR[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i,
+  /\bLAB[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i,
+];
+
+const RE_T2 = [
+  /\bT[-_\s]?2(?![0-9])/i,
+  /\bTEST[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i,
+  /\bEXAM[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i,
+  /\bTHEORY[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i,
+  /\bSESSIONAL[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i,
+  /\bINTERNAL[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i,
+  /\b(?:2ND|SECOND)\s*(?:TEST|EXAM|EVALUATION|ASSESSMENT)\b/i,
+  /\bMINOR[-_\s]?2\b/i,
+  /\bMID[-_\s]?TERM[-_\s]?2\b/i,
+  /\bPERIODIC[-_\s]?TEST[-_\s]?2\b/i,
+  /\bPT[-_\s]?2(?![0-9])/i,
+];
+
+const RE_P2 = [
+  /\bP[-_\s]?2(?![0-9])/i,
+  /\bPRACTICAL[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i,
+  /\bPR[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i,
+  /\bLAB[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i,
+];
+
+const RE_T3 = [
+  /\bT[-_\s]?3(?![0-9])/i,
+  /\bTEST[-_\s]?(?:3|III)(?![0-9a-zA-Z])/i,
+  /\bEXAM[-_\s]?(?:3|III)(?![0-9a-zA-Z])/i,
+  /\bTHEORY[-_\s]?(?:3|III)(?![0-9a-zA-Z])/i,
+  /\b(?:3RD|THIRD)\s*(?:TEST|EXAM|EVALUATION|ASSESSMENT)\b/i,
+  /\bEND[-_\s]?TERM\b/i,
+  /\bEND[-_\s]?SEM(?:ESTER)?\b/i,
+  /\bMAJOR\b/i,
+];
+
 /**
  * Normalizes and maps ERP assessment event codes (e.g. "TEST-1", "T-1", "PRACTICAL-1", "P1")
  * to standard assessment filter categories.
@@ -47,21 +100,11 @@ export function matchesAssessment(componentName: string, assessment: AssessmentT
         normalized === "EXAMI" ||
         normalized === "THEORY1" ||
         normalized === "THEORYI" ||
-        /\bT[-_\s]?1(?![0-9])/i.test(raw) ||
-        /\bTEST[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bEXAM[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bTHEORY[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bSESSIONAL[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bINTERNAL[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\b(?:1ST|FIRST)\s*(?:TEST|EXAM|EVALUATION|ASSESSMENT)\b/i.test(raw) ||
-        /\bMINOR[-_\s]?1\b/i.test(raw) ||
-        /\bMID[-_\s]?TERM[-_\s]?1\b/i.test(raw) ||
-        /\bPERIODIC[-_\s]?TEST[-_\s]?1\b/i.test(raw) ||
-        /\bPT[-_\s]?1(?![0-9])/i.test(raw) ||
         normalized.startsWith("TEST1") ||
         normalized.startsWith("T1") ||
         normalized.includes("TEST1") ||
-        normalized.includes("TEST-1")
+        normalized.includes("TEST-1") ||
+        RE_T1.some((re) => re.test(raw))
       );
     case "P1":
       return (
@@ -70,15 +113,12 @@ export function matchesAssessment(componentName: string, assessment: AssessmentT
         normalized === "PR1" ||
         normalized === "LAB1" ||
         normalized === "PRACTICALI" ||
-        /\bP[-_\s]?1(?![0-9])/i.test(raw) ||
-        /\bPRACTICAL[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bPR[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bLAB[-_\s]?(?:1|I)(?![0-9a-zA-Z])/i.test(raw) ||
         normalized.startsWith("PRACTICAL1") ||
         normalized.startsWith("P1") ||
         normalized.startsWith("LAB1") ||
         normalized.includes("PRACTICAL1") ||
-        normalized.includes("LAB1")
+        normalized.includes("LAB1") ||
+        RE_P1.some((re) => re.test(raw))
       );
     case "T2":
       return (
@@ -92,21 +132,11 @@ export function matchesAssessment(componentName: string, assessment: AssessmentT
         normalized === "EXAMII" ||
         normalized === "THEORY2" ||
         normalized === "THEORYII" ||
-        /\bT[-_\s]?2(?![0-9])/i.test(raw) ||
-        /\bTEST[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bEXAM[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bTHEORY[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bSESSIONAL[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bINTERNAL[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\b(?:2ND|SECOND)\s*(?:TEST|EXAM|EVALUATION|ASSESSMENT)\b/i.test(raw) ||
-        /\bMINOR[-_\s]?2\b/i.test(raw) ||
-        /\bMID[-_\s]?TERM[-_\s]?2\b/i.test(raw) ||
-        /\bPERIODIC[-_\s]?TEST[-_\s]?2\b/i.test(raw) ||
-        /\bPT[-_\s]?2(?![0-9])/i.test(raw) ||
         normalized.startsWith("TEST2") ||
         normalized.startsWith("T2") ||
         normalized.includes("TEST2") ||
-        normalized.includes("TEST-2")
+        normalized.includes("TEST-2") ||
+        RE_T2.some((re) => re.test(raw))
       );
     case "P2":
       return (
@@ -115,15 +145,12 @@ export function matchesAssessment(componentName: string, assessment: AssessmentT
         normalized === "PR2" ||
         normalized === "LAB2" ||
         normalized === "PRACTICALII" ||
-        /\bP[-_\s]?2(?![0-9])/i.test(raw) ||
-        /\bPRACTICAL[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bPR[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bLAB[-_\s]?(?:2|II)(?![0-9a-zA-Z])/i.test(raw) ||
         normalized.startsWith("PRACTICAL2") ||
         normalized.startsWith("P2") ||
         normalized.startsWith("LAB2") ||
         normalized.includes("PRACTICAL2") ||
-        normalized.includes("LAB2")
+        normalized.includes("LAB2") ||
+        RE_P2.some((re) => re.test(raw))
       );
     case "T3":
       return (
@@ -137,18 +164,11 @@ export function matchesAssessment(componentName: string, assessment: AssessmentT
         normalized === "EXAMIII" ||
         normalized === "THEORY3" ||
         normalized === "THEORYIII" ||
-        /\bT[-_\s]?3(?![0-9])/i.test(raw) ||
-        /\bTEST[-_\s]?(?:3|III)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bEXAM[-_\s]?(?:3|III)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\bTHEORY[-_\s]?(?:3|III)(?![0-9a-zA-Z])/i.test(raw) ||
-        /\b(?:3RD|THIRD)\s*(?:TEST|EXAM|EVALUATION|ASSESSMENT)\b/i.test(raw) ||
-        /\bEND[-_\s]?TERM\b/i.test(raw) ||
-        /\bEND[-_\s]?SEM(?:ESTER)?\b/i.test(raw) ||
-        /\bMAJOR\b/i.test(raw) ||
         normalized.startsWith("TEST3") ||
         normalized.startsWith("T3") ||
         normalized.includes("TEST3") ||
-        normalized.includes("TEST-3")
+        normalized.includes("TEST-3") ||
+        RE_T3.some((re) => re.test(raw))
       );
     default:
       return false;
@@ -160,7 +180,7 @@ export interface PerformanceHubProps {
   detailedMarks?: DetailedCourseMarks[];
 }
 
-export const PerformanceHub: React.FC<PerformanceHubProps> = ({
+const PerformanceHubComponent: React.FC<PerformanceHubProps> = ({
   performance,
   detailedMarks = [],
 }) => {
@@ -381,4 +401,5 @@ export const PerformanceHub: React.FC<PerformanceHubProps> = ({
   );
 };
 
+export const PerformanceHub = React.memo(PerformanceHubComponent);
 PerformanceHub.displayName = "PerformanceHub";

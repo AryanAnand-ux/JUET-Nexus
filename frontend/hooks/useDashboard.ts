@@ -21,6 +21,7 @@ import type { DashboardResponse } from "@/types";
 export interface DashboardState {
   data: DashboardResponse | null;
   isLoading: boolean;
+  isRefreshing: boolean;
   error: { message: string; code?: string } | null;
   cached: boolean;
   ttl: number;
@@ -34,6 +35,10 @@ export interface UseDashboardReturn extends DashboardState {
 }
 
 const STORAGE_KEY_PREFIX = "juet_dashboard_cache_v3_";
+
+/** Minimum interval between auto-refreshes triggered by screen switches or focus (ms). */
+const AUTO_REFRESH_THROTTLE_MS = 12_000;
+let lastAutoRefreshAt = 0;
 
 /** Grace period to let `useSessionKeepAlive` recover the token before we hit the API. */
 const SESSION_RECOVERY_GRACE_MS = 3_500;
@@ -63,8 +68,8 @@ let sharedData: {
 let inFlightDashboardPromise: Promise<{ data: any; cacheHeader: any; fetchedAt: Date; ttl: number }> | null = null;
 let inFlightEnrollment: string | null = null;
 
-/** Clears the cross-page snapshot (used on manual cache invalidation). */
-function clearSharedDashboard(enrollment: string | null) {
+/** Clears the cross-page snapshot (used on manual cache invalidation and logout). */
+export function clearSharedDashboard(enrollment?: string | null) {
   if (sharedData && (!enrollment || sharedData.enrollment === enrollment.toUpperCase())) {
     sharedData = null;
   }
@@ -72,8 +77,17 @@ function clearSharedDashboard(enrollment: string | null) {
 
 function loadCachedDashboard(enrollment: string | null): { data: DashboardResponse; fetchedAt: Date } | null {
   if (typeof window === "undefined" || !enrollment) return null;
+
+  const key = enrollment.toUpperCase();
+
+  // Fast path: if sharedData already holds data for this enrollment, skip
+  // localStorage.getItem + JSON.parse entirely (saves ~150KB parse).
+  if (sharedData && sharedData.enrollment === key) {
+    return { data: sharedData.data, fetchedAt: sharedData.fetchedAt };
+  }
+
   try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${enrollment.toUpperCase()}`);
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${key}`);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed?.data) {
@@ -82,7 +96,7 @@ function loadCachedDashboard(enrollment: string | null): { data: DashboardRespon
           (m: any) => m.components && m.components.length > 1
         );
         if (!hasMulti) {
-          localStorage.removeItem(`${STORAGE_KEY_PREFIX}${enrollment.toUpperCase()}`);
+          localStorage.removeItem(`${STORAGE_KEY_PREFIX}${key}`);
           return null;
         }
 
@@ -91,13 +105,12 @@ function loadCachedDashboard(enrollment: string | null): { data: DashboardRespon
           data: parsed.data,
           fetchedAt,
         };
-        if (!sharedData) {
-          sharedData = {
-            enrollment: enrollment.toUpperCase(),
-            data: parsed.data,
-            fetchedAt,
-          };
-        }
+        // Populate sharedData on first parse so subsequent calls skip localStorage
+        sharedData = {
+          enrollment: key,
+          data: parsed.data,
+          fetchedAt,
+        };
         return result;
       }
     }
@@ -125,6 +138,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       return {
         data: cached.data,
         isLoading: false,
+        isRefreshing: false,
         error: null,
         cached: true,
         ttl: 0,
@@ -134,6 +148,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     return {
       data: null,
       isLoading: true,
+      isRefreshing: false,
       error: null,
       cached: false,
       ttl: 0,
@@ -176,9 +191,11 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     if (!enrollment) return;
 
     try {
-      // Only show loading skeleton when there is no data at all
+      // Show loading skeleton if no data yet; otherwise mark as background refreshing
       if (!isSilent) {
-        setState((prev) => ({ ...prev, isLoading: !prev.data, error: null }));
+        setState((prev) => ({ ...prev, isLoading: !prev.data, isRefreshing: true, error: null }));
+      } else {
+        setState((prev) => ({ ...prev, isRefreshing: true }));
       }
 
       const key = enrollment.toUpperCase();
@@ -224,6 +241,9 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
           data,
           fetchedAt,
         };
+        try {
+          window.dispatchEvent(new CustomEvent("juet:dashboard-updated", { detail: data }));
+        } catch {}
       }
 
       // Successful fetch — reset silent retry counter
@@ -236,6 +256,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         ttl: ttl || 0,
         cachedAt: fetchedAt,
         isLoading: false,
+        isRefreshing: false,
         error: null,
       }));
 
@@ -259,7 +280,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
               `[Dashboard] 401 with cached data — silent retry ${silentRetryCount.current}/${MAX_SILENT_RETRIES}`
             );
           }
-          setState((prev) => ({ ...prev, isLoading: false }));
+          setState((prev) => ({ ...prev, isLoading: false, isRefreshing: false }));
           setTimeout(() => fetchDashboard(false, true), SILENT_RETRY_DELAY_MS);
           return;
         }
@@ -275,6 +296,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
             code: error.response?.data?.code || "SESSION_RENEWING",
           },
           isLoading: false,
+          isRefreshing: false,
         }));
         return;
       }
@@ -288,6 +310,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
             code: "RELOGIN_FAILED",
           },
           isLoading: true,
+          isRefreshing: true,
         }));
         setTimeout(() => fetchDashboard(true), 3000);
         return;
@@ -302,6 +325,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         ...prev,
         error: { message: errorMessage, code: error.response?.data?.code },
         isLoading: false,
+        isRefreshing: false,
       }));
     }
   }, [enrollment]);
@@ -322,7 +346,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
     }
 
     try {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+      setState((prev) => ({ ...prev, isLoading: true, isRefreshing: true, error: null }));
       await apiClient.get(
         `/api/dashboard/invalidate?enrollment=${encodeURIComponent(
           enrollment
@@ -337,6 +361,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         setState((prev) => ({
           ...prev,
           isLoading: false,
+          isRefreshing: false,
           error: {
             message: prev.data
               ? "We could not reconnect to the portal. Your last synced records are still shown."
@@ -349,6 +374,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       setState((prev) => ({
         ...prev,
         isLoading: false,
+        isRefreshing: false,
         error: {
           message: error.response?.data?.error || error.message || "Failed to sync portal data",
           code: error.response?.data?.code,
@@ -396,16 +422,11 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
 
     const key = enrollment.toUpperCase();
 
-    // Another dashboard page already fetched this payload moments ago — reuse
-    // it instead of re-downloading the whole dashboard on every route change.
-    const sharedHasMulti = sharedData?.data?.detailedMarks?.some(
-      (m: any) => m.components && m.components.length > 1
-    );
+    // If memory snapshot exists, render immediately and auto-refresh in background
     if (
       sharedData &&
       sharedData.enrollment === key &&
-      Date.now() - sharedData.fetchedAt.getTime() < SHARED_DATA_MAX_AGE_MS &&
-      Boolean(sharedHasMulti)
+      Boolean(sharedData.data)
     ) {
       const fresh = sharedData;
       setState((prev) => ({
@@ -416,58 +437,78 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         isLoading: false,
         error: null,
       }));
-      const cacheStatusInterval = setInterval(() => {
-        checkCacheStatus();
-      }, 60000);
-      return () => clearInterval(cacheStatusInterval);
+
+      // Auto-refresh in background on screen switch if throttle window passed
+      const now = Date.now();
+      if (now - lastAutoRefreshAt > AUTO_REFRESH_THROTTLE_MS) {
+        lastAutoRefreshAt = now;
+        fetchDashboard(false, true);
+      }
+      return;
     }
 
     const cached = loadCachedDashboard(enrollment);
-    const hasMultipleComponents = cached?.data?.detailedMarks?.some(
-      (m) => m.components && m.components.length > 1
-    );
-    const isFresh =
-      cached &&
-      Date.now() - cached.fetchedAt.getTime() < SHARED_DATA_MAX_AGE_MS &&
-      Boolean(hasMultipleComponents);
+    if (cached) {
+      setState((prev) => ({
+        ...prev,
+        data: cached.data,
+        cached: true,
+        cachedAt: cached.fetchedAt,
+        isLoading: false,
+        error: null,
+      }));
 
-    // If cached data is fresh (< 5 minutes), do not trigger an unneeded network fetch
-    if (isFresh) {
-      const cacheStatusInterval = setInterval(() => {
-        checkCacheStatus();
-      }, 60000);
-      return () => clearInterval(cacheStatusInterval);
-    }
-
-    if (cached && !deferredInitialFetch.current) {
-      deferredInitialFetch.current = true;
-      const timer = setTimeout(() => {
+      // Auto-refresh in background on screen switch if throttle window passed
+      const now = Date.now();
+      if (now - lastAutoRefreshAt > AUTO_REFRESH_THROTTLE_MS) {
+        lastAutoRefreshAt = now;
         fetchDashboard(false, true);
-      }, SESSION_RECOVERY_GRACE_MS);
-
-      // Set up periodic cache status check (every 60s)
-      const cacheStatusInterval = setInterval(() => {
-        checkCacheStatus();
-      }, 60000);
-
-      return () => {
-        clearTimeout(timer);
-        clearInterval(cacheStatusInterval);
-        // Reset ref so React StrictMode re-mount correctly re-defers
-        deferredInitialFetch.current = false;
-      };
+      }
+      return;
     }
 
     // No cached data — fetch immediately (first visit or cleared storage)
+    lastAutoRefreshAt = Date.now();
     fetchDashboard();
+  }, [fetchDashboard, enrollment]);
 
-    // Set up periodic cache status check (every 60s)
-    const cacheStatusInterval = setInterval(() => {
+  /**
+   * Auto-refresh when tab is reopened or regains window focus
+   */
+  useEffect(() => {
+    if (!enrollment) return;
+
+    const handleFocusOrVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        const now = Date.now();
+        if (now - lastAutoRefreshAt > AUTO_REFRESH_THROTTLE_MS) {
+          lastAutoRefreshAt = now;
+          fetchDashboard(false, true);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleFocusOrVisible);
+    window.addEventListener("focus", handleFocusOrVisible);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleFocusOrVisible);
+      window.removeEventListener("focus", handleFocusOrVisible);
+    };
+  }, [enrollment, fetchDashboard]);
+
+  /**
+   * Periodic cache status check (every 60s while tab is visible)
+   */
+  useEffect(() => {
+    if (!enrollment) return;
+
+    const interval = setInterval(() => {
       checkCacheStatus();
     }, 60000);
 
-    return () => clearInterval(cacheStatusInterval);
-  }, [fetchDashboard, checkCacheStatus, enrollment]);
+    return () => clearInterval(interval);
+  }, [enrollment, checkCacheStatus]);
 
   /**
    * Auto-refresh when cache is about to expire

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useHydrated } from "@/hooks/useHydrated";
 import { useExamSchedule } from "@/hooks/useExamSchedule";
 import { ExamSchedule } from "@/components/ExamSchedule";
 import { performLogout } from "@/utils/logout";
@@ -40,18 +41,24 @@ const LoadingSkeleton: React.FC = () => (
 
 export default function ExamPage() {
   const router = useRouter();
+  const isHydrated = useHydrated();
   const [enrollment, setEnrollment] = useState<string | null>(null);
 
+  const activeEnrollment = isHydrated
+    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    : null;
+
   useEffect(() => {
+    if (!isHydrated) return;
     const storedEnrollment = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
     if (!storedEnrollment) {
       router.push("/login");
     } else {
       setEnrollment(storedEnrollment);
     }
-  }, [router]);
+  }, [router, isHydrated]);
 
-  const { data: dashboardData } = useDashboard(enrollment);
+  const { data: dashboardData, isRefreshing: isDashboardRefreshing } = useDashboard(activeEnrollment);
   const { data: examData, isLoading, error, refresh, selectedEventId, selectEvent } = useExamSchedule();
 
   const courseMap = React.useMemo(() => {
@@ -82,13 +89,15 @@ export default function ExamPage() {
     router.push("/login");
   };
 
-  if (!enrollment) return null;
+  if (!activeEnrollment) return null;
 
   return (
     <DashboardLayout
       studentName={dashboardData?.student?.name || "Student"}
-      enrollment={enrollment}
+      enrollment={activeEnrollment}
       onLogout={handleLogout}
+      onRefresh={refresh}
+      isRefreshing={isLoading || isDashboardRefreshing}
     >
       <div className="space-y-6">
         {/* Top Action Bar */}
@@ -96,7 +105,6 @@ export default function ExamPage() {
           <div>
             <Link
               href="/dashboard"
-              prefetch={false}
               className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink-strong)] transition-colors w-fit mb-2"
             >
               <ArrowLeft className="w-4 h-4" />

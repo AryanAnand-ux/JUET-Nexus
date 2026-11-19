@@ -100,7 +100,11 @@ export interface SubjectRef {
  * `(path, payload) => client.postEncrypted(path, payload, identity)`.
  */
 export interface AttendanceTransport {
-  postEncrypted(path: string, payload: Record<string, unknown>): Promise<unknown>;
+  postEncrypted(
+    path: string,
+    payload: Record<string, unknown>,
+    options?: { timeout?: number }
+  ): Promise<unknown>;
 }
 
 // The portal's two attendance endpoints are named the opposite way round from
@@ -144,8 +148,8 @@ function round1(value: number): number {
  * the bottom (oldest) rather than throwing.
  */
 export function parseDateForSort(dateStr: string): number {
-  // The portal format starts with DD/MM/YYYY; anything after is timing noise.
-  const match = String(dateStr).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  // Supports DD/MM/YYYY or DD-MM-YYYY; anything after is timing noise.
+  const match = String(dateStr).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
   if (!match) return 0;
   const day   = parseInt(match[1], 10);
   const month = parseInt(match[2], 10);
@@ -256,7 +260,8 @@ export function mapAttendanceSummary(
     const lecturePercent = round1(safeFloat(row.Lpercentage));
     const tutorialPercent = round1(safeFloat(row.Tpercentage));
     const practicalPercent = round1(safeFloat(row.Ppercentage));
-    const overallPercentage = safeFloat(row.LTpercantage) > 0
+    const hasLT = Boolean(row.Lsubjectcomponentid || row.Tsubjectcomponentid);
+    const overallPercentage = hasLT
       ? round1(safeFloat(row.LTpercantage))
       : (practicalPercent > 0 ? practicalPercent : round1(safeFloat(row.LTpercantage)));
 
@@ -432,15 +437,30 @@ export async function fetchAttendanceSummary(
   transport: AttendanceTransport,
   ctx: AttendanceContext
 ): Promise<AttendanceRecord[]> {
-  const response = extractResponse(
-    await transport.postEncrypted(SUBJECT_LIST_PATH, {
+  const makeCall = () =>
+    transport.postEncrypted(SUBJECT_LIST_PATH, {
       instituteid: ctx.instituteid,
       stynumber: ctx.stynumber,
       registrationid: ctx.registrationid,
       registrationcode: ctx.registrationcode,
-    }),
-    SUBJECT_LIST_PATH
-  );
+    });
+
+  let payload: unknown;
+  try {
+    payload = await makeCall();
+  } catch (err: any) {
+    if (/timeout|network|ECONN|reset/i.test(err?.message || "")) {
+      try {
+        payload = await makeCall();
+      } catch {
+        throw err;
+      }
+    } else {
+      throw err;
+    }
+  }
+
+  const response = extractResponse(payload, SUBJECT_LIST_PATH);
   const rows = Array.isArray(response.studentattendancelist)
     ? (response.studentattendancelist as PortalSubjectRow[])
     : [];
@@ -471,14 +491,30 @@ export async function fetchAttendanceDetail(
 
   const componentPromises = activeComponents.map(async ({ key, label }) => {
     const componentid = subject.components[key]!;
-    const payload = await transport.postEncrypted(CLASS_LOG_PATH, {
-      instituteid: ctx.instituteid,
-      subjectid: subject.subjectid,
-      registrationid: ctx.registrationid,
-      cmpidkey: componentIdsFor(componentid).map((subjectcomponentid) => ({ subjectcomponentid })),
-      subjectcode: subject.individualsubjectcode,
-      registrationcode: ctx.registrationcode,
-    });
+    const makeRequest = () =>
+      transport.postEncrypted(CLASS_LOG_PATH, {
+        instituteid: ctx.instituteid,
+        subjectid: subject.subjectid,
+        registrationid: ctx.registrationid,
+        cmpidkey: componentIdsFor(componentid).map((subjectcomponentid) => ({ subjectcomponentid })),
+        subjectcode: subject.individualsubjectcode,
+        registrationcode: ctx.registrationcode,
+      });
+
+    let payload: unknown;
+    try {
+      payload = await makeRequest();
+    } catch (err: any) {
+      if (/timeout|network|ECONN|reset/i.test(err?.message || "")) {
+        try {
+          payload = await makeRequest();
+        } catch {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
     // A component with no classes ever held comes back as a Failure, not an
     // empty list. That is zero attendance, not a broken request.
     const response = isNoRecordsFailure(payload) ? {} : extractResponse(payload, CLASS_LOG_PATH);

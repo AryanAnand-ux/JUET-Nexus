@@ -19,8 +19,8 @@ import {
   mapSemesterRow,
   coursesFromRecords,
   fetchCampusLynxDashboard,
-  type DashboardTransport,
 } from "../../src/portal/dashboard";
+import type { DashboardTransport } from "../../src/portal/dashboard";
 import { mapAttendanceSummary } from "../../src/portal/attendance";
 
 const profileFixture = require("../fixtures/13-sgpa-loadData.json");

@@ -9,7 +9,7 @@ import { FastifyInstance } from 'fastify';
 import { CacheService } from '../utils/cache';
 import { decryptSessionData } from '../utils/encryption';
 import { getCampusLynxIdentity, getOrRenewCampusLynxIdentity } from './session';
-import { createPortalClient } from '../portal/client';
+import { getSharedPortalClient, createPortalClient } from '../portal/client';
 import { fetchCampusLynxDashboard } from '../portal/dashboard';
 import { PortalError, type PortalSessionIdentity } from '../portal/types';
 import type { DashboardResponse } from '../../../shared/types';
@@ -32,12 +32,16 @@ async function fetchDashboardForIdentity(
   identity: PortalSessionIdentity,
   log: any
 ): Promise<DashboardResponse> {
-  const client = createPortalClient();
+  const shared = typeof getSharedPortalClient === 'function' ? getSharedPortalClient() : null;
+  const client = shared || createPortalClient();
   try {
     const transport = {
       postEncrypted: (path: string, payload: Record<string, unknown>) =>
         client.postEncrypted(path, payload, identity),
       getEncrypted: (path: string) => client.getEncrypted(path, identity),
+      ...(typeof client.getBuffer === 'function'
+        ? { getBuffer: (path: string) => client.getBuffer!(path, identity) }
+        : {}),
     };
     return await fetchCampusLynxDashboard(transport, {
       instituteid: identity.instituteid,
@@ -59,7 +63,9 @@ async function fetchDashboardForIdentity(
       code: 'DASHBOARD_FETCH_FAILED',
     };
   } finally {
-    client.destroy();
+    if (!shared && typeof client.destroy === 'function') {
+      client.destroy();
+    }
   }
 }
 
