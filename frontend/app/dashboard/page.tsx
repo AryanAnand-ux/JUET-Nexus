@@ -12,6 +12,17 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { AttendanceTracker } from "@/components/AttendanceTracker";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useHydrated } from "@/hooks/useHydrated";
+
+function getTimeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 4 && hour < 12) {
+    return "Good morning";
+  }
+  if (hour >= 12 && hour < 17) {
+    return "Good afternoon";
+  }
+  return "Good evening";
+}
 import { usePortalRecovery } from "@/hooks/usePortalRecovery";
 import { performLogout } from "@/utils/logout";
 import { apiClient } from "@/utils/api";
@@ -178,6 +189,7 @@ export default function DashboardPage() {
   const totalAttended = data?.attendance.reduce((sum, r) => sum + r.classesAttended, 0) || 0;
   const totalHeld = data?.attendance.reduce((sum, r) => sum + r.classesHeld, 0) || 0;
   const overallPct = totalHeld > 0 ? (totalAttended / totalHeld) * 100 : 0;
+  const greeting = getTimeGreeting();
 
   return (
     <DashboardLayout
@@ -194,8 +206,8 @@ export default function DashboardPage() {
           <div className="min-w-0">
             <h2 className="text-xl sm:text-2xl text-white leading-tight font-editorial-italic">
               {data?.student.name
-                ? <span>Welcome back, <span className="text-white font-medium">{data.student.name}</span>.</span>
-                : <span>Welcome back.</span>}
+                ? <span>{greeting}, <span className="text-white font-medium">{data.student.name}</span>.</span>
+                : <span>{greeting}.</span>}
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1 truncate">
               {data?.student.branch || "Academic Branch"}
