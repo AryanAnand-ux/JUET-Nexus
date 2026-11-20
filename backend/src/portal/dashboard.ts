@@ -464,7 +464,13 @@ export function parsePdfMarks(rawText: string): PortalMarkRow[] {
 
 export async function fetchMarkRows(
   transport: DashboardTransport,
-  args: { instituteid: string; registrationid: string; companyid: string; registrationcode?: string }
+  args: {
+    instituteid: string;
+    registrationid: string;
+    companyid: string;
+    registrationcode?: string;
+    enrollment?: string;
+  }
 ): Promise<PortalMarkRow[]> {
   const allRows: PortalMarkRow[] = [];
 
@@ -824,6 +830,7 @@ export async function fetchCampusLynxDashboard(
       registrationid: registration.registrationid,
       companyid: args.companyid,
       registrationcode: registration.registrationcode,
+      enrollment: profile.enrollment || args.username,
     }),
     semesterPromise,
   ]);
