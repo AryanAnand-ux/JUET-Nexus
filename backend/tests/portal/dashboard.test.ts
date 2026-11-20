@@ -193,6 +193,34 @@ describe("fetchMarkRows", () => {
       fetchMarkRows(transport, { instituteid: INSTITUTE, registrationid: "R", companyid: "" })
     ).resolves.toEqual([]);
   });
+
+  test("does not leak or inject hardcoded T1 marks when user only has later evaluations", async () => {
+    const test2Fixture = {
+      status: { responseStatus: "Success" },
+      response: {
+        viewmarksbystudent: [
+          {
+            subjectcode: "CS201",
+            subjectdesc: "DATA STRUCTURES",
+            eventcode: "TEST-2",
+            fullmarks: 15,
+            obtainedmarks: 11,
+          },
+        ],
+      },
+    };
+    const transport = stubTransport({ "/studentsexamview/getstudent-exammarks": test2Fixture });
+    const rows = await fetchMarkRows(transport, {
+      instituteid: INSTITUTE,
+      registrationid: "JERUM26030000099",
+      companyid: "",
+    });
+
+    // Must strictly contain only the authenticated student's rows — no hardcoded fallback T1 marks
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ subjectcode: "CS201", eventcode: "TEST-2", obtainedmarks: 11 });
+    expect(rows.some((r) => r.subjectcode === "CS109")).toBe(false);
+  });
 });
 
 describe("mapDetailedMarks", () => {

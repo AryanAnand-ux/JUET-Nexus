@@ -487,7 +487,7 @@ export async function fetchMarkRows(
     }
   }
 
-  // Fallback Strategy: Base JSON fetch
+  // Base JSON fetch
   try {
     const response = extractDashboardResponse(
       await transport.postEncrypted(EXAM_MARKS_PATH, {
@@ -505,6 +505,73 @@ export async function fetchMarkRows(
     // Tolerant
   }
 
+  // Multi-event query strategy: Query all exam events for this student/registration
+  // CampusLynx's generic call often only returns the latest event (e.g. TEST-2 or P-1).
+  // Querying per exameventid retrieves all prior evaluations (e.g. TEST-1, P-1, etc.).
+  try {
+    const eventRes = (await transport.postEncrypted(GET_EVENTS_PATH, {
+      instituteid: args.instituteid,
+      registationid: args.registrationid, // Note portal API typo: registationid
+      registrationid: args.registrationid,
+    })) as any;
+
+    const rawEvents =
+      eventRes?.response?.eventcode?.examevent ||
+      eventRes?.response?.examevent ||
+      eventRes?.eventcode?.examevent ||
+      [];
+    const events: Array<{ exameventid: string; exameventdesc?: string }> = Array.isArray(rawEvents)
+      ? rawEvents
+          .map((ev: any) => ({
+            exameventid: String(ev.exameventid ?? ev.id ?? "").trim(),
+            exameventdesc: String(ev.exameventdesc ?? ev.eventdesc ?? ev.eventcode ?? "").trim(),
+          }))
+          .filter((ev) => ev.exameventid.length > 0)
+      : [];
+
+    if (events.length > 0) {
+      const perEventPromises = events.map(async (ev) => {
+        try {
+          const res = extractDashboardResponse(
+            await transport.postEncrypted(EXAM_MARKS_PATH, {
+              instituteid: args.instituteid,
+              registrationid: args.registrationid,
+              companyid: args.companyid,
+              exameventid: ev.exameventid,
+              eventcode: ev.exameventdesc,
+            }),
+            EXAM_MARKS_PATH,
+            true
+          );
+          const rows = Array.isArray(res.viewmarksbystudent)
+            ? (res.viewmarksbystudent as PortalMarkRow[])
+            : [];
+          return rows.map((r) => {
+            const copy = { ...r };
+            if (!copy.eventcode && ev.exameventdesc) {
+              copy.eventcode = ev.exameventdesc;
+            }
+            if (!copy.exameventid) {
+              copy.exameventid = ev.exameventid;
+            }
+            return copy;
+          });
+        } catch {
+          return [] as PortalMarkRow[];
+        }
+      });
+
+      const perEventResults = await Promise.allSettled(perEventPromises);
+      for (const res of perEventResults) {
+        if (res.status === "fulfilled" && res.value.length > 0) {
+          allRows.push(...res.value);
+        }
+      }
+    }
+  } catch {
+    // Tolerant
+  }
+
   // Deduplicate rows by (subjectcode + eventcode)
   const seen = new Set<string>();
   const deduped: PortalMarkRow[] = [];
@@ -515,33 +582,6 @@ export async function fetchMarkRows(
     if (!seen.has(key)) {
       seen.add(key);
       deduped.push(row);
-    }
-  }
-
-  // If the portal's response only returned later tests and is missing TEST-1,
-  // ensure the published T1 evaluations baseline is present
-  const hasT1 = deduped.some((r) => {
-    const ev = String(r.eventcode || (r as any).exameventid || "").toUpperCase().replace(/[\s_-]+/g, "");
-    return ev === "TEST1" || ev === "T1";
-  });
-
-  if (!hasT1 && deduped.length > 0) {
-    const PUBLISHED_T1_MARKS: PortalMarkRow[] = [
-      { subjectcode: "CS109", subjectdesc: "COMPUTER NETWORKS", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 10, weightage: 15, obtainedWeightage: 10 },
-      { subjectcode: "CS120", subjectdesc: "DEEP LEARNING", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 13, weightage: 15, obtainedWeightage: 13 },
-      { subjectcode: "CS301", subjectdesc: "PROMPT ENGINEERING AND GENERATIVE AI SYSTEMS", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 12, weightage: 15, obtainedWeightage: 12 },
-      { subjectcode: "HS301", subjectdesc: "CONCEPTS OF ECONOMICS", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 7, weightage: 15, obtainedWeightage: 7 },
-      { subjectcode: "MA106", subjectdesc: "PROBABILITY THEORY AND RANDOM PROCESSES", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 15, weightage: 15, obtainedWeightage: 15 },
-      { subjectcode: "PH303", subjectdesc: "NANO SCIENCE", eventcode: "TEST-1", fullmarks: 15, obtainedmarks: 8.5, weightage: 15, obtainedWeightage: 8.5 },
-    ];
-
-    for (const t1 of PUBLISHED_T1_MARKS) {
-      const sub = String(t1.subjectcode).toUpperCase();
-      const key = `${sub}:::TEST-1`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        deduped.push(t1);
-      }
     }
   }
 
