@@ -692,15 +692,24 @@ export async function fetchMarkRows(
 
   // 3c: Discover older/related event IDs by probing sequential suffixes.
   const discoveredIds = new Set<string>();
+  // For each distinct prefix (e.g. JEEXV2609A), probe only IDs from 1 up to the
+  // highest known sequence number for that prefix, plus 1 ahead. This avoids
+  // the old behaviour of always probing up to max(seqNum+1, 8) IDs *per prefix*
+  // when multiple month-prefixes exist (e.g. 2609, 2610, 2611), which inflated
+  // the total to 24+ calls. Cap: highest seq for that prefix + 1 (min 2).
+  const prefixMaxSeq = new Map<string, number>();
   for (const id of [...knownEventIds]) {
     const match = id.match(/^(.*?)(\d{7})$/);
     if (match) {
       const prefix = match[1];
       const seqNum = parseInt(match[2], 10);
-      for (let i = 1; i <= Math.max(seqNum + 1, 8); i++) {
-        const probeId = `${prefix}${String(i).padStart(7, "0")}`;
-        if (!knownEventIds.has(probeId)) discoveredIds.add(probeId);
-      }
+      prefixMaxSeq.set(prefix, Math.max(prefixMaxSeq.get(prefix) ?? 0, seqNum));
+    }
+  }
+  for (const [prefix, maxSeq] of prefixMaxSeq) {
+    for (let i = 1; i <= maxSeq + 1; i++) {
+      const probeId = `${prefix}${String(i).padStart(7, "0")}`;
+      if (!knownEventIds.has(probeId)) discoveredIds.add(probeId);
     }
   }
   for (const id of discoveredIds) knownEventIds.add(id);
@@ -966,18 +975,25 @@ async function fetchMarkRowsWithFallback(
   },
   registrations: PortalRegistration[]
 ): Promise<PortalMarkRow[]> {
-  const candidates = registrations.slice(0, 3);
-  for (const reg of candidates) {
-    if (!reg.registrationid) continue;
-    const rows = await fetchMarkRows(transport, {
-      instituteid: args.instituteid,
-      registrationid: reg.registrationid,
-      companyid: args.companyid,
-      registrationcode: reg.registrationcode,
-      enrollment: args.enrollment,
-    });
-    if (rows.length > 0) {
-      return rows;
+  // Probe all candidate registrations concurrently so a new empty semester
+  // does not add a sequential round-trip before the active semester is found.
+  const candidates = registrations.slice(0, 3).filter((r) => r.registrationid);
+  const results = await Promise.allSettled(
+    candidates.map((reg) =>
+      fetchMarkRows(transport, {
+        instituteid: args.instituteid,
+        registrationid: reg.registrationid!,
+        companyid: args.companyid,
+        registrationcode: reg.registrationcode,
+        enrollment: args.enrollment,
+      })
+    )
+  );
+
+  // Return the first fulfilled result with rows, preserving registration order.
+  for (const result of results) {
+    if (result.status === "fulfilled" && result.value.length > 0) {
+      return result.value;
     }
   }
   return [];
@@ -989,20 +1005,33 @@ async function fetchAttendanceWithFallback(
   stynumber: string,
   registrations: PortalRegistration[]
 ): Promise<AttendanceRecord[]> {
-  // Try the newest registration first; if the university just added an upcoming
-  // semester with no attendance yet, fall back through up to 2 prior registrations.
-  const candidates = registrations.slice(0, 3);
-  for (const reg of candidates) {
-    if (!reg.registrationid) continue;
-    const records = await fetchAttendanceSummary(transport, {
-      instituteid,
-      stynumber,
-      registrationid: reg.registrationid,
-      registrationcode: reg.registrationcode ?? "",
-    });
-    if (records.length > 0) {
-      return records;
+  // Probe all candidate registrations concurrently so a new empty semester
+  // (e.g. 2027EVESEM added before data exists) does not add a full sequential
+  // round-trip before the actual active semester is tried.
+  const candidates = registrations.slice(0, 3).filter((r) => r.registrationid);
+  const results = await Promise.allSettled(
+    candidates.map((reg) =>
+      fetchAttendanceSummary(transport, {
+        instituteid,
+        stynumber,
+        registrationid: reg.registrationid!,
+        registrationcode: reg.registrationcode ?? "",
+      })
+    )
+  );
+
+  // Return the first fulfilled result that has actual records, preserving
+  // registration order (newest semester first, as sorted by fetchRegistrationsOrdered).
+  let firstError: unknown = null;
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      if (result.value.length > 0) return result.value;
+    } else if (!firstError) {
+      firstError = result.reason;
     }
+  }
+  if (firstError && results.every((r) => r.status === "rejected")) {
+    throw firstError;
   }
   return [];
 }

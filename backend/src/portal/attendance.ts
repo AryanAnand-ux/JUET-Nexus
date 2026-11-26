@@ -463,7 +463,9 @@ export async function fetchAttendanceSummary(
   try {
     payload = await makeCall();
   } catch (err: any) {
-    if (/timeout|network|ECONN|reset/i.test(err?.message || "")) {
+    // Retry once on transient socket/network resets, but NOT on timeouts
+    // (retrying a 15s timeout doubles the wait to 30s).
+    if (/network|ECONN|reset/i.test(err?.message || "")) {
       try {
         payload = await makeCall();
       } catch {
