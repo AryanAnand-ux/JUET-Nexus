@@ -220,7 +220,12 @@ describe("GET /api/dashboard under campuslynx", () => {
         }
         return summaryFixture;
       }
-      if (path.includes("getstudent-exammarks")) return marksFixture;
+      if (path.includes("getstudent-exammarks")) {
+        if (payload.registrationid === "JERUM27010000001") {
+          return { status: { responseStatus: "Failure", errors: ["No Record Found"] }, response: {} };
+        }
+        return marksFixture;
+      }
       if (path.includes("checkIfstudentmasterexist")) {
         return { status: { responseStatus: "Failure", errors: ["No Result Found"] } };
       }
@@ -234,5 +239,6 @@ describe("GET /api/dashboard under campuslynx", () => {
     const body = res.json();
     expect(body.success).toBe(true);
     expect(body.data.attendance).toHaveLength(11);
+    expect(body.data.detailedMarks).toHaveLength(6);
   });
 });

@@ -589,52 +589,39 @@ export async function fetchMarkRows(
     enrollment?: string;
   }
 ): Promise<PortalMarkRow[]> {
-  const allRows: PortalMarkRow[] = [];
-  const log = (msg: string, ...data: unknown[]) => console.log(`[Marks:${args.enrollment ?? "?"}] ${msg}`, ...data);
-
-  log("fetchMarkRows START", { registrationcode: args.registrationcode, hasGetBuffer: !!transport.getBuffer });
+  const pdfRows: PortalMarkRow[] = [];
+  const jsonRows: PortalMarkRow[] = [];
 
   // Strategy 1: Fetch the official Event-Wise Marks PDF report from CampusLynx.
   if (transport.getBuffer && args.registrationcode) {
     try {
       const reportPath = `/studentsexamview/printstudent-exammarks/${args.instituteid}/${args.registrationid}/${args.registrationcode}`;
-      log("Strategy 1 (PDF): requesting", reportPath);
       const pdfBuf = await transport.getBuffer(reportPath);
-      log("Strategy 1 (PDF): received buffer", { length: pdfBuf?.length });
       if (pdfBuf && pdfBuf.length > 0) {
         const rawText = extractTextFromPdf(pdfBuf);
-        log("Strategy 1 (PDF): extracted text length", rawText.length, "first 500 chars:", rawText.substring(0, 500));
         const reportRows = parsePdfMarks(rawText);
-        log("Strategy 1 (PDF): parsed rows", reportRows.length, reportRows.map(r => `${r.subjectcode}/${r.eventcode}`));
         if (reportRows.length > 0) {
-          allRows.push(...reportRows);
+          pdfRows.push(...reportRows);
         }
       }
-    } catch (err: any) {
-      log("Strategy 1 (PDF): FAILED", err?.message || err);
+    } catch {
+      // PDF report fetch failed, fall back to JSON
     }
-  } else {
-    log("Strategy 1 (PDF): SKIPPED", { hasGetBuffer: !!transport.getBuffer, registrationcode: args.registrationcode });
   }
 
   // Strategy 2: Base JSON fetch (returns the latest published event only in many cases)
-  let baseRows: PortalMarkRow[] = [];
   try {
     const rawResponse = await transport.postEncrypted(EXAM_MARKS_PATH, {
       instituteid: args.instituteid,
       registrationid: args.registrationid,
       companyid: args.companyid,
     });
-    log("Strategy 2 (JSON): raw response keys", Object.keys((rawResponse as any)?.response || {}));
-    baseRows = extractMarkRowsFromPayload(rawResponse, EXAM_MARKS_PATH);
+    const baseRows = extractMarkRowsFromPayload(rawResponse, EXAM_MARKS_PATH);
     if (baseRows.length > 0) {
-      log("Strategy 2 (JSON): got rows", baseRows.length, baseRows.map(r => `${r.subjectcode}/${r.eventcode}/${(r as any).exameventid}`));
-      allRows.push(...baseRows);
-    } else {
-      log("Strategy 2 (JSON): no mark rows found in response");
+      jsonRows.push(...baseRows);
     }
-  } catch (err: any) {
-    log("Strategy 2 (JSON): FAILED", err?.message || err);
+  } catch {
+    // Tolerant
   }
 
   // Strategy 3: Multi-event query.
@@ -678,8 +665,6 @@ export async function fetchMarkRows(
   for (let i = 0; i < eventPayloadVariants.length; i++) {
     try {
       const eventRes = (await transport.postEncrypted(GET_EVENTS_PATH, eventPayloadVariants[i])) as any;
-      if (i === 0) log("Strategy 3a (events endpoint): raw response", JSON.stringify(eventRes).substring(0, 1000));
-
       const rawEvents =
         eventRes?.response?.eventcode?.examevent ||
         eventRes?.response?.eventcode ||
@@ -695,20 +680,17 @@ export async function fetchMarkRows(
       }
       collectEventIdsDeep(eventRes);
       if (knownEventIds.size > 0) break;
-    } catch (err: any) {
-      if (i === 0) log("Strategy 3a (events endpoint): FAILED", err?.message || err);
+    } catch {
+      // Tolerant
     }
   }
-  log("Strategy 3a: event IDs after events endpoint", [...knownEventIds]);
 
   // 3b: Collect distinct exameventid values from any fetched rows so far
-  for (const row of [...baseRows, ...allRows]) {
+  for (const row of jsonRows) {
     addEventId((row as any).exameventid ?? (row as any).examEventId ?? (row as any).eventid);
   }
-  log("Strategy 3b: total known event IDs (after rows)", [...knownEventIds]);
 
   // 3c: Discover older/related event IDs by probing sequential suffixes.
-  // CampusLynx exam event IDs often follow patterns like JEEXV<YYMM>A<7-digit-seq>.
   const discoveredIds = new Set<string>();
   for (const id of [...knownEventIds]) {
     const match = id.match(/^(.*?)(\d{7})$/);
@@ -721,15 +703,11 @@ export async function fetchMarkRows(
       }
     }
   }
-  if (discoveredIds.size > 0) {
-    log("Strategy 3c: discovered additional event IDs to probe", [...discoveredIds]);
-    for (const id of discoveredIds) knownEventIds.add(id);
-  }
+  for (const id of discoveredIds) knownEventIds.add(id);
 
   // 3d: For each known event ID, query marks specifically for that event.
   if (knownEventIds.size > 0) {
     const ids = [...knownEventIds];
-    log("Strategy 3d: querying per-event marks for", ids);
     const perEventPromises = ids.map(async (exameventid) => {
       try {
         const rawRes = await transport.postEncrypted(EXAM_MARKS_PATH, {
@@ -738,11 +716,8 @@ export async function fetchMarkRows(
           companyid: args.companyid,
           exameventid,
         });
-        const rows = extractMarkRowsFromPayload(rawRes, EXAM_MARKS_PATH);
-        log(`Strategy 3d: event ${exameventid} returned ${rows.length} rows`, rows.map(r => `${r.subjectcode}/${r.eventcode || (r as any).eventdesc}`));
-        return rows;
-      } catch (err: any) {
-        log(`Strategy 3d: event ${exameventid} FAILED`, err?.message || err);
+        return extractMarkRowsFromPayload(rawRes, EXAM_MARKS_PATH);
+      } catch {
         return [] as PortalMarkRow[];
       }
     });
@@ -750,28 +725,57 @@ export async function fetchMarkRows(
     const perEventResults = await Promise.allSettled(perEventPromises);
     for (const res of perEventResults) {
       if (res.status === "fulfilled" && res.value.length > 0) {
-        allRows.push(...res.value);
+        jsonRows.push(...res.value);
       }
     }
   }
 
-  // Deduplicate rows by (subjectcode + event). Prefer eventcode/eventdesc; fall back to exameventid if needed.
-  const seen = new Set<string>();
-  const deduped: PortalMarkRow[] = [];
-  for (const row of allRows) {
+  // Build subject description -> subject code lookup from JSON rows so PDF rows
+  // (which may lack parenthesized subject codes) normalize to the same code.
+  const norm = (s: unknown) => String(s ?? "").trim().toUpperCase().replace(/\s+/g, " ");
+  const descToCode = new Map<string, string>();
+  for (const row of jsonRows) {
     const r = row as Record<string, unknown>;
-    const sub = String(r.subjectcode || r.subjectdesc || r.subject || "").trim().toUpperCase();
-    const ev = String(r.eventcode || r.eventCode || r.eventdesc || r.eventDesc || r.event || r.exameventid || "").trim().toUpperCase();
-    const key = `${sub}:::${ev}`;
-    if (!sub && !ev) continue;
-    if (!seen.has(key)) {
-      seen.add(key);
-      deduped.push(row);
+    const code = norm(r.subjectcode || r.subjectCode || r.code);
+    const desc = norm(r.subjectdesc || r.subjectDesc || r.subjectname || r.subjectName || r.subject);
+    if (code && desc && code !== desc) {
+      descToCode.set(desc, code);
     }
   }
 
-  log("FINAL: total allRows", allRows.length, "deduped", deduped.length,
-    "events found:", [...new Set(deduped.map(r => String((r as any).eventcode || (r as any).eventdesc || (r as any).event || "")))]);
+  // Enrich PDF rows with known subject codes before deduplication.
+  const enrichedPdfRows = pdfRows.map((row) => {
+    const r = row as Record<string, unknown>;
+    const code = norm(r.subjectcode);
+    const desc = norm(r.subjectdesc);
+    const mappedCode = descToCode.get(desc) || descToCode.get(code);
+    if (mappedCode && (!code || code === desc)) {
+      return { ...row, subjectcode: mappedCode };
+    }
+    return row;
+  });
+
+  // Deduplicate rows, preferring richer JSON rows over PDF rows when both exist.
+  // Match by both (subjectcode + event) and (subjectdesc + event) so rows with
+  // missing codes in one source still collapse cleanly.
+  const seenKeys = new Set<string>();
+  const deduped: PortalMarkRow[] = [];
+  for (const row of [...jsonRows, ...enrichedPdfRows]) {
+    const r = row as Record<string, unknown>;
+    const code = norm(r.subjectcode || r.subjectCode || r.code);
+    const desc = norm(r.subjectdesc || r.subjectDesc || r.subjectname || r.subjectName || r.subject);
+    const ev = norm(r.eventcode || r.eventCode || r.eventdesc || r.eventDesc || r.event || r.exameventid);
+    if (!code && !desc && !ev) continue;
+
+    const codeKey = code ? `C:${code}:::${ev}` : "";
+    const descKey = desc ? `D:${desc}:::${ev}` : "";
+    if ((codeKey && seenKeys.has(codeKey)) || (descKey && seenKeys.has(descKey))) {
+      continue;
+    }
+    if (codeKey) seenKeys.add(codeKey);
+    if (descKey) seenKeys.add(descKey);
+    deduped.push(row);
+  }
 
   return deduped;
 }
@@ -953,6 +957,32 @@ export interface CampusLynxDashboardArgs {
   username: string;
 }
 
+async function fetchMarkRowsWithFallback(
+  transport: DashboardTransport,
+  args: {
+    instituteid: string;
+    companyid: string;
+    enrollment?: string;
+  },
+  registrations: PortalRegistration[]
+): Promise<PortalMarkRow[]> {
+  const candidates = registrations.slice(0, 3);
+  for (const reg of candidates) {
+    if (!reg.registrationid) continue;
+    const rows = await fetchMarkRows(transport, {
+      instituteid: args.instituteid,
+      registrationid: reg.registrationid,
+      companyid: args.companyid,
+      registrationcode: reg.registrationcode,
+      enrollment: args.enrollment,
+    });
+    if (rows.length > 0) {
+      return rows;
+    }
+  }
+  return [];
+}
+
 async function fetchAttendanceWithFallback(
   transport: DashboardTransport,
   instituteid: string,
@@ -1025,13 +1055,15 @@ export async function fetchCampusLynxDashboard(
 
   const [attendanceSettled, marksSettled, semestersSettled] = await Promise.allSettled([
     fetchAttendanceWithFallback(transport, args.instituteid, profile.stynumber, registrations),
-    fetchMarkRows(transport, {
-      instituteid: args.instituteid,
-      registrationid: registration.registrationid,
-      companyid: args.companyid,
-      registrationcode: registration.registrationcode,
-      enrollment: profile.enrollment || args.username,
-    }),
+    fetchMarkRowsWithFallback(
+      transport,
+      {
+        instituteid: args.instituteid,
+        companyid: args.companyid,
+        enrollment: profile.enrollment || args.username,
+      },
+      registrations
+    ),
     semesterPromise,
   ]);
 
