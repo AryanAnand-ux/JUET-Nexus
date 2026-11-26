@@ -32,6 +32,8 @@ const DEFAULT_BASE_URL =
 
 const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT || "15000", 10);
 
+let _tlsWarned = false;
+
 /**
  * Socket agent configuration for the portal client.
  * Pools connections with keepAlive and allows up to 10 concurrent sockets
@@ -43,8 +45,9 @@ function createAgent(): https.Agent {
   // root certs or require custom validation. Allow strict rejection when configured.
   const rejectUnauthorized = process.env.PORTAL_REJECT_UNAUTHORIZED === "true";
 
-  // Warn if TLS verification is disabled in production (portal cert chain is often incomplete)
-  if (process.env.NODE_ENV === "production" && !rejectUnauthorized) {
+  // Warn once if TLS verification is disabled in production (portal cert chain is often incomplete)
+  if (process.env.NODE_ENV === "production" && !rejectUnauthorized && !_tlsWarned) {
+    _tlsWarned = true;
     console.warn(
       "[Security] PORTAL_REJECT_UNAUTHORIZED is not 'true' — TLS verification disabled. " +
       "This allows connection to portals with incomplete cert chains but is less secure. " +
@@ -113,6 +116,7 @@ export class PortalClient {
 
   constructor(options: PortalClientOptions = {}) {
     this.baseUrl = (options.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
+    const agent = createAgent();
     this.http = axios.create({
       baseURL: this.baseUrl,
       timeout: options.timeout || REQUEST_TIMEOUT,
@@ -125,8 +129,8 @@ export class PortalClient {
           "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
         Accept: "application/json, text/plain, */*",
       },
-      httpAgent: createAgent(),
-      httpsAgent: createAgent(),
+      httpAgent: agent,
+      httpsAgent: agent,
     });
   }
 

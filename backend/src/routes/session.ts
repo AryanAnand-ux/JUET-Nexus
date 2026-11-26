@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { decryptSessionData, encryptSessionData, SessionData } from "../utils/encryption";
 import type { PortalSessionIdentity } from "../portal/types";
-import { createPortalClient } from "../portal/client";
+import { createPortalClient, getSharedPortalClient } from "../portal/client";
 import { isTokenExpired, jwtExpiry } from "../portal/crypto";
 
 export const COOKIE_MAX_AGE_SEC = 30 * 24 * 60 * 60; // 30 days
@@ -96,6 +96,15 @@ export function getCampusLynxIdentity(request: FastifyRequest): PortalSessionIde
   return session.campusLynx;
 }
 
+export function isPortalTokenDead(identity: PortalSessionIdentity): boolean {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const exp = identity.token ? jwtExpiry(identity.token) : null;
+  return (
+    (exp !== null && isTokenExpired(identity.token, 0)) ||
+    (identity.tokenIssuedAt != null && nowSec - identity.tokenIssuedAt >= 15 * 60)
+  );
+}
+
 /**
  * Read and automatically renew the CampusLynx session if the token is nearing expiry.
  * Attaches the updated 30-day sliding cookie to `reply`.
@@ -151,7 +160,11 @@ export async function getOrRenewCampusLynxIdentity(
 
     if (!renewal) {
       renewal = (async (): Promise<RenewedSession> => {
-        const client = createPortalClient({ timeout: 8000 });
+        const shared =
+          !process.env.JEST_WORKER_ID && typeof getSharedPortalClient === "function"
+            ? getSharedPortalClient()
+            : null;
+        const client = shared || createPortalClient({ timeout: 8000 });
         try {
           const refreshed = await client.refreshToken({
             username,
@@ -218,7 +231,9 @@ export async function getOrRenewCampusLynxIdentity(
           );
           return { identity: session.campusLynx!, encryptedSession };
         } finally {
-          client.destroy();
+          if (!shared && typeof client.destroy === "function") {
+            client.destroy();
+          }
         }
       })();
       renewalInFlight.set(username, renewal);

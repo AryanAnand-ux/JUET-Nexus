@@ -176,7 +176,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
    * @param isSilent When true, a 401 with cached data triggers a silent retry
    *                 instead of showing the error banner.
    */
-  const fetchDashboard = useCallback(async (isRetry = false, isSilent = false) => {
+  const fetchDashboard = useCallback(async (isRetry = false, isSilent = false, forceFresh = false) => {
     // No-op when enrollment isn't loaded yet — the parent component sets it
     // asynchronously from localStorage, so null is the expected initial value.
     if (!enrollment) return;
@@ -193,11 +193,12 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       let responsePayload: { data: any; cacheHeader: any; fetchedAt: Date; ttl: number };
 
       // In-flight promise deduplication: avoid duplicate network requests if a fetch is already running
-      if (inFlightDashboardPromise && inFlightEnrollment === key) {
+      // unless forceFresh is requested (e.g. after manual cache invalidation).
+      if (!forceFresh && inFlightDashboardPromise && inFlightEnrollment === key) {
         responsePayload = await inFlightDashboardPromise;
       } else {
         inFlightEnrollment = key;
-        inFlightDashboardPromise = (async () => {
+        const currentPromise = (async () => {
           const response = await apiClient.get(
             `/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
             {
@@ -209,12 +210,15 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
           const fetchedAt = response.data?.fetchedAt ? new Date(response.data.fetchedAt) : new Date();
           return { data, cacheHeader, fetchedAt, ttl };
         })();
+        inFlightDashboardPromise = currentPromise;
 
         try {
-          responsePayload = await inFlightDashboardPromise;
+          responsePayload = await currentPromise;
         } finally {
-          inFlightDashboardPromise = null;
-          inFlightEnrollment = null;
+          if (inFlightDashboardPromise === currentPromise) {
+            inFlightDashboardPromise = null;
+            inFlightEnrollment = null;
+          }
         }
       }
 
@@ -327,24 +331,18 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
   const invalidateCache = useCallback(async (): Promise<boolean> => {
     if (!enrollment) return false;
 
-    // Drop the cross-page snapshot so other dashboard pages cannot serve the
-    // data the user just asked us to discard.
-    clearSharedDashboard(enrollment);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.removeItem(`${STORAGE_KEY_PREFIX}${enrollment.toUpperCase()}`);
-      } catch {}
-    }
-
     try {
-      setState((prev) => ({ ...prev, isLoading: true, isRefreshing: true, error: null }));
+      // Keep existing localStorage/sharedData intact until fresh data arrives so
+      // browser refresh or navigating back to /dashboard never drops to a blank
+      // "Loading your dashboard..." skeleton while syncing.
+      setState((prev) => ({ ...prev, isLoading: !prev.data, isRefreshing: true, error: null }));
       await apiClient.get(
         `/api/dashboard/invalidate?enrollment=${encodeURIComponent(
           enrollment
         )}`
       );
-      // Fetch fresh data
-      await fetchDashboard();
+      // Fetch fresh data, bypassing any pre-invalidation in-flight request
+      await fetchDashboard(false, false, true);
       return true;
     } catch (error: any) {
       console.error("[Dashboard] Cache invalidation error:", error);

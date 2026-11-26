@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useState, useMemo, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { FigmaCard } from "@/components/base";
@@ -53,9 +53,6 @@ function SubjectDetailContent() {
   const [extraAttends, setExtraAttends] = useState(0);
   const [extraBunks, setExtraBunks] = useState(0);
   const [retroFixes, setRetroFixes] = useState(0);
-
-  // Log filter state
-  const [logFilter, setLogFilter] = useState<"all" | "present" | "absent">("all");
 
   const { data, isLoading, isRetrying, error, fetchDetails } = useAttendanceDetails(
     subjectName,
@@ -124,14 +121,22 @@ function SubjectDetailContent() {
 
   // Practical logs only stay out of the counts when L/T classes exist too
   // (practical-only subjects are counted in full).
-  const practicalsExcluded =
-    !!data &&
-    data.logs.some((l) => l.type === "Practical") &&
-    data.logs.some((l) => l.type === "Lecture" || l.type === "Tutorial");
-    
-  const recordedAbsences = (data?.logs ?? []).filter(
-    (l) => l.status === "Absent" && !(practicalsExcluded && l.type === "Practical")
-  ).length;
+  const { practicalsExcluded, recordedAbsences } = useMemo(() => {
+    const logs = data?.logs;
+    if (!logs || logs.length === 0) {
+      return { practicalsExcluded: false, recordedAbsences: 0 };
+    }
+    const hasP = logs.some((l) => l.type === "Practical");
+    const hasLT = logs.some((l) => l.type === "Lecture" || l.type === "Tutorial");
+    const excluded = hasP && hasLT;
+    let absences = 0;
+    for (const l of logs) {
+      if (l.status === "Absent" && !(excluded && l.type === "Practical")) {
+        absences++;
+      }
+    }
+    return { practicalsExcluded: excluded, recordedAbsences: absences };
+  }, [data?.logs]);
   const fixes = Math.min(retroFixes, recordedAbsences);
   const retroPct = baseHeld > 0 ? Math.min(100, ((baseAttended + fixes) / baseHeld) * 100) : 0;
   // 1e-9 guards float error from the fractional baseAttended; fine for class counts.
@@ -475,7 +480,68 @@ function SubjectDetailContent() {
           )}
         </div>
 
-        {/* RIGHT: Daily Log */}
+        {/* RIGHT: Daily Log (isolated memoized panel so calculator slider/stepper drags stay 60fps) */}
+        <SubjectDailyLogPanel
+          data={data}
+          isLoading={isLoading}
+          isRetrying={isRetrying}
+          error={error}
+          detailLink={detailLink}
+          onRetry={() => fetchDetails(true)}
+          onLogin={() => router.push("/login")}
+        />
+      </div>
+    </DashboardLayout>
+  );
+}
+
+interface SubjectDailyLogPanelProps {
+  data: import("@/types").AttendanceDetailsResponse | null;
+  isLoading: boolean;
+  isRetrying: boolean;
+  error: { message: string; code?: string } | null;
+  detailLink: string | null;
+  onRetry: () => void;
+  onLogin: () => void;
+}
+
+const SubjectDailyLogPanel = React.memo(function SubjectDailyLogPanel({
+  data,
+  isLoading,
+  isRetrying,
+  error,
+  detailLink,
+  onRetry,
+  onLogin,
+}: SubjectDailyLogPanelProps) {
+  const [logFilter, setLogFilter] = useState<"all" | "present" | "absent">("all");
+
+  const { presentCount, absentCount, parsedLogs } = useMemo(() => {
+    const rawLogs = data?.logs ?? [];
+    let present = 0;
+    let absent = 0;
+    const parsed = rawLogs.map((log) => {
+      if (log.status === "Present") present++;
+      else if (log.status === "Absent") absent++;
+      const match = log.date.match(/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})(?:\s*\((.*?)\))?/);
+      return {
+        log,
+        displayDate: match ? match[1] : log.date,
+        displayTime: match ? match[2]?.replace(/\s+/g, " ") : undefined,
+      };
+    });
+    return { presentCount: present, absentCount: absent, parsedLogs: parsed };
+  }, [data?.logs]);
+
+  const filteredLogs = useMemo(() => {
+    if (logFilter === "all") return parsedLogs;
+    const target = logFilter === "present" ? "Present" : "Absent";
+    return parsedLogs.filter((entry) => entry.log.status === target);
+  }, [parsedLogs, logFilter]);
+
+  const totalLogs = data?.logs?.length ?? 0;
+
+  return (
         <div className="xl:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
             <h3 className="text-xl font-editorial-italic font-normal text-[var(--ink-strong)] flex items-center gap-2">
@@ -484,38 +550,38 @@ function SubjectDetailContent() {
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-accent-primary shrink-0" />
               )}
             </h3>
-            
-            {data && data.logs.length > 0 && (
+
+            {totalLogs > 0 && (
               <div className="flex items-center gap-1 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] p-1 rounded-xl w-fit">
                 <button
                   onClick={() => setLogFilter("all")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-colors ${
                     logFilter === "all"
                       ? "bg-[var(--surface-card)] text-[var(--ink-strong)] shadow-card"
                       : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100"
                   }`}
                 >
-                  All ({data.logs.length})
+                  All ({totalLogs})
                 </button>
                 <button
                   onClick={() => setLogFilter("present")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-colors ${
                     logFilter === "present"
                       ? "bg-[var(--surface-card)] text-emerald-600 shadow-card"
                       : "text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-400"
                   }`}
                 >
-                  Present ({data.logs.filter((l) => l.status === "Present").length})
+                  Present ({presentCount})
                 </button>
                 <button
                   onClick={() => setLogFilter("absent")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold font-nunito transition-colors ${
                     logFilter === "absent"
                       ? "bg-[var(--surface-card)] text-rose-600 shadow-card"
                       : "text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                   }`}
                 >
-                  Absent ({data.logs.filter((l) => l.status === "Absent").length})
+                  Absent ({absentCount})
                 </button>
               </div>
             )}
@@ -579,24 +645,24 @@ function SubjectDetailContent() {
               </div>
               <div className="flex items-center justify-center gap-3 pt-2">
                 <button
-                  onClick={() => fetchDetails(true)}
+                  onClick={onRetry}
                   disabled={isLoading || isRetrying}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-[var(--surface-card)] text-[var(--ink-strong)] border border-[var(--line-subtle)] rounded-xl shadow-card hover:bg-[var(--surface-subtle)] disabled:opacity-50 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-[var(--surface-card)] text-[var(--ink-strong)] border border-[var(--line-subtle)] rounded-xl shadow-card hover:bg-[var(--surface-subtle)] disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? "animate-spin" : ""}`} />
                   <span>{isRetrying ? "Retrying..." : "Retry Loading"}</span>
                 </button>
                 {error.code === "SESSION_EXPIRED" && (
                   <button
-                    onClick={() => router.push("/login")}
-                    className="px-5 py-2.5 text-xs font-bold bg-accent-primary text-white rounded-xl shadow-card hover:bg-accent-primary/90 transition-all cursor-pointer"
+                    onClick={onLogin}
+                    className="px-5 py-2.5 text-xs font-bold bg-accent-primary text-white rounded-xl shadow-card hover:bg-accent-primary/90 transition-colors cursor-pointer"
                   >
                     Log In Again
                   </button>
                 )}
               </div>
             </div>
-          ) : data && data.logs && data.logs.length > 0 ? (
+          ) : totalLogs > 0 ? (
             <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-2xl overflow-x-auto shadow-card">
               {error && (
                 <div className="p-3 bg-amber-500/10 border-b border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center justify-between gap-2">
@@ -605,7 +671,7 @@ function SubjectDetailContent() {
                     <span>CampusLynx is busy. Showing latest cached logs.</span>
                   </div>
                   <button
-                    onClick={() => fetchDetails(true)}
+                    onClick={onRetry}
                     disabled={isRetrying}
                     className="font-bold underline hover:no-underline shrink-0 cursor-pointer"
                   >
@@ -628,65 +694,48 @@ function SubjectDetailContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(() => {
-                    const filteredLogs = data.logs.filter((log) => {
-                      if (logFilter === "all") return true;
-                      if (logFilter === "present") return log.status === "Present";
-                      if (logFilter === "absent") return log.status === "Absent";
-                      return true;
-                    });
-                    
-                    if (filteredLogs.length === 0) {
-                      return (
-                        <tr>
-                          <td colSpan={3} className="p-8 text-center text-sm font-medium text-[var(--ink-muted)] font-nunito">
-                            No logs match the selected filter.
-                          </td>
-                        </tr>
-                      );
-                    }
-                    
-                    return filteredLogs.map((log, i) => {
-                      const match = log.date.match(/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})(?:\s*\((.*?)\))?/);
-                      const displayDate = match ? match[1] : log.date;
-                      const displayTime = match ? match[2]?.replace(/\s+/g, " ") : undefined;
-
-                      return (
-                        <tr
-                          key={i}
-                          className="border-b border-[var(--line-subtle)] hover:bg-[var(--surface-subtle)] transition-colors last:border-0"
-                        >
-                          <td className="p-3 sm:p-4 text-xs sm:text-sm font-semibold text-[var(--ink-strong)]">
-                            <div className="flex flex-col">
-                              <span className="font-semibold text-[var(--ink-strong)] whitespace-nowrap">{displayDate}</span>
-                              {displayTime && (
-                                <span className="text-[10px] font-normal text-[var(--ink-muted)] whitespace-nowrap">
-                                  {displayTime}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-3 sm:p-4 text-xs sm:text-sm text-[var(--ink-muted)] font-medium">
-                            {log.type}
-                          </td>
-                          <td className="p-3 sm:p-4 text-right sm:text-left">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] whitespace-nowrap ${
-                                log.status === "Present"
-                                  ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
-                                  : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
-                              }`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${
-                                log.status === "Present" ? "bg-green-500 animate-pulse" : "bg-red-500"
-                              }`} />
-                              {log.status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    });
-                  })()}
+                  {filteredLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="p-8 text-center text-sm font-medium text-[var(--ink-muted)] font-nunito">
+                        No logs match the selected filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredLogs.map(({ log, displayDate, displayTime }, i) => (
+                      <tr
+                        key={`${log.date}-${log.type}-${i}`}
+                        className="border-b border-[var(--line-subtle)] hover:bg-[var(--surface-subtle)] transition-colors last:border-0"
+                      >
+                        <td className="p-3 sm:p-4 text-xs sm:text-sm font-semibold text-[var(--ink-strong)]">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-[var(--ink-strong)] whitespace-nowrap">{displayDate}</span>
+                            {displayTime && (
+                              <span className="text-[10px] font-normal text-[var(--ink-muted)] whitespace-nowrap">
+                                {displayTime}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 sm:p-4 text-xs sm:text-sm text-[var(--ink-muted)] font-medium">
+                          {log.type}
+                        </td>
+                        <td className="p-3 sm:p-4 text-right sm:text-left">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border whitespace-nowrap ${
+                              log.status === "Present"
+                                ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+                                : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              log.status === "Present" ? "bg-green-500" : "bg-red-500"
+                            }`} />
+                            {log.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -707,7 +756,7 @@ function SubjectDetailContent() {
               </div>
               {detailLink && (
                 <button
-                  onClick={() => fetchDetails(true)}
+                  onClick={onRetry}
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink-strong)] transition-colors cursor-pointer"
                 >
                   <RefreshCw className="w-3 h-3" />
@@ -717,10 +766,8 @@ function SubjectDetailContent() {
             </div>
           )}
         </div>
-      </div>
-    </DashboardLayout>
   );
-}
+});
 
 export default function SubjectDetailPage() {
   return (

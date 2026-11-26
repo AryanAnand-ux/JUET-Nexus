@@ -592,36 +592,48 @@ export async function fetchMarkRows(
   const pdfRows: PortalMarkRow[] = [];
   const jsonRows: PortalMarkRow[] = [];
 
-  // Strategy 1: Fetch the official Event-Wise Marks PDF report from CampusLynx.
-  if (transport.getBuffer && args.registrationcode) {
-    try {
-      const reportPath = `/studentsexamview/printstudent-exammarks/${args.instituteid}/${args.registrationid}/${args.registrationcode}`;
-      const pdfBuf = await transport.getBuffer(reportPath);
-      if (pdfBuf && pdfBuf.length > 0) {
-        const rawText = extractTextFromPdf(pdfBuf);
-        const reportRows = parsePdfMarks(rawText);
-        if (reportRows.length > 0) {
-          pdfRows.push(...reportRows);
-        }
-      }
-    } catch {
-      // PDF report fetch failed, fall back to JSON
-    }
-  }
+  // Strategy 1 (PDF), Strategy 2 (base JSON), and Strategy 3a primary events query
+  // run concurrently to avoid 3 sequential portal round-trips on cold sync.
+  const eventPayloadVariants: Record<string, unknown>[] = [
+    { instituteid: args.instituteid, registationid: args.registrationid, registrationid: args.registrationid },
+    { instituteid: args.instituteid, registrationid: args.registrationid },
+    { instituteid: args.instituteid, registationid: args.registrationid },
+    ...(args.registrationcode ? [{ instituteid: args.instituteid, registrationid: args.registrationid, registrationcode: args.registrationcode }] : []),
+  ];
 
-  // Strategy 2: Base JSON fetch (returns the latest published event only in many cases)
-  try {
-    const rawResponse = await transport.postEncrypted(EXAM_MARKS_PATH, {
+  const [pdfSettled, baseJsonSettled, primaryEventSettled] = await Promise.allSettled([
+    transport.getBuffer && args.registrationcode
+      ? transport.getBuffer(`/studentsexamview/printstudent-exammarks/${args.instituteid}/${args.registrationid}/${args.registrationcode}`)
+      : Promise.resolve(null),
+    transport.postEncrypted(EXAM_MARKS_PATH, {
       instituteid: args.instituteid,
       registrationid: args.registrationid,
       companyid: args.companyid,
-    });
-    const baseRows = extractMarkRowsFromPayload(rawResponse, EXAM_MARKS_PATH);
-    if (baseRows.length > 0) {
-      jsonRows.push(...baseRows);
+    }),
+    transport.postEncrypted(GET_EVENTS_PATH, eventPayloadVariants[0]),
+  ]);
+
+  if (pdfSettled.status === "fulfilled" && pdfSettled.value && pdfSettled.value.length > 0) {
+    try {
+      const rawText = extractTextFromPdf(pdfSettled.value);
+      const reportRows = parsePdfMarks(rawText);
+      if (reportRows.length > 0) {
+        pdfRows.push(...reportRows);
+      }
+    } catch {
+      // PDF parse failed, rely on JSON strategies
     }
-  } catch {
-    // Tolerant
+  }
+
+  if (baseJsonSettled.status === "fulfilled" && baseJsonSettled.value) {
+    try {
+      const baseRows = extractMarkRowsFromPayload(baseJsonSettled.value, EXAM_MARKS_PATH);
+      if (baseRows.length > 0) {
+        jsonRows.push(...baseRows);
+      }
+    } catch {
+      // Tolerant
+    }
   }
 
   // Strategy 3: Multi-event query.
@@ -654,34 +666,37 @@ export async function fetchMarkRows(
     }
   };
 
-  // 3a: Try the dedicated events endpoint with a few payload variants
-  const eventPayloadVariants: Record<string, unknown>[] = [
-    { instituteid: args.instituteid, registationid: args.registrationid, registrationid: args.registrationid },
-    { instituteid: args.instituteid, registrationid: args.registrationid },
-    { instituteid: args.instituteid, registationid: args.registrationid },
-    ...(args.registrationcode ? [{ instituteid: args.instituteid, registrationid: args.registrationid, registrationcode: args.registrationcode }] : []),
-  ];
+  const consumeEventResponse = (eventRes: any) => {
+    const rawEvents =
+      eventRes?.response?.eventcode?.examevent ||
+      eventRes?.response?.eventcode ||
+      eventRes?.response?.examevent ||
+      eventRes?.response?.events ||
+      eventRes?.eventcode?.examevent ||
+      [];
 
-  for (let i = 0; i < eventPayloadVariants.length; i++) {
-    try {
-      const eventRes = (await transport.postEncrypted(GET_EVENTS_PATH, eventPayloadVariants[i])) as any;
-      const rawEvents =
-        eventRes?.response?.eventcode?.examevent ||
-        eventRes?.response?.eventcode ||
-        eventRes?.response?.examevent ||
-        eventRes?.response?.events ||
-        eventRes?.eventcode?.examevent ||
-        [];
-
-      if (Array.isArray(rawEvents)) {
-        for (const ev of rawEvents) {
-          addEventId(ev?.exameventid ?? ev?.eventid ?? ev?.id);
-        }
+    if (Array.isArray(rawEvents)) {
+      for (const ev of rawEvents) {
+        addEventId(ev?.exameventid ?? ev?.eventid ?? ev?.id);
       }
-      collectEventIdsDeep(eventRes);
-      if (knownEventIds.size > 0) break;
-    } catch {
-      // Tolerant
+    }
+    collectEventIdsDeep(eventRes);
+  };
+
+  if (primaryEventSettled.status === "fulfilled" && primaryEventSettled.value) {
+    consumeEventResponse(primaryEventSettled.value);
+  }
+
+  // Fallback variants only if the primary events query yielded nothing
+  if (knownEventIds.size === 0) {
+    for (let i = 1; i < eventPayloadVariants.length; i++) {
+      try {
+        const eventRes = (await transport.postEncrypted(GET_EVENTS_PATH, eventPayloadVariants[i])) as any;
+        consumeEventResponse(eventRes);
+        if (knownEventIds.size > 0) break;
+      } catch {
+        // Tolerant
+      }
     }
   }
 
@@ -966,6 +981,62 @@ export interface CampusLynxDashboardArgs {
   username: string;
 }
 
+/**
+ * Run candidate tasks concurrently and resolve as soon as the highest-priority
+ * candidate (lowest index) with non-empty results is ready, without waiting
+ * for lower-priority candidates that may still be in flight or timing out.
+ */
+async function firstNonEmptyInPriorityOrder<T>(
+  tasks: Array<() => Promise<T[]>>,
+  throwIfAllRejected = false
+): Promise<T[]> {
+  if (tasks.length === 0) return [];
+  return new Promise<T[]>((resolve, reject) => {
+    const settled: Array<{ done: boolean; value?: T[]; error?: unknown }> = tasks.map(() => ({
+      done: false,
+    }));
+    let finished = false;
+
+    const tryResolve = () => {
+      if (finished) return;
+      for (let i = 0; i < settled.length; i++) {
+        const s = settled[i];
+        if (!s.done) {
+          // Higher-priority candidate is still in flight; wait for it.
+          return;
+        }
+        if (s.value && s.value.length > 0) {
+          finished = true;
+          resolve(s.value);
+          return;
+        }
+      }
+      // All tasks have settled and none returned non-empty results.
+      finished = true;
+      if (throwIfAllRejected && settled.every((s) => s.error !== undefined)) {
+        reject(settled[0].error);
+      } else {
+        resolve([]);
+      }
+    };
+
+    tasks.forEach((task, idx) => {
+      Promise.resolve()
+        .then(() => task())
+        .then(
+          (value) => {
+            settled[idx] = { done: true, value };
+            tryResolve();
+          },
+          (error) => {
+            settled[idx] = { done: true, error };
+            tryResolve();
+          }
+        );
+    });
+  });
+}
+
 async function fetchMarkRowsWithFallback(
   transport: DashboardTransport,
   args: {
@@ -975,11 +1046,9 @@ async function fetchMarkRowsWithFallback(
   },
   registrations: PortalRegistration[]
 ): Promise<PortalMarkRow[]> {
-  // Probe all candidate registrations concurrently so a new empty semester
-  // does not add a sequential round-trip before the active semester is found.
   const candidates = registrations.slice(0, 3).filter((r) => r.registrationid);
-  const results = await Promise.allSettled(
-    candidates.map((reg) =>
+  return firstNonEmptyInPriorityOrder(
+    candidates.map((reg) => () =>
       fetchMarkRows(transport, {
         instituteid: args.instituteid,
         registrationid: reg.registrationid!,
@@ -989,14 +1058,6 @@ async function fetchMarkRowsWithFallback(
       })
     )
   );
-
-  // Return the first fulfilled result with rows, preserving registration order.
-  for (const result of results) {
-    if (result.status === "fulfilled" && result.value.length > 0) {
-      return result.value;
-    }
-  }
-  return [];
 }
 
 async function fetchAttendanceWithFallback(
@@ -1005,35 +1066,18 @@ async function fetchAttendanceWithFallback(
   stynumber: string,
   registrations: PortalRegistration[]
 ): Promise<AttendanceRecord[]> {
-  // Probe all candidate registrations concurrently so a new empty semester
-  // (e.g. 2027EVESEM added before data exists) does not add a full sequential
-  // round-trip before the actual active semester is tried.
   const candidates = registrations.slice(0, 3).filter((r) => r.registrationid);
-  const results = await Promise.allSettled(
-    candidates.map((reg) =>
+  return firstNonEmptyInPriorityOrder(
+    candidates.map((reg) => () =>
       fetchAttendanceSummary(transport, {
         instituteid,
         stynumber,
         registrationid: reg.registrationid!,
         registrationcode: reg.registrationcode ?? "",
       })
-    )
+    ),
+    true
   );
-
-  // Return the first fulfilled result that has actual records, preserving
-  // registration order (newest semester first, as sorted by fetchRegistrationsOrdered).
-  let firstError: unknown = null;
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      if (result.value.length > 0) return result.value;
-    } else if (!firstError) {
-      firstError = result.reason;
-    }
-  }
-  if (firstError && results.every((r) => r.status === "rejected")) {
-    throw firstError;
-  }
-  return [];
 }
 
 /**
@@ -1079,7 +1123,7 @@ export async function fetchCampusLynxDashboard(
       name: profile.name,
       enrollmentno: profile.enrollment,
     }),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 4500)),
   ]);
 
   const [attendanceSettled, marksSettled, semestersSettled] = await Promise.allSettled([

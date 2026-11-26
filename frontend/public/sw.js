@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexus-cache-v1";
+const CACHE_NAME = "nexus-cache-v2";
 
 const PRECACHE_ASSETS = [
   "/login",
@@ -17,7 +17,6 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_NAME)
       .then((cache) => {
-        console.log("[SW] Pre-caching static assets");
         return cache.addAll(PRECACHE_ASSETS);
       })
       .then(() => self.skipWaiting())
@@ -27,19 +26,16 @@ self.addEventListener("install", (event) => {
 // Activate Event
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cache) => {
-            if (cache !== CACHE_NAME) {
-              console.log("[SW] Clearing old cache:", cache);
-              return caches.delete(cache);
-            }
-          })
-        );
-      })
-      .then(() => self.clients.claim())
+    Promise.all([
+      caches.keys().then((cacheNames) =>
+        Promise.all(
+          cacheNames.map((cache) => (cache !== CACHE_NAME ? caches.delete(cache) : undefined))
+        )
+      ),
+      self.registration.navigationPreload
+        ? self.registration.navigationPreload.enable().catch(() => undefined)
+        : Promise.resolve(),
+    ]).then(() => self.clients.claim())
   );
 });
 
@@ -57,9 +53,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Define strategy:
-  // For static assets (JS, CSS, images, web manifest, fonts), use Cache-First.
-  // For document/page navigation or other routes, use Network-First with cache fallback.
+  // Cache-First for immutable/hashed static assets
   const isStaticAsset =
     url.pathname.includes("/_next/static/") ||
     url.pathname.endsWith(".js") ||
@@ -73,7 +67,6 @@ self.addEventListener("fetch", (event) => {
     url.pathname.includes("/manifest.json");
 
   if (isStaticAsset) {
-    // Cache-First Strategy
     event.respondWith(
       caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
         if (cachedResponse) {
@@ -98,38 +91,21 @@ self.addEventListener("fetch", (event) => {
           });
       })
     );
-  } else {
-    // Network-First with Cache Fallback Strategy
+    return;
+  }
+
+  // For document navigations: do not store authenticated/mutable Next.js HTML shells
+  // in Cache Storage (prevents stale HTML referencing deleted chunk hashes after deploys).
+  // Use Navigation Preload when available and fall back cleanly when offline.
+  if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          // Cache the successful network response
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            const cachePromise = caches.open(CACHE_NAME).then((cache) => {
-              return cache.put(event.request, responseToCache);
-            });
-            if (event.waitUntil) {
-              event.waitUntil(cachePromise);
-            }
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // Fallback to cache if network fails
-          return caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            // If it's a navigation request and no cache matched, fallback to cached login page
-            if (event.request.mode === "navigate") {
-              return caches.match("/login").then((fallback) => {
-                return fallback || new Response("Offline", { status: 503, statusText: "Offline" });
-              });
-            }
-            return new Response("Offline", { status: 503, statusText: "Offline" });
-          });
-        })
+      Promise.resolve(event.preloadResponse)
+        .then((preloaded) => preloaded || fetch(event.request))
+        .catch(() =>
+          caches.match("/login").then(
+            (fallback) => fallback || new Response("Offline", { status: 503, statusText: "Offline" })
+          )
+        )
     );
   }
 });

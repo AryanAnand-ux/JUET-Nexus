@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { useDashboard } from "@/hooks/useDashboard";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useGrades } from "@/hooks/useGrades";
 import { GradeCard } from "@/components/GradeCard";
@@ -56,8 +55,11 @@ export default function GradesPage() {
     }
   }, [router, isHydrated]);
 
-  const { data: dashboardData, isRefreshing: isDashboardRefreshing } = useDashboard(activeEnrollment);
   const { data: gradesData, isLoading, error, refresh } = useGrades();
+
+  const studentName = isHydrated && typeof window !== "undefined"
+    ? localStorage.getItem("studentName") || "Student"
+    : "Student";
 
   const handleLogout = async () => {
     await performLogout();
@@ -68,11 +70,11 @@ export default function GradesPage() {
 
   return (
     <DashboardLayout
-      studentName={dashboardData?.student?.name || "Student"}
+      studentName={studentName}
       enrollment={activeEnrollment}
       onLogout={handleLogout}
       onRefresh={refresh}
-      isRefreshing={isLoading || isDashboardRefreshing}
+      isRefreshing={isLoading}
     >
       <div className="space-y-6">
         {/* Top Action Bar */}

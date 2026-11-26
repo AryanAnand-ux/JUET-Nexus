@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { FigmaCard } from "./base";
 import type { AttendanceRecord } from "@/types";
@@ -62,7 +62,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     };
   };
 
-  const getTotalStats = () => {
+  const stats = useMemo(() => {
     if (attendanceRecords.length === 0) {
       return { subjectCount: 0, avgPercentage: 0, belowThreshold: 0 };
     }
@@ -75,9 +75,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     const belowThreshold = activeRecords.filter((r) => r.percentage < 75).length;
 
     return { subjectCount: attendanceRecords.length, avgPercentage, belowThreshold };
-  };
-
-  const stats = getTotalStats();
+  }, [attendanceRecords]);
 
   return (
     <FigmaCard 
@@ -159,109 +157,13 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       fetchAttendanceDetailDirect(record.subject, record.detailLink);
                     }
                   }}
-                  onTouchStart={() => {
-                    if (record.detailLink) {
-                      fetchAttendanceDetailDirect(record.subject, record.detailLink);
-                    }
-                  }}
-                  className="group relative block bg-[var(--surface-card)] hover:bg-neutral-50 dark:hover:bg-[#202020] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-[20px] p-3.5 sm:p-5 transition-all duration-200 hover:shadow-elevated active:scale-[0.995] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-600"
+                  className="group relative block bg-[var(--surface-card)] hover:bg-neutral-50 dark:hover:bg-[#202020] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-[20px] p-3.5 sm:p-5 transition-colors duration-200 hover:shadow-elevated active:scale-[0.995] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-600"
                 >
-                  {/* Mobile Layout (< md): Progress circle beside course name, metrics row below */}
-                  <div className="flex flex-col gap-3 md:hidden">
-                    {/* Top Row: Circle beside Course Name & Badges */}
-                    <div className="flex items-start gap-3">
-                      {/* Circular Progress Indicator — centered, dynamic font size, no overflow */}
-                      <div className="relative w-[72px] h-[72px] flex items-center justify-center shrink-0 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-full">
-                        <svg viewBox="0 0 96 96" className="transform -rotate-90 w-[72px] h-[72px]">
-                          <circle
-                            cx="48"
-                            cy="48"
-                            r={radius}
-                            stroke="#EAEAEC"
-                            className="dark:stroke-[#2C2C2C]"
-                            strokeWidth="7"
-                            fill="transparent"
-                          />
-                          <circle
-                            cx="48"
-                            cy="48"
-                            r={radius}
-                            stroke="currentColor"
-                            strokeWidth="7"
-                            fill="transparent"
-                            strokeDasharray={circumference}
-                            strokeDashoffset={strokeDashoffset}
-                            strokeLinecap="round"
-                            className={`transition-all duration-1000 ${status.ringColor}`}
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center p-1 text-center pointer-events-none">
-                          <span className={`${formattedPct.length >= 5 ? "text-xs font-bold tracking-tight" : "text-sm font-extrabold"} text-[var(--ink-strong)] leading-none tabular-nums select-none`}>
-                            {formattedPct}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Course Info Column */}
-                      <div className="flex-1 min-w-0">
-                        {/* Status Badge + Opening Indicator row */}
-                        <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-[0.1em] inline-flex items-center shadow-sm ${status.badgeClass}`}>
-                            {status.icon}
-                            {status.text}
-                          </span>
-                          {navigatingSubject === record.subject && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 flex items-center gap-1 shrink-0">
-                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                              <span>Opening...</span>
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Course Name — wraps naturally, never overlaps */}
-                        <h4 className="text-sm font-semibold text-[var(--ink-strong)] leading-snug break-words">
-                          {record.subject}
-                        </h4>
-
-                        {/* Quick-Info Skip Indicator */}
-                        {skipInfo && (
-                          <div className="mt-1.5 flex items-center">
-                            <span className={`px-2 py-0.5 rounded-lg text-[11px] font-medium border ${skipInfo.className}`}>
-                              {skipInfo.text}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Metrics below the top row in a compact responsive layout */}
-                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-2 border-t border-[var(--line-subtle)]">
-                      <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl py-1.5 px-1.5 text-center">
-                        <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-wider mb-0.5">Lectures</p>
-                        <p className="text-xs font-bold text-[var(--ink-strong)] tabular-nums">
-                          {record.lecturePercent > 0 ? `${record.lecturePercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
-                        </p>
-                      </div>
-                      <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl py-1.5 px-1.5 text-center">
-                        <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-wider mb-0.5">Tutorials</p>
-                        <p className="text-xs font-bold text-[var(--ink-strong)] tabular-nums">
-                          {record.tutorialPercent > 0 ? `${record.tutorialPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
-                        </p>
-                      </div>
-                      <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl py-1.5 px-1.5 text-center">
-                        <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-wider mb-0.5">Practicals</p>
-                        <p className="text-xs font-bold text-[var(--ink-strong)] tabular-nums">
-                          {record.practicalPercent > 0 ? `${record.practicalPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Desktop Layout (md:flex): Intact desktop layout */}
-                  <div className="hidden md:flex items-center gap-6">
-                    {/* Circular Progress Indicator — centered, dynamic font size, no overflow */}
-                    <div className="relative w-24 h-24 flex items-center justify-center shrink-0 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-full">
-                      <svg viewBox="0 0 96 96" className="transform -rotate-90 w-24 h-24">
+                  {/* Unified Responsive Layout: single SVG + metrics DOM shared across mobile and desktop */}
+                  <div className="grid grid-cols-[72px_1fr] md:grid-cols-[96px_1fr] gap-x-3 gap-y-3 md:gap-x-6 md:gap-y-3 items-start md:items-center">
+                    {/* Circular Progress Indicator */}
+                    <div className="relative w-[72px] h-[72px] md:w-24 md:h-24 md:row-span-2 flex items-center justify-center shrink-0 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-full">
+                      <svg viewBox="0 0 96 96" className="transform -rotate-90 w-[72px] h-[72px] md:w-24 md:h-24">
                         <circle
                           cx="48"
                           cy="48"
@@ -281,33 +183,31 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           strokeDasharray={circumference}
                           strokeDashoffset={strokeDashoffset}
                           strokeLinecap="round"
-                          className={`transition-all duration-1000 ${status.ringColor}`}
+                          className={`transition-[stroke-dashoffset] duration-700 ${status.ringColor}`}
                         />
                       </svg>
-                      <div className="absolute inset-0 flex items-center justify-center p-2 text-center pointer-events-none">
-                        <span className={`${formattedPct.length >= 5 ? "text-xl font-bold tracking-tight" : "text-2xl font-extrabold"} text-[var(--ink-strong)] leading-none tabular-nums select-none`}>
+                      <div className="absolute inset-0 flex items-center justify-center p-1 md:p-2 text-center pointer-events-none">
+                        <span className={`${formattedPct.length >= 5 ? "text-xs md:text-xl font-bold tracking-tight" : "text-sm md:text-2xl font-extrabold"} text-[var(--ink-strong)] leading-none tabular-nums select-none`}>
                           {formattedPct}
                         </span>
                       </div>
                     </div>
 
-                    {/* Details Panel */}
-                    <div className="flex-1 flex flex-col justify-between w-full min-w-0">
-                      {/* Header Title & Status */}
-                      <div className="flex justify-between items-start gap-4 mb-3">
-                        <div className="flex-1 min-w-0 pr-2">
-                          <h4 className="text-base font-semibold text-[var(--ink-strong)] leading-snug break-words">
-                            {record.subject}
-                          </h4>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                    {/* Course Info Column */}
+                    <div className="min-w-0 flex flex-col">
+                      {/* Title & Status Badge */}
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 md:gap-4 mb-1.5 md:mb-2">
+                        <h4 className="order-2 md:order-1 text-sm md:text-base font-semibold text-[var(--ink-strong)] leading-snug break-words flex-1 min-w-0">
+                          {record.subject}
+                        </h4>
+                        <div className="order-1 md:order-2 flex items-center justify-between md:justify-end gap-1.5 md:gap-2 shrink-0">
                           {navigatingSubject === record.subject && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 flex items-center gap-1.5 animate-pulse">
-                              <Loader2 className="w-3 h-3 animate-spin" />
+                            <span className="order-2 md:order-1 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 flex items-center gap-1 md:gap-1.5">
+                              <Loader2 className="w-2.5 h-2.5 md:w-3 md:h-3 animate-spin" />
                               <span>Opening...</span>
                             </span>
                           )}
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em] flex items-center shadow-sm ${status.badgeClass}`}>
+                          <span className={`order-1 md:order-2 px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.1em] md:tracking-[0.12em] inline-flex items-center shadow-sm ${status.badgeClass}`}>
                             {status.icon}
                             {status.text}
                           </span>
@@ -316,33 +216,33 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
                       {/* Quick-Info Skip Indicator */}
                       {skipInfo && (
-                        <div className="mb-3 flex items-center">
-                          <span className={`px-2.5 py-1 rounded-xl text-xs font-medium border ${skipInfo.className}`}>
+                        <div className="flex items-center">
+                          <span className={`px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg md:rounded-xl text-[11px] md:text-xs font-medium border ${skipInfo.className}`}>
                             {skipInfo.text}
                           </span>
                         </div>
                       )}
+                    </div>
 
-                      {/* Stats Breakdowns */}
-                      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                        <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-[#262626] hover:shadow-sm">
-                          <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-[0.14em] mb-0.5">Lectures</p>
-                          <p className="text-xs sm:text-sm font-bold text-[var(--ink-strong)] tabular-nums">
-                            {record.lecturePercent > 0 ? `${record.lecturePercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
-                          </p>
-                        </div>
-                        <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-[#262626] hover:shadow-sm">
-                          <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-[0.14em] mb-0.5">Tutorials</p>
-                          <p className="text-xs sm:text-sm font-bold text-[var(--ink-strong)] tabular-nums">
-                            {record.tutorialPercent > 0 ? `${record.tutorialPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
-                          </p>
-                        </div>
-                        <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl p-1.5 sm:p-2.5 text-center transition-all hover:bg-white dark:hover:bg-[#262626] hover:shadow-sm">
-                          <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-[0.14em] mb-0.5">Practicals</p>
-                          <p className="text-xs sm:text-sm font-bold text-[var(--ink-strong)] tabular-nums">
-                            {record.practicalPercent > 0 ? `${record.practicalPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
-                          </p>
-                        </div>
+                    {/* Component Breakdowns (full width on mobile, right column on desktop) */}
+                    <div className="col-span-2 md:col-span-1 md:col-start-2 grid grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 pt-2 md:pt-0 border-t md:border-t-0 border-[var(--line-subtle)]">
+                      <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl py-1.5 px-1.5 md:p-2.5 text-center transition-colors hover:bg-white dark:hover:bg-[#262626] hover:shadow-sm">
+                        <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-wider md:tracking-[0.14em] mb-0.5">Lectures</p>
+                        <p className="text-xs md:text-sm font-bold text-[var(--ink-strong)] tabular-nums">
+                          {record.lecturePercent > 0 ? `${record.lecturePercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
+                        </p>
+                      </div>
+                      <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl py-1.5 px-1.5 md:p-2.5 text-center transition-colors hover:bg-white dark:hover:bg-[#262626] hover:shadow-sm">
+                        <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-wider md:tracking-[0.14em] mb-0.5">Tutorials</p>
+                        <p className="text-xs md:text-sm font-bold text-[var(--ink-strong)] tabular-nums">
+                          {record.tutorialPercent > 0 ? `${record.tutorialPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
+                        </p>
+                      </div>
+                      <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-xl py-1.5 px-1.5 md:p-2.5 text-center transition-colors hover:bg-white dark:hover:bg-[#262626] hover:shadow-sm">
+                        <p className="text-[8px] sm:text-[9px] font-semibold text-[var(--ink-muted)] uppercase tracking-wider md:tracking-[0.14em] mb-0.5">Practicals</p>
+                        <p className="text-xs md:text-sm font-bold text-[var(--ink-strong)] tabular-nums">
+                          {record.practicalPercent > 0 ? `${record.practicalPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
+                        </p>
                       </div>
                     </div>
                   </div>

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { useDashboard } from "@/hooks/useDashboard";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useExamSchedule } from "@/hooks/useExamSchedule";
 import { ExamSchedule } from "@/components/ExamSchedule";
@@ -58,31 +57,47 @@ export default function ExamPage() {
     }
   }, [router, isHydrated]);
 
-  const { data: dashboardData, isRefreshing: isDashboardRefreshing } = useDashboard(activeEnrollment);
   const { data: examData, isLoading, error, refresh, selectedEventId, selectEvent } = useExamSchedule();
 
-  const courseMap = React.useMemo(() => {
+  // Read cached studentName & courseMap synchronously from localStorage so
+  // visiting /dashboard/exam never triggers an unrelated background /api/dashboard refresh.
+  const { studentName, courseMap } = React.useMemo(() => {
     const map: Record<string, string> = {};
-    if (dashboardData?.courses) {
-      for (const c of dashboardData.courses) {
-        if (c.code && c.title) {
-          map[c.code.toUpperCase()] = c.title;
-        }
-      }
+    let name = "Student";
+    if (!isHydrated || typeof window === "undefined" || !activeEnrollment) {
+      return { studentName: name, courseMap: map };
     }
-    if (dashboardData?.attendance) {
-      for (const a of dashboardData.attendance) {
-        if (a.subject && a.detailLink) {
-          const match = String(a.detailLink).match(/code=([^&]+)/);
-          if (match && match[1]) {
-            const code = decodeURIComponent(match[1]).toUpperCase();
-            map[code] = a.subject;
+    name = localStorage.getItem("studentName") || "Student";
+    try {
+      const raw = localStorage.getItem(`juet_dashboard_cache_v3_${activeEnrollment.trim().toUpperCase()}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const dashboardData = parsed?.data;
+        if (dashboardData?.student?.name) name = dashboardData.student.name;
+        if (Array.isArray(dashboardData?.courses)) {
+          for (const c of dashboardData.courses) {
+            if (c.code && c.title) {
+              map[String(c.code).toUpperCase()] = c.title;
+            }
+          }
+        }
+        if (Array.isArray(dashboardData?.attendance)) {
+          for (const a of dashboardData.attendance) {
+            if (a.subject && a.detailLink) {
+              const match = String(a.detailLink).match(/code=([^&]+)/);
+              if (match && match[1]) {
+                const code = decodeURIComponent(match[1]).toUpperCase();
+                map[code] = a.subject;
+              }
+            }
           }
         }
       }
+    } catch {
+      // Best-effort cache lookup
     }
-    return map;
-  }, [dashboardData]);
+    return { studentName: name, courseMap: map };
+  }, [isHydrated, activeEnrollment]);
 
   const handleLogout = async () => {
     await performLogout();
@@ -93,11 +108,11 @@ export default function ExamPage() {
 
   return (
     <DashboardLayout
-      studentName={dashboardData?.student?.name || "Student"}
+      studentName={studentName}
       enrollment={activeEnrollment}
       onLogout={handleLogout}
       onRefresh={refresh}
-      isRefreshing={isLoading || isDashboardRefreshing}
+      isRefreshing={isLoading}
     >
       <div className="space-y-6">
         {/* Top Action Bar */}

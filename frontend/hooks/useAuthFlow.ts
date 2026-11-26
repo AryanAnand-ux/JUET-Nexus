@@ -12,6 +12,7 @@
 import { useState, useCallback, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { markSessionFresh } from "@/hooks/useSessionKeepAlive";
 import type { LoginFlow } from "@/types";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/+$/, "");
@@ -71,6 +72,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
 
   const persistSession = useCallback(
     (enrollment: string, role: string, sessionToken?: string) => {
+      markSessionFresh();
       setIsAuthenticated(true);
       if (typeof window !== "undefined") {
         localStorage.setItem("enrollment", enrollment.toUpperCase());

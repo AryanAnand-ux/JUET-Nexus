@@ -99,6 +99,7 @@ export async function createServer() {
       return cb(null, false);
     },
     credentials: true,
+    maxAge: 86400,
     exposedHeaders: ['x-cache', 'x-cache-status', 'x-cache-ttl', 'x-session-token'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-Token', 'X-Enrollment', 'Cache-Control', 'X-Requested-With'],
   });
@@ -140,7 +141,19 @@ export async function createServer() {
     timestamp: new Date().toISOString(),
   }));
 
-  fastify.setErrorHandler((error, _request, reply) => {
+  fastify.setErrorHandler((error, request, reply) => {
+    // Client disconnects, page navigations, and aborted prefetch streams are normal HTTP events;
+    // do not log them as 500 server crashes or attempt to write to destroyed sockets.
+    if (
+      error.code === 'ERR_STREAM_PREMATURE_CLOSE' ||
+      error.message === 'premature close' ||
+      request.raw.destroyed ||
+      reply.raw.writableEnded
+    ) {
+      request.log.debug?.(error, '[Server] Client aborted connection');
+      return;
+    }
+
     fastify.log.error(error);
     const isProduction = process.env.NODE_ENV === 'production';
     const statusCode = error.statusCode || 500;

@@ -1,5 +1,11 @@
 import { FastifyInstance } from 'fastify';
-import { getOrRenewCampusLynxIdentity } from './session';
+import {
+  extractEncryptedSession,
+  getCampusLynxIdentity,
+  getOrRenewCampusLynxIdentity,
+  isPortalTokenDead,
+  setAuthCookie,
+} from './session';
 import { createPortalClient, getSharedPortalClient } from '../portal/client';
 import { fetchAttendanceDetail, parseDetailLink } from '../portal/attendance';
 import { PortalError } from '../portal/types';
@@ -8,7 +14,8 @@ import { decryptSessionData } from '../utils/encryption';
 import type { AttendanceDetailsResponse } from '../../../shared/types';
 
 const ATTENDANCE_CACHE_TTL_SEC = 86400; // 24 hours (long retention for historical logs, revalidated via SWR)
-const ATTENDANCE_PORTAL_TIMEOUT_MS = 25000; // 25 seconds
+const ATTENDANCE_PORTAL_TIMEOUT_MS = 14000; // 14 seconds (allows single retry within client 30s timeout)
+const inFlightAttendance = new Map<string, Promise<AttendanceDetailsResponse>>();
 
 export async function registerAttendanceRoutes(
   fastify: FastifyInstance,
@@ -53,22 +60,61 @@ export async function registerAttendanceRoutes(
           });
         }
 
+        let localIdentity;
+        try {
+          localIdentity = getCampusLynxIdentity(request);
+        } catch (err: any) {
+          return reply.status(err.statusCode || 401).send({
+            success: false,
+            error: err.message || 'Unauthorized',
+            code: err.code || 'UNAUTHORIZED',
+          });
+        }
+
+        const localEnrollment = localIdentity.enrollmentno || localIdentity.username;
+        const cacheKey = localEnrollment
+          ? `att_detail:${localEnrollment}:${ref.subjectid}:${ref.registrationid}`
+          : null;
+
+        // Check cache BEFORE calling getOrRenewCampusLynxIdentity so cache hits
+        // never stall behind an upstream refreshTokenRequest round-trip.
+        let cachedAttendance: AttendanceDetailsResponse | null = null;
+        if (cache && cacheKey && !isBypassCache) {
+          try {
+            cachedAttendance = await cache.get<AttendanceDetailsResponse>(
+              'attendance',
+              cacheKey
+            );
+            if (cachedAttendance && !isPortalTokenDead(localIdentity)) {
+              const encryptedSession = extractEncryptedSession(request);
+              if (encryptedSession) setAuthCookie(reply, encryptedSession);
+              return reply.send({
+                success: true,
+                data: cachedAttendance,
+                cached: true,
+              });
+            }
+          } catch (cacheErr) {
+            request.log.warn(cacheErr, '[AttendanceDetails] Cache read failed');
+          }
+        }
+
         let identity;
         try {
           identity = await getOrRenewCampusLynxIdentity(request, reply);
         } catch (err: any) {
           // If session renewal failed, try serving stale cache before rejecting
-          const encryptedSession = request.cookies?.auth;
+          const encryptedSession = extractEncryptedSession(request);
           if (encryptedSession && cache) {
             try {
               const session = decryptSessionData(encryptedSession);
               const userEnrollment =
                 session.campusLynx?.enrollmentno || session.enrollment;
               if (userEnrollment) {
-                const cacheKey = `att_detail:${userEnrollment}:${ref.subjectid}:${ref.registrationid}`;
+                const staleKey = `att_detail:${userEnrollment}:${ref.subjectid}:${ref.registrationid}`;
                 const cached = await cache.get<AttendanceDetailsResponse>(
                   'attendance',
-                  cacheKey
+                  staleKey
                 );
                 if (cached) {
                   return reply.send({
@@ -92,28 +138,12 @@ export async function registerAttendanceRoutes(
           });
         }
 
-        const userEnrollment = identity.enrollmentno || identity.username;
-        const cacheKey = userEnrollment
-          ? `att_detail:${userEnrollment}:${ref.subjectid}:${ref.registrationid}`
-          : null;
-
-        // Check cache if not explicitly refreshing
-        if (cache && cacheKey && !isBypassCache) {
-          try {
-            const cached = await cache.get<AttendanceDetailsResponse>(
-              'attendance',
-              cacheKey
-            );
-            if (cached) {
-              return reply.send({
-                success: true,
-                data: cached,
-                cached: true,
-              });
-            }
-          } catch (cacheErr) {
-            request.log.warn(cacheErr, '[AttendanceDetails] Cache read failed');
-          }
+        if (cachedAttendance) {
+          return reply.send({
+            success: true,
+            data: cachedAttendance,
+            cached: true,
+          });
         }
 
         const shared = typeof getSharedPortalClient === 'function' ? getSharedPortalClient() : null;
@@ -125,8 +155,8 @@ export async function registerAttendanceRoutes(
             }),
         };
 
-        try {
-          const detail = await fetchAttendanceDetail(
+        const runFetch = () =>
+          fetchAttendanceDetail(
             transport,
             {
               instituteid: identity.instituteid,
@@ -142,6 +172,25 @@ export async function registerAttendanceRoutes(
               officialPercentage: ref.officialPercentage,
             }
           );
+
+        try {
+          let detail: AttendanceDetailsResponse;
+          if (cacheKey && !isBypassCache) {
+            let pending = inFlightAttendance.get(cacheKey);
+            if (!pending) {
+              pending = runFetch().finally(() => {
+                inFlightAttendance.delete(cacheKey);
+              });
+              inFlightAttendance.set(cacheKey, pending);
+            }
+            detail = await pending;
+          } else {
+            detail = await runFetch();
+          }
+
+          if (request.raw.destroyed || reply.raw.writableEnded) {
+            return;
+          }
 
           if (cache && cacheKey && detail) {
             try {

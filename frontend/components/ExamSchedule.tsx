@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useDeferredValue } from "react";
 import type { ExamScheduleResponse, ExamScheduleItem } from "@/types";
 import {
   Calendar,
@@ -217,15 +217,30 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
   courseMap,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearch = useDeferredValue(searchTerm);
+
+  const preparedItems = useMemo(() => {
+    const rawItems = schedule.items || [];
+    return rawItems.map((item, idx) => {
+      const cleanedSubject = cleanSubjectName(item.subject, courseMap);
+      return {
+        item,
+        paperNum: idx + 1,
+        cleanedSubject,
+        searchBlob: `${cleanedSubject}\0${item.subject}\0${item.roomcode}`.toLowerCase(),
+        status: getExamStatus(item.datetime),
+        dateStr: formatDate(item.datetime),
+        timeStr: formatTime(item.datetime, item.datetimeupto),
+      };
+    });
+  }, [schedule.items, courseMap]);
 
   const items = schedule.items || [];
-  const filtered = items.filter((item) => {
-    const cleaned = cleanSubjectName(item.subject, courseMap).toLowerCase();
-    const rawSub = item.subject.toLowerCase();
-    const room = item.roomcode.toLowerCase();
-    const term = searchTerm.toLowerCase();
-    return cleaned.includes(term) || rawSub.includes(term) || room.includes(term);
-  });
+  const filtered = useMemo(() => {
+    const term = deferredSearch.trim().toLowerCase();
+    if (!term) return preparedItems;
+    return preparedItems.filter((entry) => entry.searchBlob.includes(term));
+  }, [preparedItems, deferredSearch]);
 
   const availableEvents = schedule.availableEvents || [];
 
@@ -321,19 +336,10 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((item, index) => {
-            const originalIndex = items.findIndex(
-              (orig) => orig === item || (orig.subject === item.subject && orig.datetime === item.datetime)
-            );
-            const paperNum = originalIndex >= 0 ? originalIndex + 1 : index + 1;
-            const status = getExamStatus(item.datetime);
-            const dateStr = formatDate(item.datetime);
-            const timeStr = formatTime(item.datetime, item.datetimeupto);
-
-            return (
+          {filtered.map(({ item, paperNum, cleanedSubject, status, dateStr, timeStr }, index) => (
               <div
-                key={`${item.subject}-${index}`}
-                className="group relative flex flex-col justify-between rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-5 shadow-card hover:shadow-elevated hover:border-neutral-300 dark:hover:border-neutral-600 transition-all duration-200"
+                key={`${item.subject}-${paperNum}-${index}`}
+                className="group relative flex flex-col justify-between rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-5 shadow-card hover:shadow-elevated hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors duration-200"
               >
                 <div>
                   {/* Top tags row */}
@@ -354,7 +360,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
 
                   {/* Subject Name */}
                   <h4 className="text-base font-semibold text-[var(--ink-strong)] break-words leading-snug transition-colors">
-                    {cleanSubjectName(item.subject, courseMap)}
+                    {cleanedSubject}
                   </h4>
 
                   {/* Date & Time */}
@@ -384,8 +390,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
                   </div>
                 </div>
               </div>
-            );
-          })}
+          ))}
         </div>
       )}
     </div>

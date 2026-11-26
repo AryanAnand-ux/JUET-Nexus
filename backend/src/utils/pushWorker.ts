@@ -1,7 +1,7 @@
 import { CacheService } from './cache';
 import { decryptSessionData } from './encryption';
 import { webpush } from './vapid';
-import { createPortalClient } from '../portal/client';
+import { createPortalClient, getSharedPortalClient } from '../portal/client';
 import { fetchCampusLynxDashboard } from '../portal/dashboard';
 
 /**
@@ -58,7 +58,8 @@ async function processSubscriber(
       return;
     }
 
-    const client = createPortalClient();
+    const shared = typeof getSharedPortalClient === 'function' ? getSharedPortalClient() : null;
+    const client = shared || createPortalClient();
     try {
       const transport = {
         postEncrypted: (path: string, payload: Record<string, unknown>) =>
@@ -100,7 +101,9 @@ async function processSubscriber(
     } catch {
       // Token may have expired, ignore background check
     } finally {
-      client.destroy?.();
+      if (!shared && typeof client.destroy === 'function') {
+        client.destroy();
+      }
     }
   } catch (err: any) {
     log.error(err, `[PushWorker] Failed processing subscriber: ${enrollment}`);

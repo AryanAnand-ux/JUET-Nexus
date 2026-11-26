@@ -1,20 +1,31 @@
 import { FastifyInstance } from "fastify";
-import { getOrRenewCampusLynxIdentity } from "./session";
+import {
+  extractEncryptedSession,
+  getCampusLynxIdentity,
+  getOrRenewCampusLynxIdentity,
+  isPortalTokenDead,
+  setAuthCookie,
+} from "./session";
+import { decryptSessionData } from "../utils/encryption";
 import { createPortalClient, getSharedPortalClient } from "../portal/client";
 import { fetchExamSchedule } from "../portal/exam";
 import { PortalError } from "../portal/types";
 import { CacheService } from "../utils/cache";
 
 const EXAM_CACHE_TTL_SEC = 3600; // 1 hour
+const inFlightExam = new Map<string, Promise<any>>();
 
 export async function registerExamRoutes(
   fastify: FastifyInstance,
   cache?: CacheService
 ): Promise<void> {
   fastify.get("/api/exam", async (request, reply) => {
-    let identity;
+    const query = request.query as { eventId?: string };
+    const effectiveCache = cache || (request as any).globalCache || (fastify as any).globalCache;
+
+    let localIdentity;
     try {
-      identity = await getOrRenewCampusLynxIdentity(request, reply);
+      localIdentity = getCampusLynxIdentity(request);
     } catch (err: any) {
       return reply.status(err.statusCode || 401).send({
         success: false,
@@ -23,23 +34,64 @@ export async function registerExamRoutes(
       });
     }
 
-    const query = request.query as { eventId?: string };
-    const effectiveCache = cache || (request as any).globalCache || (fastify as any).globalCache;
-    const enrollmentKey = identity.enrollmentno || identity.username;
+    const enrollmentKey = localIdentity.enrollmentno || localIdentity.username;
     const cacheKey = enrollmentKey
       ? `exam_sched:${enrollmentKey}:${query?.eventId || "latest"}`
       : null;
 
-    // Check cached exam schedule
+    // Check cached exam schedule BEFORE calling getOrRenewCampusLynxIdentity
+    let cachedSchedule: any = null;
     if (effectiveCache && cacheKey) {
       try {
-        const cachedSchedule = await effectiveCache.get("exam", cacheKey);
-        if (cachedSchedule) {
+        cachedSchedule = await effectiveCache.get("exam", cacheKey);
+        if (cachedSchedule && !isPortalTokenDead(localIdentity)) {
+          const encryptedSession = extractEncryptedSession(request);
+          if (encryptedSession) setAuthCookie(reply, encryptedSession);
           return reply.send({ success: true, data: cachedSchedule, cached: true });
         }
       } catch (err) {
         request.log.warn(err, "[Exam] Cache read failed");
       }
+    }
+
+    let identity;
+    try {
+      identity = await getOrRenewCampusLynxIdentity(request, reply);
+    } catch (err: any) {
+      const encryptedSession = extractEncryptedSession(request);
+      if (encryptedSession && effectiveCache) {
+        try {
+          const session = decryptSessionData(encryptedSession);
+          const userEnrollment = session.campusLynx?.enrollmentno || session.enrollment;
+          const staleKey = userEnrollment
+            ? `exam_sched:${userEnrollment}:${query?.eventId || "latest"}`
+            : null;
+          if (staleKey) {
+            const staleSchedule = await effectiveCache.get("exam", staleKey);
+            if (staleSchedule) {
+              return reply.send({
+                success: true,
+                data: staleSchedule,
+                cached: true,
+                stale: true,
+                sessionExpired: true,
+              });
+            }
+          }
+        } catch {
+          // Ignore and proceed to 401
+        }
+      }
+
+      return reply.status(err.statusCode || 401).send({
+        success: false,
+        error: err.message || "Unauthorized",
+        code: err.code || "UNAUTHORIZED",
+      });
+    }
+
+    if (cachedSchedule) {
+      return reply.send({ success: true, data: cachedSchedule, cached: true });
     }
 
     const shared = typeof getSharedPortalClient === "function" ? getSharedPortalClient() : null;
@@ -50,10 +102,16 @@ export async function registerExamRoutes(
     };
 
     let codeToNameMap: Record<string, string> | undefined;
+    let cachedMetadata: any = null;
+    const metaKey = enrollmentKey ? `exam_meta:${enrollmentKey}` : null;
 
     if (effectiveCache && enrollmentKey) {
       try {
-        const cached = await effectiveCache.get("dashboard", enrollmentKey);
+        const [cached, meta] = await Promise.all([
+          effectiveCache.get("dashboard", enrollmentKey),
+          query?.eventId && metaKey ? effectiveCache.get("exam_meta", metaKey) : Promise.resolve(null),
+        ]);
+        cachedMetadata = meta || null;
         if (cached?.data) {
           codeToNameMap = {};
           if (Array.isArray(cached.data.courses)) {
@@ -80,11 +138,36 @@ export async function registerExamRoutes(
       }
     }
 
-    try {
-      const schedule = await fetchExamSchedule(transport, identity, {
+    const runFetch = () =>
+      fetchExamSchedule(transport, identity, {
         exameventid: query?.eventId,
         codeToNameMap,
+        cachedMetadata,
+        onMetadataResolved: (meta) => {
+          if (effectiveCache && metaKey) {
+            effectiveCache.set("exam_meta", metaKey, meta, EXAM_CACHE_TTL_SEC).catch(() => {});
+          }
+        },
       });
+
+    try {
+      let schedule;
+      if (cacheKey) {
+        let pending = inFlightExam.get(cacheKey);
+        if (!pending) {
+          pending = runFetch().finally(() => {
+            inFlightExam.delete(cacheKey);
+          });
+          inFlightExam.set(cacheKey, pending);
+        }
+        schedule = await pending;
+      } else {
+        schedule = await runFetch();
+      }
+
+      if (request.raw.destroyed || reply.raw.writableEnded) {
+        return;
+      }
 
       if (effectiveCache && cacheKey && schedule) {
         try {

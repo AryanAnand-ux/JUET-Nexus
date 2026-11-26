@@ -29,10 +29,18 @@ const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 // event only needs to trigger a renewal when we have not refreshed recently.
 // Without this, every alt-tab fires a forced portal round-trip
 // (POST /api/auth/refresh -> getOrRenewCampusLynxIdentity({ force: true })).
-const REFRESH_THROTTLE_MS = 60 * 1000;
+const REFRESH_THROTTLE_MS = 3 * 60 * 1000;
 
 // Shared across every hook instance so two mounts cannot bypass the throttle.
 let lastRefreshAttemptAt = 0;
+
+/**
+ * Mark the session as recently established/verified (e.g. right after login)
+ * so DashboardSessionKeeper does not fire a redundant /api/auth/refresh 500ms later.
+ */
+export function markSessionFresh(): void {
+  lastRefreshAttemptAt = Date.now();
+}
 
 export function useSessionKeepAlive(enabled: boolean) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);

@@ -62,7 +62,7 @@ export default function LoginPage() {
       <LoadingOverlay
         isVisible={isLoading}
         message="Authenticating with student portal..."
-        timeoutMs={15000}
+        timeoutMs={30000}
         onCancel={() => {
           clearError();
         }}

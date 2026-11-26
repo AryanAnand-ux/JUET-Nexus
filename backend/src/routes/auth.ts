@@ -14,10 +14,23 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import crypto from "crypto";
 import { encryptSessionData, decryptSessionData, SessionData } from "../utils/encryption";
 import { CacheService } from "../utils/cache";
-import { createPortalClient } from "../portal/client";
+import { createPortalClient, getSharedPortalClient } from "../portal/client";
 import { verifyUser, issueSession } from "../portal/auth";
 import { PortalError, type PortalCaptcha } from "../portal/types";
-import { getOrRenewCampusLynxIdentity, setAuthCookie, extractEncryptedSession } from "./session";
+import { getCampusLynxIdentity, getOrRenewCampusLynxIdentity, setAuthCookie, extractEncryptedSession } from "./session";
+
+function acquirePortalClient() {
+  const shared =
+    !process.env.JEST_WORKER_ID && typeof getSharedPortalClient === "function"
+      ? getSharedPortalClient()
+      : null;
+  return {
+    client: shared || createPortalClient(),
+    release: (c: ReturnType<typeof createPortalClient>) => {
+      if (!shared && typeof c.destroy === "function") c.destroy();
+    },
+  };
+}
 import { jwtExpiry } from "../portal/crypto";
 
 const CAPTCHA_SESSION_TTL_MS = 5 * 60 * 1000;
@@ -48,7 +61,7 @@ export async function campusLynxInitHandler(
   reply: FastifyReply
 ): Promise<void> {
   const cache = (request as any).globalCache as CacheService;
-  const client = createPortalClient();
+  const { client, release } = acquirePortalClient();
 
   try {
     const captcha = await client.getCaptcha();
@@ -73,7 +86,7 @@ export async function campusLynxInitHandler(
       error: "Failed to reach the CampusLynx portal. Please try again later.",
     });
   } finally {
-    client.destroy();
+    release(client);
   }
 }
 
@@ -114,7 +127,7 @@ export async function campusLynxVerifyUserHandler(
   // Captchas are single-use: consume before portal call
   await cache.invalidate(PORTAL_CAPTCHA_PREFIX, sessionToken);
 
-  const client = createPortalClient();
+  const { client, release } = acquirePortalClient();
   try {
     const preToken = await verifyUser(
       client,
@@ -162,7 +175,7 @@ export async function campusLynxVerifyUserHandler(
       error: "Failed to connect to the portal. Please try again.",
     });
   } finally {
-    client.destroy();
+    release(client);
   }
 }
 
@@ -195,7 +208,7 @@ export async function campusLynxAuthHandler(
     });
   }
 
-  const client = createPortalClient();
+  const { client, release } = acquirePortalClient();
   try {
     const identity = await issueSession(client, {
       enrollment: pending.username,
@@ -237,7 +250,7 @@ export async function campusLynxAuthHandler(
     logger.error(`[Auth] CampusLynx step 2 failed: ${error?.message}`);
     return reply.status(502).send({ error: "Failed to complete login. Please try again." });
   } finally {
-    client.destroy();
+    release(client);
   }
 }
 
@@ -328,7 +341,7 @@ export async function campusLynxSilentLoginHandler(
   // Captchas are single-use (mirrors the interactive verify-user flow).
   await cache.invalidate(PORTAL_CAPTCHA_PREFIX, sessionToken);
 
-  const client = createPortalClient();
+  const { client, release } = acquirePortalClient();
   try {
     const membertype = session.campusLynx?.membertype === "P" ? "P" : "S";
 
@@ -404,7 +417,7 @@ export async function campusLynxSilentLoginHandler(
       code: "SILENT_LOGIN_FAILED",
     });
   } finally {
-    client.destroy();
+    release(client);
   }
 }
 
@@ -465,7 +478,13 @@ export function registerAuthRoutes(fastify: FastifyInstance, cache: CacheService
     config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
     handler: async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const identity = await getOrRenewCampusLynxIdentity(request, reply, { force: true });
+        const localIdentity = getCampusLynxIdentity(request);
+        const nowSec = Math.floor(Date.now() / 1000);
+        const recentlyIssued =
+          localIdentity.tokenIssuedAt != null && nowSec - localIdentity.tokenIssuedAt < 120;
+        const identity = await getOrRenewCampusLynxIdentity(request, reply, {
+          force: !recentlyIssued,
+        });
         const expiresAt = identity.token ? jwtExpiry(identity.token) : null;
         const currentSession = extractEncryptedSession(request);
         return reply.status(200).send({

@@ -15,8 +15,17 @@ export interface AttendancePrefetchStatus {
 }
 
 const MAX_CONCURRENT_PREFETCH = 2; // Optimal concurrency for CampusLynx session stability
-const INITIAL_PREFETCH_DELAY_MS = 50; // Instant kick-off on mount
-const TASK_STAGGER_MS = 100; // Small stagger between requests to prevent upstream session locks
+const INITIAL_PREFETCH_DELAY_MS = 1500; // Defer past initial hydration & active route paint
+const TASK_STAGGER_MS = 150; // Stagger between requests to prevent upstream session locks
+const REVALIDATE_THROTTLE_MS = 10 * 60 * 1000; // Throttle focus/visibility re-scans to 10 minutes
+
+function isSlowOrSaveDataConnection(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const conn = (navigator as any).connection;
+  if (!conn) return false;
+  if (conn.saveData) return true;
+  return conn.effectiveType === "slow-2g" || conn.effectiveType === "2g";
+}
 
 /**
  * useAttendancePrefetch
@@ -25,7 +34,8 @@ const TASK_STAGGER_MS = 100; // Small stagger between requests to prevent upstre
  */
 export function useAttendancePrefetch(
   attendanceRecords: AttendanceRecord[] | undefined,
-  enrollment: string | null
+  enrollment: string | null,
+  enabled = true
 ): AttendancePrefetchStatus {
   const [status, setStatus] = useState<AttendancePrefetchStatus>({
     isPrefetching: false,
@@ -38,16 +48,23 @@ export function useAttendancePrefetch(
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeEnrollmentRef = useRef<string | null>(null);
   const isRunningRef = useRef<boolean>(false);
+  const lastRevalidateAtRef = useRef<number>(0);
 
   // Listen to visibilitychange, focus, and custom dashboard updates
   useEffect(() => {
+    if (!enabled) return;
+
     const handleRevalidate = () => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        const now = Date.now();
+        if (now - lastRevalidateAtRef.current < REVALIDATE_THROTTLE_MS) return;
+        lastRevalidateAtRef.current = now;
         setRefreshTrigger((prev) => prev + 1);
       }
     };
 
     const handleDashboardUpdated = () => {
+      lastRevalidateAtRef.current = Date.now();
       setRefreshTrigger((prev) => prev + 1);
     };
 
@@ -60,10 +77,10 @@ export function useAttendancePrefetch(
       window.removeEventListener("focus", handleRevalidate);
       window.removeEventListener("juet:dashboard-updated", handleDashboardUpdated);
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
-    if (!enrollment) return;
+    if (!enabled || !enrollment || isSlowOrSaveDataConnection()) return;
 
     const normalizedEnrollment = enrollment.trim().toUpperCase();
 
@@ -210,12 +227,10 @@ export function useAttendancePrefetch(
 
     return () => {
       clearTimeout(timer);
-      if (activeEnrollmentRef.current !== normalizedEnrollment) {
-        controller.abort();
-        isRunningRef.current = false;
-      }
+      controller.abort();
+      isRunningRef.current = false;
     };
-  }, [attendanceRecords, enrollment, refreshTrigger]);
+  }, [attendanceRecords, enrollment, refreshTrigger, enabled]);
 
   return status;
 }

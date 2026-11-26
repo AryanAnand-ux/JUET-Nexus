@@ -186,17 +186,26 @@ const PerformanceHubComponent: React.FC<PerformanceHubProps> = ({
 }) => {
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>("ALL");
 
+  const courseIndex = useMemo(() => {
+    const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const byLower = new Map<string, DetailedCourseMarks>();
+    const byClean = new Map<string, DetailedCourseMarks>();
+    for (const m of detailedMarks || []) {
+      byLower.set(m.subject.trim().toLowerCase(), m);
+      byClean.set(clean(m.subject), m);
+    }
+    return { byLower, byClean, clean };
+  }, [detailedMarks]);
+
   const assessmentItems = useMemo(() => {
+    const findCourse = (subject: string) =>
+      courseIndex.byLower.get(subject.trim().toLowerCase()) ||
+      courseIndex.byClean.get(courseIndex.clean(subject));
+
     if (selectedAssessment === "ALL") {
       if (performance.recentMarks && performance.recentMarks.length > 0) {
         return performance.recentMarks.map((mark) => {
-          const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-          const targetClean = clean(mark.subject);
-          const matchingCourse = detailedMarks?.find(
-            (m) =>
-              m.subject.trim().toLowerCase() === mark.subject.trim().toLowerCase() ||
-              clean(m.subject) === targetClean
-          );
+          const matchingCourse = findCourse(mark.subject);
           const maxForMark = mark.max || matchingCourse?.components?.reduce((sum, c) => sum + (c.max || 0), 0);
           return {
             subject: mark.subject,
@@ -278,13 +287,7 @@ const PerformanceHubComponent: React.FC<PerformanceHubProps> = ({
         }
 
         if (isMatch) {
-          const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-          const targetClean = clean(mark.subject);
-          const matchingCourse = detailedMarks?.find(
-            (m) =>
-              m.subject.trim().toLowerCase() === mark.subject.trim().toLowerCase() ||
-              clean(m.subject) === targetClean
-          );
+          const matchingCourse = findCourse(mark.subject);
           matched.push({
             subject: mark.subject,
             code: mark.code || matchingCourse?.code,
@@ -297,7 +300,7 @@ const PerformanceHubComponent: React.FC<PerformanceHubProps> = ({
     }
 
     return matched;
-  }, [selectedAssessment, performance.recentMarks, detailedMarks]);
+  }, [selectedAssessment, performance.recentMarks, detailedMarks, courseIndex]);
 
   const hasAnyMarks = (performance.recentMarks && performance.recentMarks.length > 0) || detailedMarks.length > 0;
 

@@ -1,18 +1,89 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import type { SemesterRecord } from "@/types";
-import { Sparkles, TrendingUp } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 export interface PerformanceChartProps {
   semesters: SemesterRecord[];
+}
+
+const VIEW_WIDTH = 600;
+const VIEW_HEIGHT = 250;
+const PADDING_LEFT = 40;
+const PADDING_RIGHT = 20;
+const PADDING_TOP = 30;
+const PADDING_BOTTOM = 40;
+const CHART_WIDTH = VIEW_WIDTH - PADDING_LEFT - PADDING_RIGHT;
+const CHART_HEIGHT = VIEW_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
+
+function getCurvePath(points: { x: number; y: number }[]) {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  let path = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const cp1x = p0.x + (p1.x - p0.x) / 3;
+    const cp1y = p0.y;
+    const cp2x = p1.x - (p1.x - p0.x) / 3;
+    const cp2y = p1.y;
+    path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+  }
+  return path;
 }
 
 export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = [] }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  if (!semesters || semesters.length === 0) {
+  const viewWidth = VIEW_WIDTH;
+  const viewHeight = VIEW_HEIGHT;
+  const paddingLeft = PADDING_LEFT;
+  const paddingRight = PADDING_RIGHT;
+  const paddingTop = PADDING_TOP;
+  const paddingBottom = PADDING_BOTTOM;
+  const chartWidth = CHART_WIDTH;
+  const chartHeight = CHART_HEIGHT;
+
+  const chartGeometry = useMemo(() => {
+    if (!semesters || semesters.length === 0) return null;
+
+    const allGpas = semesters.flatMap((s) => [s.sgpa, s.cgpa]);
+    const minGpa = Math.max(0, Math.floor(Math.min(...allGpas) - 0.5));
+    const maxGpa = 10;
+    const gpaRange = maxGpa - minGpa;
+
+    const xOf = (idx: number) =>
+      semesters.length === 1
+        ? paddingLeft + chartWidth / 2
+        : paddingLeft + (idx * chartWidth) / (semesters.length - 1);
+
+    const yOf = (val: number) => {
+      const ratio = (val - minGpa) / gpaRange;
+      return viewHeight - paddingBottom - ratio * chartHeight;
+    };
+
+    const sgpaPoints = semesters.map((s, idx) => ({ x: xOf(idx), y: yOf(s.sgpa) }));
+    const cgpaPoints = semesters.map((s, idx) => ({ x: xOf(idx), y: yOf(s.cgpa) }));
+    const sgpaPath = getCurvePath(sgpaPoints);
+    const cgpaPath = getCurvePath(cgpaPoints);
+    const startY = viewHeight - paddingBottom;
+    const sgpaAreaPath = sgpaPoints.length
+      ? `${sgpaPath} L ${sgpaPoints[sgpaPoints.length - 1].x} ${startY} L ${sgpaPoints[0].x} ${startY} Z`
+      : "";
+
+    const gridLinesCount = 4;
+    const gridLines = Array.from({ length: gridLinesCount + 1 }).map((_, i) => {
+      const val = minGpa + (i * gpaRange) / gridLinesCount;
+      return { val, y: yOf(val) };
+    });
+
+    return { sgpaPoints, cgpaPoints, sgpaPath, cgpaPath, sgpaAreaPath, gridLines };
+  }, [semesters, chartHeight, chartWidth, paddingBottom, paddingLeft, viewHeight]);
+
+  if (!semesters || semesters.length === 0 || !chartGeometry) {
     return (
       <div className="flex flex-col items-center justify-center p-8 border border-[var(--line-subtle)] rounded-2xl bg-[var(--surface-subtle)] min-h-[200px]">
         <TrendingUp className="w-8 h-8 text-[var(--ink-muted)] mb-2" />
@@ -23,78 +94,10 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
     );
   }
 
-  // Chart layout dimensions
-  const viewWidth = 600;
-  const viewHeight = 250;
-  const paddingLeft = 40;
-  const paddingRight = 20;
-  const paddingTop = 30;
-  const paddingBottom = 40;
-
-  const chartWidth = viewWidth - paddingLeft - paddingRight;
-  const chartHeight = viewHeight - paddingTop - paddingBottom;
-
-  // Find min/max GPA for scaling
-  const allGpas = semesters.flatMap((s) => [s.sgpa, s.cgpa]);
-  const minGpa = Math.max(0, Math.floor(Math.min(...allGpas) - 0.5));
-  const maxGpa = 10;
-  const gpaRange = maxGpa - minGpa;
-
-  // Coordinate conversion helpers
-  const getX = (idx: number) => {
-    if (semesters.length === 1) {
-      return paddingLeft + chartWidth / 2;
-    }
-    return paddingLeft + (idx * chartWidth) / (semesters.length - 1);
-  };
-
-  const getY = (val: number) => {
-    const ratio = (val - minGpa) / gpaRange;
-    return viewHeight - paddingBottom - ratio * chartHeight;
-  };
-
-  // Generate coordinates
-  const sgpaPoints = semesters.map((s, idx) => ({ x: getX(idx), y: getY(s.sgpa) }));
-  const cgpaPoints = semesters.map((s, idx) => ({ x: getX(idx), y: getY(s.cgpa) }));
-
-  // Helper to construct smooth cubic bezier path
-  const getCurvePath = (points: { x: number; y: number }[]) => {
-    if (points.length === 0) return "";
-    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
-
-    let path = `M ${points[0].x} ${points[0].y}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i];
-      const p1 = points[i + 1];
-      const cp1x = p0.x + (p1.x - p0.x) / 3;
-      const cp1y = p0.y;
-      const cp2x = p1.x - (p1.x - p0.x) / 3;
-      const cp2y = p1.y;
-      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
-    }
-    return path;
-  };
-
-  // Paths
-  const sgpaPath = getCurvePath(sgpaPoints);
-  const cgpaPath = getCurvePath(cgpaPoints);
-
-  // Closed paths for gradients
-  const getAreaPath = (points: { x: number; y: number }[]) => {
-    if (points.length === 0) return "";
-    const linePath = getCurvePath(points);
-    const startY = viewHeight - paddingBottom;
-    return `${linePath} L ${points[points.length - 1].x} ${startY} L ${points[0].x} ${startY} Z`;
-  };
-
-  const sgpaAreaPath = getAreaPath(sgpaPoints);
-
-  // Grid lines
-  const gridLinesCount = 4;
-  const gridLines = Array.from({ length: gridLinesCount + 1 }).map((_, i) => {
-    const val = minGpa + (i * gpaRange) / gridLinesCount;
-    return { val, y: getY(val) };
-  });
+  const { sgpaPoints, cgpaPoints, sgpaPath, cgpaPath, sgpaAreaPath, gridLines } = chartGeometry;
+  const getX = (idx: number) => sgpaPoints[idx]?.x ?? paddingLeft;
+  const getY_sgpa = (idx: number) => sgpaPoints[idx]?.y ?? paddingTop;
+  const getY_cgpa = (idx: number) => cgpaPoints[idx]?.y ?? paddingTop;
 
   return (
     <div className="space-y-4">
@@ -131,11 +134,6 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
               <stop offset="0%" stopColor="var(--accent-primary)" stopOpacity="0.15" />
               <stop offset="100%" stopColor="var(--accent-primary)" stopOpacity="0.0" />
             </linearGradient>
-
-            {/* Accent Line Glow */}
-            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="var(--accent-primary)" floodOpacity="0.1" />
-            </filter>
           </defs>
 
           {/* Grid lines & Y-axis labels */}
@@ -174,7 +172,6 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
               strokeWidth={3}
               strokeLinecap="round"
               strokeLinejoin="round"
-              filter="url(#glow)"
             />
           )}
 
@@ -207,20 +204,23 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
           {/* Node Dots & Highlight Rings */}
           {semesters.map((s, idx) => {
             const isHovered = hoveredIdx === idx;
+            const x = getX(idx);
+            const sgpaY = getY_sgpa(idx);
+            const cgpaY = getY_cgpa(idx);
             return (
               <g key={idx}>
                 {/* SGPA Nodes */}
                 <circle
-                  cx={getX(idx)}
-                  cy={getY(s.sgpa)}
+                  cx={x}
+                  cy={sgpaY}
                   r={isHovered ? 6 : 4}
                   fill="var(--accent-primary)"
                   className="transition-all duration-150 cursor-pointer"
                 />
                 {isHovered && (
                   <circle
-                    cx={getX(idx)}
-                    cy={getY(s.sgpa)}
+                    cx={x}
+                    cy={sgpaY}
                     r={10}
                     fill="none"
                     stroke="var(--accent-primary)"
@@ -231,8 +231,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ semesters = 
 
                 {/* CGPA Nodes */}
                 <circle
-                  cx={getX(idx)}
-                  cy={getY(s.cgpa)}
+                  cx={x}
+                  cy={cgpaY}
                   r={isHovered ? 5 : 3}
                   fill="#A1A1AA"
                   className="transition-all duration-150 cursor-pointer"

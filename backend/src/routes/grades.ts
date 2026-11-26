@@ -1,5 +1,11 @@
 import { FastifyInstance } from "fastify";
-import { getOrRenewCampusLynxIdentity } from "./session";
+import {
+  extractEncryptedSession,
+  getCampusLynxIdentity,
+  getOrRenewCampusLynxIdentity,
+  isPortalTokenDead,
+  setAuthCookie,
+} from "./session";
 import { createPortalClient, getSharedPortalClient } from "../portal/client";
 import { fetchGradeCard } from "../portal/grades";
 import { PortalError } from "../portal/types";
@@ -7,17 +13,46 @@ import { CacheService } from "../utils/cache";
 import { decryptSessionData } from "../utils/encryption";
 
 const GRADES_CACHE_TTL_SEC = 3600; // 1 hour
+const inFlightGrades = new Map<string, Promise<any>>();
 
 export async function registerGradesRoutes(
   fastify: FastifyInstance,
   cache?: CacheService
 ): Promise<void> {
   fastify.get("/api/grades", async (request, reply) => {
+    let localIdentity;
+    try {
+      localIdentity = getCampusLynxIdentity(request);
+    } catch (err: any) {
+      return reply.status(err.statusCode || 401).send({
+        success: false,
+        error: err.message || "Unauthorized",
+        code: err.code || "UNAUTHORIZED",
+      });
+    }
+    const localEnrollment = localIdentity.enrollmentno;
+
+    // Check cache BEFORE calling getOrRenewCampusLynxIdentity so cache hits
+    // never stall behind an upstream refreshTokenRequest round-trip.
+    let cachedGrades: any = null;
+    if (cache && localEnrollment) {
+      try {
+        cachedGrades = await cache.get<any>("grades", localEnrollment);
+        if (cachedGrades && !isPortalTokenDead(localIdentity)) {
+          const encryptedSession = extractEncryptedSession(request);
+          if (encryptedSession) setAuthCookie(reply, encryptedSession);
+          return reply.send({ success: true, data: cachedGrades, cached: true });
+        }
+      } catch (err) {
+        request.log.warn(err, "[Grades] Cache read failed");
+      }
+    }
+
     let identity;
     try {
       identity = await getOrRenewCampusLynxIdentity(request, reply);
     } catch (err: any) {
-      const encryptedSession = request.cookies?.auth;
+      const encryptedSession = extractEncryptedSession(request);
       if (encryptedSession && cache) {
         try {
           const session = decryptSessionData(encryptedSession);
@@ -40,20 +75,11 @@ export async function registerGradesRoutes(
       });
     }
 
-    const enrollment = identity.enrollmentno;
-
-    // Check cache if available
-    if (cache && enrollment) {
-      try {
-        const cached = await cache.get<any>("grades", enrollment);
-        if (cached) {
-          return reply.send({ success: true, data: cached, cached: true });
-        }
-      } catch (err) {
-        request.log.warn(err, "[Grades] Cache read failed");
-      }
+    if (cachedGrades) {
+      return reply.send({ success: true, data: cachedGrades, cached: true });
     }
 
+    const enrollment = identity.enrollmentno;
     const shared = typeof getSharedPortalClient === "function" ? getSharedPortalClient() : null;
     const client = shared || createPortalClient();
     const transport = {
@@ -62,7 +88,23 @@ export async function registerGradesRoutes(
     };
 
     try {
-      const grades = await fetchGradeCard(transport, identity);
+      let grades;
+      if (enrollment) {
+        let pending = inFlightGrades.get(enrollment);
+        if (!pending) {
+          pending = fetchGradeCard(transport, identity).finally(() => {
+            inFlightGrades.delete(enrollment);
+          });
+          inFlightGrades.set(enrollment, pending);
+        }
+        grades = await pending;
+      } else {
+        grades = await fetchGradeCard(transport, identity);
+      }
+
+      if (request.raw.destroyed || reply.raw.writableEnded) {
+        return;
+      }
 
       if (cache && enrollment && grades.length > 0) {
         try {

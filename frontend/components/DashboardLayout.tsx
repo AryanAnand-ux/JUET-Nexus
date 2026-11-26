@@ -18,6 +18,77 @@ export interface DashboardLayoutProps {
   isRefreshing?: boolean;
 }
 
+interface SyncButtonProps {
+  variant: "desktop" | "mobile";
+  sidebarCollapsed?: boolean;
+  onRefresh: () => void;
+  isRefreshing: boolean;
+  attendanceRecords?: import("@/types").AttendanceRecord[];
+  enrollment: string;
+  enablePrefetch: boolean;
+}
+
+const SyncButtonWithPrefetch: React.FC<SyncButtonProps> = ({
+  variant,
+  sidebarCollapsed = false,
+  onRefresh,
+  isRefreshing,
+  attendanceRecords,
+  enrollment,
+  enablePrefetch,
+}) => {
+  const prefetchStatus = useAttendancePrefetch(attendanceRecords, enrollment, enablePrefetch);
+  const isSyncing = isRefreshing || prefetchStatus.isPrefetching;
+
+  if (variant === "mobile") {
+    return (
+      <button
+        type="button"
+        onClick={onRefresh}
+        disabled={isSyncing}
+        aria-label="Refresh"
+        title="Refresh dashboard"
+        className="p-1.5 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-subtle)] text-[var(--ink-strong)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors active:scale-95 disabled:opacity-50 touch-manipulation cursor-pointer"
+      >
+        <RefreshCw
+          className={clsx(
+            "w-4 h-4 transition-transform duration-500 text-[var(--ink-strong)]",
+            isSyncing && "animate-spin"
+          )}
+        />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onRefresh}
+      disabled={isSyncing}
+      className={clsx(
+        "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-colors text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)]",
+        sidebarCollapsed && "justify-center"
+      )}
+      title={
+        sidebarCollapsed
+          ? isSyncing
+            ? `Syncing… ${prefetchStatus.completed}/${prefetchStatus.total}`
+            : "Refresh"
+          : undefined
+      }
+    >
+      <RefreshCw className={clsx("w-4 h-4 shrink-0 transition-transform duration-500", isSyncing && "animate-spin")} />
+      {!sidebarCollapsed && (
+        <span className="truncate flex-1">
+          {isSyncing && prefetchStatus.total > 0
+            ? `Syncing ${prefetchStatus.completed}/${prefetchStatus.total}`
+            : "Refresh"}
+        </span>
+      )}
+    </button>
+  );
+};
+
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   studentName,
@@ -26,24 +97,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onRefresh,
   isRefreshing = false,
 }) => {
-  // Background prefetch — drives refresh icon spin automatically
-  const prefetchStatus = useAttendancePrefetch(attendanceRecords, enrollment);
-  const isSyncing = isRefreshing || prefetchStatus.isPrefetching;
-
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
+  const enablePrefetch = pathname === "/dashboard";
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
   const previousPathname = React.useRef<string | null>(null);
 
   /**
-   * Replay the page-enter animation on route change.
-   *
-   * This used to be done with `key={pathname}` on the content wrapper, which
-   * unmounts and remounts the entire page subtree (discarding local state,
-   * scroll position and memoized work) just to restart a CSS animation.
-   * Toggling the class achieves the identical visual result without the
-   * remount cost.
+   * Replay the page-enter animation on route change without forcing a
+   * synchronous layout reflow (`offsetWidth`).
    */
   React.useEffect(() => {
     if (previousPathname.current === pathname) return;
@@ -54,8 +117,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const el = contentRef.current;
     if (!el) return;
     el.classList.remove("animate-page-enter");
-    void el.offsetWidth; // Force reflow so the animation can restart
-    el.classList.add("animate-page-enter");
+    const rafId = requestAnimationFrame(() => {
+      el.classList.add("animate-page-enter");
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [pathname]);
 
   // Helper to get initials for avatar
@@ -194,31 +259,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {/* Footer: Refresh + explicit collapse toggle (Desktop only) */}
         <div className="border-t border-[var(--line-subtle)] p-4 hidden lg:block space-y-3">
           {onRefresh && (
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={isSyncing}
-              className={clsx(
-                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-colors text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)]",
-                sidebarCollapsed && "justify-center"
-              )}
-              title={
-                sidebarCollapsed
-                  ? isSyncing
-                    ? `Syncing… ${prefetchStatus.completed}/${prefetchStatus.total}`
-                    : "Refresh"
-                  : undefined
-              }
-            >
-              <RefreshCw className={clsx("w-4 h-4 shrink-0 transition-transform duration-500", isSyncing && "animate-spin")} />
-              {!sidebarCollapsed && (
-                <span className="truncate flex-1">
-                  {isSyncing && prefetchStatus.total > 0
-                    ? `Syncing ${prefetchStatus.completed}/${prefetchStatus.total}`
-                    : "Refresh"}
-                </span>
-              )}
-            </button>
+            <SyncButtonWithPrefetch
+              variant="desktop"
+              sidebarCollapsed={sidebarCollapsed}
+              onRefresh={onRefresh}
+              isRefreshing={isRefreshing}
+              attendanceRecords={attendanceRecords}
+              enrollment={enrollment}
+              enablePrefetch={enablePrefetch}
+            />
           )}
           <button
             type="button"
@@ -257,21 +306,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               </span>
             )}
             {onRefresh && (
-              <button
-                type="button"
-                onClick={onRefresh}
-                disabled={isSyncing}
-                aria-label="Refresh"
-                title="Refresh dashboard"
-                className="p-1.5 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-subtle)] text-[var(--ink-strong)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all active:scale-95 disabled:opacity-50 touch-manipulation cursor-pointer"
-              >
-                <RefreshCw
-                  className={clsx(
-                    "w-4 h-4 transition-transform duration-500 text-[var(--ink-strong)]",
-                    isSyncing && "animate-spin"
-                  )}
-                />
-              </button>
+              <SyncButtonWithPrefetch
+                variant="mobile"
+                onRefresh={onRefresh}
+                isRefreshing={isRefreshing}
+                attendanceRecords={attendanceRecords}
+                enrollment={enrollment}
+                enablePrefetch={false}
+              />
             )}
           </div>
         </header>

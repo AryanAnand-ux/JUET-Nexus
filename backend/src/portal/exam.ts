@@ -32,9 +32,17 @@ const GET_EVENTS_PATH =
 const GET_SCHEDULE_PATH =
   "/studentsttattview/getstudent-examschedule";
 
+export interface ExamMetadataCache {
+  registrationid: string;
+  semester: string;
+  availableEvents: Array<{ exameventid: string; exameventdesc: string }>;
+}
+
 export interface ExamOptions {
   exameventid?: string;
   codeToNameMap?: Record<string, string>;
+  cachedMetadata?: ExamMetadataCache | null;
+  onMetadataResolved?: (meta: ExamMetadataCache) => void;
 }
 
 /**
@@ -137,57 +145,75 @@ export async function fetchExamSchedule(
   identity: PortalIdentity,
   options?: ExamOptions
 ): Promise<ExamScheduleResponse> {
-  // Step 1: get semesters with student exam events
-  const semRes = (await transport.postEncrypted(GET_SEMESTERS_PATH, {
-    clientid: identity.clientid,
-    instituteid: identity.instituteid,
-  })) as any;
+  let registrationid = options?.cachedMetadata?.registrationid || "";
+  let semesterDesc = options?.cachedMetadata?.semester || "";
+  let availableEvents = options?.cachedMetadata?.availableEvents || [];
+  let targetEvent: { exameventid?: string; exameventdesc?: string } | undefined;
 
-  const semesters = semRes?.response?.semesterCodeinfo?.semestercode;
-  if (!Array.isArray(semesters) || semesters.length === 0) {
-    return { semester: "", event: "", items: [] };
-  }
+  if (options?.cachedMetadata && options.cachedMetadata.availableEvents.length > 0) {
+    availableEvents = options.cachedMetadata.availableEvents;
+    targetEvent = options?.exameventid
+      ? availableEvents.find((ev) => ev.exameventid === options.exameventid) ?? availableEvents[availableEvents.length - 1]
+      : availableEvents[availableEvents.length - 1];
+  } else {
+    // Step 1: get semesters with student exam events
+    const semRes = (await transport.postEncrypted(GET_SEMESTERS_PATH, {
+      clientid: identity.clientid,
+      instituteid: identity.instituteid,
+    })) as any;
 
-  // Pick the active / latest semester (highest registrationdateto or last entry)
-  const latestSemester = semesters.reduce((best, cur) => {
-    const curTo = Number(cur?.registrationdateto) || Number(cur?.registrationdatefrom) || 0;
-    const bestTo = Number(best?.registrationdateto) || Number(best?.registrationdatefrom) || 0;
-    if (curTo > 0 && bestTo > 0) {
-      return curTo >= bestTo ? cur : best;
+    const semesters = semRes?.response?.semesterCodeinfo?.semestercode;
+    if (!Array.isArray(semesters) || semesters.length === 0) {
+      return { semester: "", event: "", items: [] };
     }
-    return cur;
-  }, semesters[semesters.length - 1]);
 
-  const registrationid = latestSemester?.registrationid;
-  const semesterDesc = String(latestSemester?.registrationdesc ?? "").trim();
+    // Pick the active / latest semester (highest registrationdateto or last entry)
+    const latestSemester = semesters.reduce((best, cur) => {
+      const curTo = Number(cur?.registrationdateto) || Number(cur?.registrationdatefrom) || 0;
+      const bestTo = Number(best?.registrationdateto) || Number(best?.registrationdatefrom) || 0;
+      if (curTo > 0 && bestTo > 0) {
+        return curTo >= bestTo ? cur : best;
+      }
+      return cur;
+    }, semesters[semesters.length - 1]);
 
-  if (!registrationid) {
-    return { semester: semesterDesc, event: "", items: [] };
+    registrationid = String(latestSemester?.registrationid ?? "");
+    semesterDesc = String(latestSemester?.registrationdesc ?? "").trim();
+
+    if (!registrationid) {
+      return { semester: semesterDesc, event: "", items: [] };
+    }
+
+    // Step 2: get exam events for this registration
+    // Note: the portal API uses the typo 'registationid'
+    const eventRes = (await transport.postEncrypted(GET_EVENTS_PATH, {
+      instituteid: identity.instituteid,
+      registationid: registrationid,
+    })) as any;
+
+    const events = eventRes?.response?.eventcode?.examevent;
+    if (!Array.isArray(events) || events.length === 0) {
+      return { semester: semesterDesc, event: "", items: [] };
+    }
+
+    availableEvents = events
+      .map((ev: any) => ({
+        exameventid: String(ev.exameventid ?? ""),
+        exameventdesc: String(ev.exameventdesc ?? "").trim(),
+      }))
+      .filter((ev) => ev.exameventid.length > 0);
+
+    options?.onMetadataResolved?.({
+      registrationid,
+      semester: semesterDesc,
+      availableEvents,
+    });
+
+    // If specific event requested, find it; otherwise default to the last one (most recent)
+    targetEvent = options?.exameventid
+      ? events.find((ev: any) => String(ev.exameventid) === options.exameventid) ?? events[events.length - 1]
+      : events[events.length - 1];
   }
-
-  // Step 2: get exam events for this registration
-  // Note: the portal API uses the typo 'registationid'
-  const eventRes = (await transport.postEncrypted(GET_EVENTS_PATH, {
-    instituteid: identity.instituteid,
-    registationid: registrationid,
-  })) as any;
-
-  const events = eventRes?.response?.eventcode?.examevent;
-  if (!Array.isArray(events) || events.length === 0) {
-    return { semester: semesterDesc, event: "", items: [] };
-  }
-
-  const availableEvents = events
-    .map((ev: any) => ({
-      exameventid: String(ev.exameventid ?? ""),
-      exameventdesc: String(ev.exameventdesc ?? "").trim(),
-    }))
-    .filter((ev) => ev.exameventid.length > 0);
-
-  // If specific event requested, find it; otherwise default to the last one (most recent)
-  const targetEvent = options?.exameventid
-    ? events.find((ev: any) => String(ev.exameventid) === options.exameventid) ?? events[events.length - 1]
-    : events[events.length - 1];
 
   const exameventid = targetEvent?.exameventid;
   const eventDesc = String(targetEvent?.exameventdesc ?? "").trim();
