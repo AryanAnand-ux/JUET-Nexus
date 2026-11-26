@@ -1,37 +1,63 @@
 "use client";
 
 /**
- * Dashboard Page
- * Main entry point for authenticated users
- * Displays all dashboard widgets with a premium visual design
+ * Dashboard Page (Tab Keep-Alive Shell)
+ *
+ * Mounts Attendance immediately and keeps visited tabs (Performance, Exam
+ * Schedule, Settings) alive with `hidden` so switching tabs is instantaneous
+ * and preserves scroll & component state.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import type { DashboardTabId } from "@/components/MobileBottomNav";
 import { AttendanceTracker } from "@/components/AttendanceTracker";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useExamSchedule } from "@/hooks/useExamSchedule";
 import { useHydrated } from "@/hooks/useHydrated";
+import { performLogout } from "@/utils/logout";
+import { loadSession } from "@/lib/session";
+import {
+  AlertTriangle,
+  RefreshCw,
+  ChevronRight,
+  LogOut,
+  MessageSquare,
+  Palette,
+} from "lucide-react";
+import { Typing } from "@/components/loading-ui/typing";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
+const PerformanceHub = dynamic(
+  () => import("@/components/PerformanceHub").then((m) => m.PerformanceHub),
+  { ssr: false }
+);
+const ExamSchedule = dynamic(
+  () => import("@/components/ExamSchedule").then((m) => m.ExamSchedule),
+  { ssr: false }
+);
+const FeedbackModal = dynamic(
+  () => import("@/components/FeedbackModal").then((m) => m.FeedbackModal),
+  { ssr: false }
+);
+
+const VALID_TABS: DashboardTabId[] = ["attendance", "performance", "exam", "settings"];
+
+function tabFromHash(): DashboardTabId {
+  if (typeof window === "undefined") return "attendance";
+  const h = window.location.hash.slice(1) as DashboardTabId;
+  return VALID_TABS.includes(h) ? h : "attendance";
+}
 
 function getTimeGreeting(): string {
   const hour = new Date().getHours();
-  if (hour >= 4 && hour < 12) {
-    return "Good morning";
-  }
-  if (hour >= 12 && hour < 17) {
-    return "Good afternoon";
-  }
+  if (hour >= 4 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
   return "Good evening";
 }
-import { usePortalRecovery } from "@/hooks/usePortalRecovery";
-import { performLogout } from "@/utils/logout";
-import { apiClient } from "@/utils/api";
-import { AlertTriangle } from "lucide-react";
-import { Typing } from "@/components/loading-ui/typing";
 
-/**
- * Error Display Component
- */
 const ErrorBanner: React.FC<{
   error: { message: string; code?: string };
   onRetry?: () => void;
@@ -51,7 +77,9 @@ const ErrorBanner: React.FC<{
     <div className="mb-6 border border-red-200 dark:border-red-900/50 rounded-2xl bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3 shadow-sm animate-shake">
       <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
       <div className="flex-1">
-        <p className="text-sm font-medium text-red-700 dark:text-red-300 font-nunito">{displayMessage}</p>
+        <p className="text-sm font-medium text-red-700 dark:text-red-300 font-nunito">
+          {displayMessage}
+        </p>
         <div className="mt-2 flex items-center gap-4">
           {onRetry && (
             <button
@@ -77,15 +105,14 @@ const ErrorBanner: React.FC<{
   );
 };
 
-/**
- * Loading Skeleton Component
- */
-const LoadingSkeleton: React.FC = () => (
+const LoadingSkeleton: React.FC<{ label?: string }> = ({
+  label = "Loading your dashboard…",
+}) => (
   <div className="space-y-6">
     <div className="flex flex-col items-center justify-center gap-4 py-16 text-slate-400 dark:text-slate-500">
       <Typing size="lg" duration={0.9} className="text-[var(--accent-text)]" />
       <p className="text-sm font-semibold font-nunito tracking-wide animate-pulse">
-        Loading your dashboard…
+        {label}
       </p>
     </div>
     {[1, 2, 3].map((i) => (
@@ -97,13 +124,115 @@ const LoadingSkeleton: React.FC = () => (
   </div>
 );
 
+/** Lazy-mounted Exam tab panel (only fetches when Exam tab is first visited). */
+const ExamTabPanel: React.FC<{
+  courseMap: Record<string, string>;
+}> = ({ courseMap }) => {
+  const {
+    data: examData,
+    isLoading,
+    error,
+    refresh,
+  } = useExamSchedule();
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)]">
+          Exam Schedule
+        </h2>
+
+        <button
+          type="button"
+          onClick={() => refresh()}
+          disabled={isLoading}
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-strong)] text-xs font-semibold shadow-card hover:bg-[var(--surface-subtle)] transition-colors self-start sm:self-auto disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+          <span>Refresh Schedule</span>
+        </button>
+      </div>
+
+      {error && <ErrorBanner error={error} onRetry={() => refresh()} />}
+
+      {isLoading && !examData ? (
+        <LoadingSkeleton label="Loading exam schedule…" />
+      ) : examData ? (
+        <ExamSchedule
+          schedule={examData}
+          courseMap={courseMap}
+        />
+      ) : (
+        <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-12 text-center">
+          <h3 className="text-base font-bold text-[var(--ink-strong)]">
+            No Exam Data Found
+          </h3>
+          <p className="text-xs text-[var(--ink-muted)] mt-1">
+            Could not retrieve exam schedule for the current session.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const isHydrated = useHydrated();
   const [enrollment, setEnrollment] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<DashboardTabId>("attendance");
+  const [visited, setVisited] = useState<Set<DashboardTabId>>(
+    () => new Set<DashboardTabId>(["attendance"])
+  );
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  // Sync initial hash + listen for browser back/forward hash changes
+  useEffect(() => {
+    const initial = tabFromHash();
+    setActiveTab(initial);
+    setVisited((prev) => {
+      if (prev.has(initial)) return prev;
+      const next = new Set(prev);
+      next.add(initial);
+      return next;
+    });
+
+    const onHash = () => {
+      const nextTab = tabFromHash();
+      setActiveTab(nextTab);
+      setVisited((prev) => {
+        if (prev.has(nextTab)) return prev;
+        const next = new Set(prev);
+        next.add(nextTab);
+        return next;
+      });
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  const handleTabChange = useCallback((nextTab: DashboardTabId) => {
+    setActiveTab(nextTab);
+    setVisited((prev) => {
+      if (prev.has(nextTab)) return prev;
+      const next = new Set(prev);
+      next.add(nextTab);
+      return next;
+    });
+    if (typeof window !== "undefined") {
+      const targetHash = nextTab === "attendance" ? "" : `#${nextTab}`;
+      if (window.location.hash !== targetHash) {
+        window.history.pushState(
+          null,
+          "",
+          `${window.location.pathname}${window.location.search}${targetHash}`
+        );
+      }
+    }
+  }, []);
 
   const activeEnrollment = isHydrated
-    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    ? enrollment || loadSession()?.enrollment || null
     : null;
 
   const {
@@ -116,10 +245,6 @@ export default function DashboardPage() {
     cachedAt,
   } = useDashboard(activeEnrollment);
 
-  const recovery = usePortalRecovery(activeEnrollment, async () => {
-    await refresh();
-  });
-
   const [isRefreshingData, setIsRefreshingData] = useState(false);
 
   const handleRefresh = async () => {
@@ -130,40 +255,14 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
-    if (stored) {
-      setEnrollment(stored);
+    const session = loadSession();
+    if (session?.token && session?.enrollment) {
+      setEnrollment(session.enrollment);
     } else {
-      let cancelled = false;
-      apiClient
-        .get("/api/auth/session")
-        .then((res: any) => {
-          if (!cancelled && res.data?.success && res.data?.enrollment) {
-            const enr = res.data.enrollment.toUpperCase();
-            if (typeof window !== "undefined") {
-              localStorage.setItem("enrollment", enr);
-              localStorage.setItem("role", "Student");
-              if (res.data.sessionToken) {
-                localStorage.setItem("sessionToken", res.data.sessionToken);
-              }
-            }
-            setEnrollment(enr);
-          } else if (!cancelled) {
-            router.push("/login");
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            router.push("/login");
-          }
-        });
-      return () => {
-        cancelled = true;
-      };
+      router.replace("/login");
     }
   }, [router]);
 
-  // Cache student name for the Settings page (Feedback) and sidebar
   useEffect(() => {
     if (data?.student?.name) {
       localStorage.setItem("studentName", data.student.name);
@@ -174,6 +273,18 @@ export default function DashboardPage() {
     await performLogout();
     router.push("/login");
   };
+
+  const courseMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (Array.isArray(data?.courses)) {
+      for (const c of data.courses) {
+        if (c.code && c.title) {
+          map[String(c.code).toUpperCase()] = c.title;
+        }
+      }
+    }
+    return map;
+  }, [data]);
 
   if (!activeEnrollment) {
     return (
@@ -199,138 +310,197 @@ export default function DashboardPage() {
       onLogout={handleLogout}
       onRefresh={handleRefresh}
       isRefreshing={isRefreshingData || isLoading || isRefreshing}
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
     >
-      {/* Header Section — Compact welcome banner */}
-      <div className="relative overflow-hidden bg-midnight dark:bg-carbon rounded-[20px] px-5 py-4 sm:px-6 sm:py-5 mb-6 border border-white/5 shadow-banner">
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-xl sm:text-2xl text-white leading-tight font-editorial-italic">
-              {data?.student.name
-                ? <span>{greeting}, <span className="text-white font-medium">{data.student.name}</span>.</span>
-                : <span>{greeting}.</span>}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1 truncate">
-              {data?.student.branch || "Academic Branch"}
-            </p>
-          </div>
+      {/* Tab 1: Attendance (always mounted) */}
+      <div hidden={activeTab !== "attendance"}>
+        {/* Header Section — Compact welcome banner */}
+        <div className="relative overflow-hidden bg-midnight dark:bg-carbon rounded-[20px] px-5 py-4 sm:px-6 sm:py-5 mb-6 border border-white/5 shadow-banner">
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl text-white leading-tight font-editorial-italic">
+                {data?.student.name
+                  ? <span>{greeting}, <span className="text-white font-medium">{data.student.name}</span>.</span>
+                  : <span>{greeting}.</span>}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1 truncate">
+                {data?.student.branch || "Academic Branch"}
+              </p>
+            </div>
 
-          {data?.student.enrollment && (
-            <span className="inline-flex items-center shrink-0 bg-white/10 border border-white/10 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-200 font-mono tabular-nums">
-              {data.student.enrollment}
-            </span>
-          )}
+            {data?.student.enrollment && (
+              <span className="inline-flex items-center shrink-0 bg-white/10 border border-white/10 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-200 font-mono tabular-nums">
+                {data.student.enrollment}
+              </span>
+            )}
+          </div>
         </div>
+
+        {error && <ErrorBanner error={error} onRetry={refresh} onLogin={() => router.push("/login")} />}
+
+        {isLoading && !data ? (
+          <LoadingSkeleton />
+        ) : data ? (
+          <div className="space-y-6">
+            {totalHeld > 0 && (
+              <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-[24px] p-6 shadow-card flex flex-col md:flex-row items-center justify-between gap-6 transition-colors">
+                <div className="flex items-center gap-5 w-full md:w-auto">
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-2xl font-extrabold tabular-nums ${
+                    overallPct >= 75
+                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60"
+                      : overallPct >= 70
+                      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60"
+                      : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+                  }`}>
+                    {overallPct % 1 === 0 ? overallPct.toFixed(0) : overallPct.toFixed(1)}%
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-[var(--ink-strong)]">Overall Attendance</h3>
+                      <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-[0.14em] ${
+                        overallPct >= 75
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                          : overallPct >= 70
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                          : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                      }`}>
+                        {overallPct >= 75 ? "Good Standing" : overallPct >= 70 ? "Caution Zone" : "Critical"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--ink-muted)] mt-1.5">
+                      {totalAttended} of {totalHeld} total classes attended across all enrolled courses
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <AttendanceTracker
+              attendanceRecords={data.attendance}
+              isRefreshing={isRefreshingData || isLoading || isRefreshing}
+            />
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--line-subtle)] pt-6">
+              <p className="text-xs text-[var(--ink-muted)]">
+                Last synced: {cachedAt ? new Date(cachedAt).toLocaleString() : new Date().toLocaleString()}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-8 text-center shadow-card">
+            <h3 className="text-lg font-bold text-[var(--ink-strong)]">
+              Your dashboard is temporarily unavailable
+            </h3>
+            <p className="mt-2 text-sm text-[var(--ink-muted)] max-w-md mx-auto">
+              We could not reach the university portal. You can retry connecting or sign in again.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => refresh()}
+                className="rounded-xl bg-accent-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-accent-primary/90 shadow-card active:scale-95 transition"
+              >
+                Try Reconnecting
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  performLogout().finally(() => router.push("/login"));
+                }}
+                className="rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-body)] hover:bg-[var(--surface-subtle)] active:scale-95 transition"
+              >
+                Sign in again
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Error Display */}
-      {error && <ErrorBanner error={error} onRetry={refresh} onLogin={() => router.push("/login")} />}
-      {error && ["SESSION_EXPIRED", "SESSION_RENEWING", "RELOGIN_FAILED", "NO_SESSION", "INVALID_SESSION"].includes(error.code || "") && (
-        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
-          <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
-            We couldn&apos;t reconnect to the portal automatically. Enter your portal password to
-            reconnect — future reconnects will happen on their own.
-          </p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input
-              type="password"
-              value={recovery.password}
-              onChange={(event) => recovery.setPassword(event.target.value)}
-              placeholder="Portal password"
-              autoComplete="current-password"
-              className="rounded-xl border border-amber-300 bg-[var(--surface-card)] px-3 py-2 text-sm text-[var(--ink-strong)] dark:border-amber-800"
-            />
-            <button
-              type="button"
-              onClick={() => void recovery.recover()}
-              disabled={recovery.isRecovering}
-              className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
-            >
-              {recovery.isRecovering ? "Reconnecting…" : "Reconnect portal"}
-            </button>
+      {/* Tab 2: Performance (keep-alive once visited) */}
+      {visited.has("performance") && (
+        <div hidden={activeTab !== "performance"}>
+          <div className="mb-8">
+            <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)]">
+              Academic Performance
+            </h2>
           </div>
-          {recovery.error && <p className="mt-2 text-xs font-semibold text-red-700 dark:text-red-300">{recovery.error}</p>}
+          {isLoading && !data ? (
+            <LoadingSkeleton label="Loading performance data…" />
+          ) : data ? (
+            <PerformanceHub
+              performance={data.performance}
+              detailedMarks={data.detailedMarks}
+            />
+          ) : (
+            <div className="border border-[var(--line-subtle)] rounded-[24px] bg-[var(--surface-card)] p-12 text-center shadow-card">
+              <p className="text-sm text-[var(--ink-muted)]">
+                No academic performance data available for this semester.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading && !data ? (
-        <LoadingSkeleton />
-      ) : data ? (
-        <div className="space-y-6">
-          {/* Overall Attendance Summary Banner */}
-          {totalHeld > 0 && (
-            <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-[24px] p-6 shadow-card flex flex-col md:flex-row items-center justify-between gap-6 transition-colors">
-              <div className="flex items-center gap-5 w-full md:w-auto">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-2xl font-extrabold tabular-nums ${
-                  overallPct >= 75
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60"
-                    : overallPct >= 70
-                    ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60"
-                    : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
-                }`}>
-                  {overallPct % 1 === 0 ? overallPct.toFixed(0) : overallPct.toFixed(1)}%
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-[var(--ink-strong)]">Overall Attendance</h3>
-                    <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-[0.14em] ${
-                      overallPct >= 75
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                        : overallPct >= 70
-                        ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                        : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
-                    }`}>
-                      {overallPct >= 75 ? "Good Standing" : overallPct >= 70 ? "Caution Zone" : "Critical"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--ink-muted)] mt-1.5">
-                    {totalAttended} of {totalHeld} total classes attended across all enrolled courses
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attendance Tracker Component */}
-          <AttendanceTracker
-            attendanceRecords={data.attendance}
-            onRefresh={handleRefresh}
-            isRefreshing={isRefreshingData || isLoading || isRefreshing}
-          />
-
-          {/* Footer Info */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--line-subtle)] pt-6">
-            <p className="text-xs text-[var(--ink-muted)]">
-              Last synced: {cachedAt ? new Date(cachedAt).toLocaleString() : new Date().toLocaleString()}
-            </p>
-          </div>
+      {/* Tab 3: Exam Schedule (keep-alive once visited) */}
+      {visited.has("exam") && (
+        <div hidden={activeTab !== "exam"}>
+          <ExamTabPanel courseMap={courseMap} />
         </div>
-      ) : (
-        <div className="rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-8 text-center shadow-card">
-          <h3 className="text-lg font-bold text-[var(--ink-strong)]">
-            Your dashboard is temporarily unavailable
-          </h3>
-          <p className="mt-2 text-sm text-[var(--ink-muted)] max-w-md mx-auto">
-            We could not reach the university portal. You can retry connecting or sign in again.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => refresh()}
-              className="rounded-xl bg-accent-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-accent-primary/90 shadow-card active:scale-95 transition"
-            >
-              Try Reconnecting
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                performLogout().finally(() => router.push("/login"));
-              }}
-              className="rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] px-4 py-2.5 text-sm font-semibold text-[var(--ink-body)] hover:bg-[var(--surface-subtle)] active:scale-95 transition"
-            >
-              Sign in again
-            </button>
+      )}
+
+      {/* Tab 4: Settings (keep-alive once visited) */}
+      {visited.has("settings") && (
+        <div hidden={activeTab !== "settings"}>
+          <div className="mx-auto w-full max-w-lg">
+            <h2 className="text-2xl sm:text-3xl font-editorial-italic text-[var(--ink-strong)] mb-6">
+              Settings
+            </h2>
+
+            <div className="rounded-[24px] border border-[var(--line-subtle)] bg-[var(--surface-card)] divide-y divide-[var(--line-subtle)] shadow-card overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setFeedbackOpen(true)}
+                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--surface-subtle)] cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] border border-[var(--line-subtle)] text-[var(--ink-muted)] flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-semibold text-[var(--ink-strong)] flex-1">
+                  Feedback
+                </span>
+                <ChevronRight className="w-4 h-4 text-[var(--ink-muted)] shrink-0" />
+              </button>
+
+              <div className="w-full flex items-center gap-4 px-5 py-4">
+                <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] border border-[var(--line-subtle)] text-[var(--ink-muted)] flex items-center justify-center shrink-0">
+                  <Palette className="w-5 h-5" />
+                </div>
+                <p className="text-sm font-semibold text-[var(--ink-strong)] flex-1">Theme</p>
+                <ThemeToggle />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                  <LogOut className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-semibold text-rose-600 dark:text-rose-400 flex-1">
+                  Logout
+                </span>
+              </button>
+            </div>
           </div>
+
+          <FeedbackModal
+            isOpen={feedbackOpen}
+            onClose={() => setFeedbackOpen(false)}
+            enrollment={activeEnrollment}
+            studentName={data?.student.name || "Student"}
+          />
         </div>
       )}
     </DashboardLayout>

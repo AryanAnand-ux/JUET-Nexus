@@ -8,10 +8,15 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useHydrated } from "@/hooks/useHydrated";
-import { FeedbackModal } from "@/components/FeedbackModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+const FeedbackModal = dynamic(
+  () => import("@/components/FeedbackModal").then((mod) => mod.FeedbackModal),
+  { ssr: false }
+);
 import { performLogout } from "@/utils/logout";
 import { ChevronRight, LogOut, MessageSquare, Palette } from "lucide-react";
 

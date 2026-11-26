@@ -10,33 +10,46 @@ import {
   Settings,
 } from "lucide-react";
 
+export type DashboardTabId = "attendance" | "performance" | "exam" | "settings";
+
 interface NavItem {
+  id: DashboardTabId;
   href: string;
   label: string;
   icon: React.ReactNode;
 }
 
-export function MobileBottomNav() {
+export function MobileBottomNav({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab?: DashboardTabId;
+  onTabChange?: (tab: DashboardTabId) => void;
+} = {}) {
   const pathname = usePathname();
 
   const navItems: NavItem[] = [
     {
+      id: "attendance",
       href: "/dashboard",
       label: "Attendance",
       icon: <CheckCircle2 className="w-5 h-5" />,
     },
     {
-      href: "/dashboard/performance",
+      id: "performance",
+      href: "/dashboard#performance",
       label: "Marks",
       icon: <TrendingUp className="w-5 h-5" />,
     },
     {
-      href: "/dashboard/exam",
+      id: "exam",
+      href: "/dashboard#exam",
       label: "Exams",
       icon: <CalendarCheck className="w-5 h-5" />,
     },
     {
-      href: "/dashboard/settings",
+      id: "settings",
+      href: "/dashboard#settings",
       label: "Settings",
       icon: <Settings className="w-5 h-5" />,
     },
@@ -49,22 +62,20 @@ export function MobileBottomNav() {
     >
       <div className="grid grid-cols-4 items-center max-w-md mx-auto">
         {navItems.map((item) => {
-          const isActive =
-            item.href === "/dashboard"
+          const isActive = activeTab
+            ? activeTab === item.id
+            : item.id === "attendance"
               ? pathname === "/dashboard"
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              : pathname === `/dashboard/${item.id}` || pathname.startsWith(`/dashboard/${item.id}/`);
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive ? "page" : undefined}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-colors duration-150 relative touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)] ${
-                isActive
-                  ? "text-brand-600 dark:text-white font-bold"
-                  : "text-[var(--ink-muted)] hover:text-[var(--ink-strong)] font-medium"
-              }`}
-            >
+          const className = `flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-colors duration-150 relative touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)] ${
+            isActive
+              ? "text-brand-600 dark:text-white font-bold"
+              : "text-[var(--ink-muted)] hover:text-[var(--ink-strong)] font-medium"
+          }`;
+
+          const content = (
+            <>
               <div
                 className={`p-1 rounded-lg transition-all ${
                   isActive ? "bg-brand-50 dark:bg-neutral-800 scale-105" : ""
@@ -76,6 +87,31 @@ export function MobileBottomNav() {
               {isActive && (
                 <span className="absolute bottom-0 w-1.5 h-1.5 rounded-full bg-brand-600 dark:bg-white" />
               )}
+            </>
+          );
+
+          if (onTabChange) {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onTabChange(item.id)}
+                aria-current={isActive ? "page" : undefined}
+                className={className}
+              >
+                {content}
+              </button>
+            );
+          }
+
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              aria-current={isActive ? "page" : undefined}
+              className={className}
+            >
+              {content}
             </Link>
           );
         })}

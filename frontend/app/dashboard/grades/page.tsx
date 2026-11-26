@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { useDashboard } from "@/hooks/useDashboard";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useGrades } from "@/hooks/useGrades";
+import { loadSession } from "@/lib/session";
 import { GradeCard } from "@/components/GradeCard";
 import { performLogout } from "@/utils/logout";
 import { ArrowLeft, RefreshCw, Award } from "lucide-react";
@@ -43,21 +43,24 @@ export default function GradesPage() {
   const [enrollment, setEnrollment] = useState<string | null>(null);
 
   const activeEnrollment = isHydrated
-    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    ? enrollment || loadSession()?.enrollment || null
     : null;
 
   useEffect(() => {
     if (!isHydrated) return;
-    const storedEnrollment = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
-    if (!storedEnrollment) {
-      router.push("/login");
+    const session = loadSession();
+    if (!session?.token || !session?.enrollment) {
+      router.replace("/login");
     } else {
-      setEnrollment(storedEnrollment);
+      setEnrollment(session.enrollment);
     }
   }, [router, isHydrated]);
 
-  const { data: dashboardData, isRefreshing: isDashboardRefreshing } = useDashboard(activeEnrollment);
   const { data: gradesData, isLoading, error, refresh } = useGrades();
+
+  const studentName = isHydrated && typeof window !== "undefined"
+    ? localStorage.getItem("studentName") || "Student"
+    : "Student";
 
   const handleLogout = async () => {
     await performLogout();
@@ -68,11 +71,11 @@ export default function GradesPage() {
 
   return (
     <DashboardLayout
-      studentName={dashboardData?.student?.name || "Student"}
+      studentName={studentName}
       enrollment={activeEnrollment}
       onLogout={handleLogout}
       onRefresh={refresh}
-      isRefreshing={isLoading || isDashboardRefreshing}
+      isRefreshing={isLoading}
     >
       <div className="space-y-6">
         {/* Top Action Bar */}

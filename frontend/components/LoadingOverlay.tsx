@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from "react";
 import clsx from "clsx";
 import { Typing } from "@/components/loading-ui/typing";
-import { AlertCircle, RotateCcw, X } from "lucide-react";
+import { AlertCircle, RotateCcw } from "lucide-react";
 
 export interface LoadingOverlayProps {
   isVisible: boolean;
@@ -34,16 +34,18 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       return;
     }
 
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      const diff = Date.now() - startTime;
-      setElapsed(diff);
-      if (diff >= timeoutMs) {
-        setIsTimedOut(true);
-      }
-    }, 1000);
+    // Schedule updates only at UI message thresholds instead of ticking every 1s.
+    const thresholds = [4000, 12000, 25000].filter((ms) => ms < timeoutMs);
+    const timers = thresholds.map((ms) => setTimeout(() => setElapsed(ms + 1), ms));
+    const timeoutTimer = setTimeout(() => {
+      setElapsed(timeoutMs);
+      setIsTimedOut(true);
+    }, timeoutMs);
 
-    return () => clearInterval(interval);
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(timeoutTimer);
+    };
   }, [isVisible, timeoutMs]);
 
   if (!isVisible) return null;

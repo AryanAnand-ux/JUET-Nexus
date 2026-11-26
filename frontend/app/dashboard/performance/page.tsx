@@ -12,6 +12,7 @@ import { performLogout } from "@/utils/logout";
 import { PerformanceHub } from "@/components/PerformanceHub";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useHydrated } from "@/hooks/useHydrated";
+import { loadSession } from "@/lib/session";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Typing } from "@/components/loading-ui/typing";
@@ -43,16 +44,16 @@ export default function PerformancePage() {
   const [enrollment, setEnrollment] = React.useState<string | null>(null);
 
   const activeEnrollment = isHydrated
-    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    ? enrollment || loadSession()?.enrollment || null
     : null;
 
   useEffect(() => {
     if (!isHydrated) return;
-    const storedEnrollment = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
-    if (!storedEnrollment) {
-      router.push("/login");
+    const session = loadSession();
+    if (!session?.token || !session?.enrollment) {
+      router.replace("/login");
     } else {
-      setEnrollment(storedEnrollment);
+      setEnrollment(session.enrollment);
     }
   }, [router, isHydrated]);
 

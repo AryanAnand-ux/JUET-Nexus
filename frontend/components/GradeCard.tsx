@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import type { GradeCardResponse, GradeSubject } from "@/types";
+import React, { useState, useMemo, useDeferredValue } from "react";
+import type { GradeCardResponse } from "@/types";
 import {
   Award,
   CheckCircle2,
@@ -30,11 +30,48 @@ function getGradeBadgeStyle(grade: string): string {
   return "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700";
 }
 
+const isSubjectFailed = (status?: string, grade?: string) => {
+  const g = grade?.toUpperCase().trim() || "";
+  const s = status?.toLowerCase().trim() || "";
+  return ["F", "FAIL", "AB"].includes(g) || s === "fail";
+};
+
+const isSubjectPassed = (status?: string, grade?: string) => {
+  if (isSubjectFailed(status, grade)) return false;
+  const s = status?.toLowerCase().trim() || "";
+  const g = grade?.toUpperCase().trim() || "";
+  return s === "pass" || (g !== "" && !["F", "FAIL", "AB"].includes(g));
+};
+
 export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
   const [selectedSemesterIndex, setSelectedSemesterIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearch = useDeferredValue(searchTerm);
 
-  if (!grades || grades.length === 0) {
+  const currentSemester = grades && grades.length > 0 ? (grades[selectedSemesterIndex] || grades[0]) : null;
+  const subjects = useMemo(() => currentSemester?.subjects || [], [currentSemester]);
+
+  const filteredSubjects = useMemo(() => {
+    const term = deferredSearch.trim().toLowerCase();
+    if (!term) return subjects;
+    return subjects.filter(
+      (s) =>
+        s.subjectdesc.toLowerCase().includes(term) ||
+        s.subjectcode.toLowerCase().includes(term)
+    );
+  }, [subjects, deferredSearch]);
+
+  const { totalCredits, passedSubjects } = useMemo(() => {
+    let credits = 0;
+    let passed = 0;
+    for (const s of subjects) {
+      credits += s.credits || 0;
+      if (isSubjectPassed(s.status, s.grade)) passed++;
+    }
+    return { totalCredits: credits, passedSubjects: passed };
+  }, [subjects]);
+
+  if (!grades || grades.length === 0 || !currentSemester) {
     return (
       <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-12 text-center">
         <Award className="w-12 h-12 text-[var(--ink-muted)] mx-auto mb-3" />
@@ -47,32 +84,6 @@ export const GradeCard: React.FC<GradeCardProps> = ({ grades }) => {
       </div>
     );
   }
-
-  const currentSemester = grades[selectedSemesterIndex] || grades[0];
-  const subjects = currentSemester.subjects || [];
-
-  const filteredSubjects = subjects.filter(
-    (s) =>
-      s.subjectdesc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.subjectcode.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const totalCredits = subjects.reduce((sum, s) => sum + (s.credits || 0), 0);
-
-  const isSubjectFailed = (status?: string, grade?: string) => {
-    const g = grade?.toUpperCase().trim() || "";
-    const s = status?.toLowerCase().trim() || "";
-    return ["F", "FAIL", "AB"].includes(g) || s === "fail";
-  };
-
-  const isSubjectPassed = (status?: string, grade?: string) => {
-    if (isSubjectFailed(status, grade)) return false;
-    const s = status?.toLowerCase().trim() || "";
-    const g = grade?.toUpperCase().trim() || "";
-    return s === "pass" || (g !== "" && !["F", "FAIL", "AB"].includes(g));
-  };
-
-  const passedSubjects = subjects.filter((s) => isSubjectPassed(s.status, s.grade)).length;
 
   return (
     <div className="space-y-6">

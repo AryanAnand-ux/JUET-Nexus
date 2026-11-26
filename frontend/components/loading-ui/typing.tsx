@@ -66,12 +66,6 @@ export const Typing: React.FC<TypingProps> = ({
           }}
         />
       ))}
-      <style>{`
-        @keyframes typing-bounce {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-          30%            { transform: translateY(-40%); opacity: 1; }
-        }
-      `}</style>
     </span>
   );
 };

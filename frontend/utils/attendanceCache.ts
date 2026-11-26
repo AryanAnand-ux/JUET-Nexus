@@ -5,22 +5,96 @@
  * and Next.js / Webpack client/server module evaluation errors.
  */
 
-import { apiClient } from "@/utils/api";
-import type { AttendanceDetailsResponse } from "@/types";
+import { postEncrypted } from "@/lib/portalClient";
+import { parseDetailLink, fetchAttendanceDetail } from "@/lib/portalAttendance";
+import type { AttendanceDetailsResponse, AttendanceRecord } from "@/types";
 
 export interface CacheItem {
   data: AttendanceDetailsResponse;
   timestamp: number;
+  checksum?: string;
 }
 
-// In-memory module-level cache: key is `${subject}:${link}`
+/**
+ * Compute a lightweight checksum from a subject's summary percentages.
+ * If the portal's summary percentages haven't changed, the underlying day-by-day
+ * logs haven't changed either — allowing prefetch to skip redundant network calls.
+ */
+export function computeAttendanceChecksum(record: Pick<
+  AttendanceRecord,
+  "percentage" | "lecturePercent" | "tutorialPercent" | "practicalPercent"
+>): string {
+  return `${record.percentage}|${record.lecturePercent}|${record.tutorialPercent}|${record.practicalPercent}`;
+}
+
+// In-memory module-level cache: key is `${user}:${subject}:${link}`
 export const detailsMemoryCache = new Map<string, CacheItem>();
 
 // Global in-flight requests map to prevent duplicate network calls across hooks/prefetchers
 export const inFlightDetailsRequests = new Map<string, Promise<AttendanceDetailsResponse>>();
 
 export const CLIENT_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (persist historical logs across sessions)
-export const CLIENT_STALE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes for background SWR revalidation
+export const CLIENT_STALE_THRESHOLD_MS = 15 * 60 * 1000; // Fallback threshold (used only when portal-day check can't apply)
+
+/**
+ * Returns the Unix timestamp (ms) of the most recent 2:00 AM IST boundary.
+ * JUET commits attendance data at 2:00 AM IST each day. Any cached entry
+ * fetched *after* this boundary is fully fresh for the rest of the portal day.
+ */
+export function getPortalDayStart(): number {
+  const now = new Date();
+  // IST is UTC+5:30
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  // Shift now into IST
+  const istNow = new Date(now.getTime() + IST_OFFSET_MS);
+
+  // Build today's 2 AM IST as a UTC timestamp:
+  //   midnight UTC of the IST date  →  subtract IST offset  →  add 2h
+  const boundary = new Date(
+    Date.UTC(
+      istNow.getUTCFullYear(),
+      istNow.getUTCMonth(),
+      istNow.getUTCDate()
+    ) -
+      IST_OFFSET_MS +
+      2 * 60 * 60 * 1000
+  );
+
+  // If we haven't reached today's 2 AM IST yet, roll back one day
+  if (now.getTime() < boundary.getTime()) {
+    boundary.setUTCDate(boundary.getUTCDate() - 1);
+  }
+
+  return boundary.getTime();
+}
+
+/**
+ * Returns true if `timestamp` falls within the current JUET portal day,
+ * i.e. it was recorded after today's 2:00 AM IST boundary.
+ * Data fetched during the current portal day is always considered fresh —
+ * attendance records don't change until the next 2 AM commit.
+ */
+export function isCachedOnCurrentPortalDay(timestamp: number): boolean {
+  return timestamp >= getPortalDayStart();
+}
+
+function resolveUserScope(enrollment?: string | null): string {
+  return (
+    enrollment ||
+    (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null) ||
+    "default"
+  )
+    .trim()
+    .toUpperCase();
+}
+
+function getMemoryCacheKey(
+  subject: string,
+  link: string,
+  enrollment?: string | null
+): string {
+  return `${resolveUserScope(enrollment)}:${subject}:${link}`;
+}
 
 /**
  * Generate a safe localStorage cache key scoped to the user enrollment
@@ -30,11 +104,7 @@ export function getAttendanceStorageKey(
   link: string,
   enrollment?: string | null
 ): string {
-  const user = (
-    enrollment ||
-    (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null) ||
-    "default"
-  ).trim().toUpperCase();
+  const user = resolveUserScope(enrollment);
   return `juet_att_detail_${user}_${encodeURIComponent(subject)}_${encodeURIComponent(link)}`;
 }
 
@@ -45,8 +115,8 @@ export function getStoredAttendanceDetail(
   subject: string,
   link: string,
   enrollment?: string | null
-): { data: AttendanceDetailsResponse; isStale: boolean } | null {
-  const cacheKey = `${subject}:${link}`;
+): { data: AttendanceDetailsResponse; isStale: boolean; checksum?: string } | null {
+  const cacheKey = getMemoryCacheKey(subject, link, enrollment);
   const now = Date.now();
 
   // 1. Check in-memory cache first (fastest)
@@ -54,7 +124,12 @@ export function getStoredAttendanceDetail(
   if (mem) {
     return {
       data: mem.data,
-      isStale: now - mem.timestamp > CLIENT_STALE_THRESHOLD_MS,
+      // Fresh if fetched today after 2AM IST (attendance doesn't change until next 2AM commit)
+      // Fallback: consider stale after CLIENT_STALE_THRESHOLD_MS for pre-2AM edge cases
+      isStale:
+        !isCachedOnCurrentPortalDay(mem.timestamp) &&
+        now - mem.timestamp > CLIENT_STALE_THRESHOLD_MS,
+      checksum: mem.checksum,
     };
   }
 
@@ -65,14 +140,25 @@ export function getStoredAttendanceDetail(
     const item = localStorage.getItem(key);
     if (!item) return null;
 
-    const parsed = JSON.parse(item) as { data: AttendanceDetailsResponse; timestamp: number };
+    const parsed = JSON.parse(item) as {
+      data: AttendanceDetailsResponse;
+      timestamp: number;
+      checksum?: string;
+    };
     if (!parsed || !parsed.data || typeof parsed.timestamp !== "number") return null;
 
     // Populate memory cache for subsequent instant reads
-    detailsMemoryCache.set(cacheKey, { data: parsed.data, timestamp: parsed.timestamp });
+    detailsMemoryCache.set(cacheKey, {
+      data: parsed.data,
+      timestamp: parsed.timestamp,
+      checksum: parsed.checksum,
+    });
     return {
       data: parsed.data,
-      isStale: now - parsed.timestamp > CLIENT_STALE_THRESHOLD_MS,
+      isStale:
+        !isCachedOnCurrentPortalDay(parsed.timestamp) &&
+        now - parsed.timestamp > CLIENT_STALE_THRESHOLD_MS,
+      checksum: parsed.checksum,
     };
   } catch {
     return null;
@@ -86,16 +172,17 @@ export function setStoredAttendanceDetail(
   subject: string,
   link: string,
   data: AttendanceDetailsResponse,
-  enrollment?: string | null
+  enrollment?: string | null,
+  checksum?: string
 ): void {
-  const cacheKey = `${subject}:${link}`;
+  const cacheKey = getMemoryCacheKey(subject, link, enrollment);
   const now = Date.now();
-  detailsMemoryCache.set(cacheKey, { data, timestamp: now });
+  detailsMemoryCache.set(cacheKey, { data, timestamp: now, checksum });
 
   if (typeof window === "undefined") return;
   try {
     const key = getAttendanceStorageKey(subject, link, enrollment);
-    localStorage.setItem(key, JSON.stringify({ data, timestamp: now }));
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: now, checksum }));
   } catch {
     // Gracefully handle storage quota or privacy mode issues
   }
@@ -133,14 +220,15 @@ export async function fetchAttendanceDetailDirect(
   link: string,
   enrollment?: string | null,
   isRefresh = false,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  checksum?: string
 ): Promise<AttendanceDetailsResponse> {
-  const cacheKey = `${subject}:${link}`;
+  const cacheKey = getMemoryCacheKey(subject, link, enrollment);
 
-  // If not explicitly refreshing, return fresh cached data if present
+  // If not explicitly refreshing, return cached data when checksum matches or entry is fresh
   if (!isRefresh) {
     const cached = getStoredAttendanceDetail(subject, link, enrollment);
-    if (cached && !cached.isStale) {
+    if (cached && ((checksum && cached.checksum === checksum) || !cached.isStale)) {
       return cached.data;
     }
   }
@@ -151,22 +239,27 @@ export async function fetchAttendanceDetailDirect(
     return existingPromise;
   }
 
-  const queryParams = new URLSearchParams({ subject, link });
-  if (isRefresh) {
-    queryParams.set("refresh", "true");
-  }
-
   const fetchPromise = (async () => {
     try {
-      const response = await apiClient.get(
-        `/api/attendance/details?${queryParams.toString()}`,
+      const ref = parseDetailLink(link);
+      if (!ref) {
+        throw new Error("Invalid attendance detail link");
+      }
+      const responseData = await fetchAttendanceDetail(
         {
-          signal,
-          timeout: 60000,
+          postEncrypted: (path, payload, options) =>
+            postEncrypted(path, payload, { timeout: options?.timeout, signal }),
+        },
+        ref,
+        {
+          subject,
+          subjectid: ref.subjectid,
+          individualsubjectcode: ref.individualsubjectcode,
+          components: ref.components,
+          officialPercentage: ref.officialPercentage,
         }
       );
-      const responseData: AttendanceDetailsResponse = response.data.data;
-      setStoredAttendanceDetail(subject, link, responseData, enrollment);
+      setStoredAttendanceDetail(subject, link, responseData, enrollment, checksum);
       return responseData;
     } finally {
       inFlightDetailsRequests.delete(cacheKey);

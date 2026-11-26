@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { apiClient } from "@/utils/api";
+import { postEncrypted } from "@/lib/portalClient";
+import { fetchGradeCard } from "@/lib/portalGrades";
+import { loadSession } from "@/lib/session";
+import { PortalError, SessionExpiredError } from "@/lib/errors";
+import { getCached, setCached, sessionCacheKey } from "@/lib/featureCache";
 import type { GradeCardResponse } from "@/types";
 
 export interface GradesState {
@@ -10,23 +14,23 @@ export interface GradesState {
   error: { message: string; code?: string } | null;
 }
 
-interface GradesCache {
-  data: GradeCardResponse[];
-  timestamp: number;
-}
-
-let cachedGrades: GradesCache | null = null;
+const GRADES_CACHE_TTL_MS = 10 * 60 * 1000;
 let inFlightGradesPromise: Promise<GradeCardResponse[]> | null = null;
-const GRADES_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 export function useGrades() {
   const [state, setState] = useState<GradesState>(() => {
-    if (cachedGrades && Date.now() - cachedGrades.timestamp < GRADES_CACHE_TTL_MS) {
-      return {
-        data: cachedGrades.data,
-        isLoading: false,
-        error: null,
-      };
+    const session = loadSession();
+    if (session?.enrollment) {
+      const entry = getCached<GradeCardResponse[]>(
+        sessionCacheKey("grades", session.enrollment)
+      );
+      if (entry) {
+        return {
+          data: entry.data,
+          isLoading: false,
+          error: null,
+        };
+      }
     }
     return {
       data: null,
@@ -36,9 +40,24 @@ export function useGrades() {
   });
 
   const fetchGrades = useCallback(async (force = false) => {
-    if (!force && cachedGrades && Date.now() - cachedGrades.timestamp < GRADES_CACHE_TTL_MS) {
+    const session = loadSession();
+    if (!session?.token || !session?.instituteid) {
+      setState((prev) => ({
+        ...prev,
+        error: {
+          message: "Session expired. Please log in again.",
+          code: "SESSION_EXPIRED",
+        },
+        isLoading: false,
+      }));
+      return;
+    }
+
+    const key = sessionCacheKey("grades", session.enrollment);
+    const entry = getCached<GradeCardResponse[]>(key);
+    if (!force && entry && Date.now() - entry.ts < GRADES_CACHE_TTL_MS) {
       setState({
-        data: cachedGrades.data,
+        data: entry.data,
         isLoading: false,
         error: null,
       });
@@ -46,37 +65,38 @@ export function useGrades() {
     }
 
     try {
-      setState((prev) => ({ ...prev, isLoading: !prev.data, error: null }));
+      setState((prev) => ({
+        ...prev,
+        data: prev.data ?? entry?.data ?? null,
+        isLoading: !prev.data && !entry?.data,
+        error: null,
+      }));
 
       let responseData: GradeCardResponse[];
-
       if (inFlightGradesPromise) {
         responseData = await inFlightGradesPromise;
       } else {
-        inFlightGradesPromise = (async () => {
-          const response = await apiClient.get("/api/grades");
-          return response.data.data;
-        })();
-
-        try {
-          responseData = await inFlightGradesPromise;
-        } finally {
+        inFlightGradesPromise = fetchGradeCard(
+          { postEncrypted: (path, payload) => postEncrypted(path, payload) },
+          session
+        ).finally(() => {
           inFlightGradesPromise = null;
-        }
+        });
+        responseData = await inFlightGradesPromise;
       }
 
-      cachedGrades = {
-        data: responseData,
-        timestamp: Date.now(),
-      };
+      setCached(key, responseData);
 
       setState({
         data: responseData,
         isLoading: false,
         error: null,
       });
-    } catch (error: any) {
-      if (error.response?.status === 401) {
+    } catch (error: unknown) {
+      if (
+        error instanceof SessionExpiredError ||
+        (error instanceof PortalError && error.httpStatus === 401)
+      ) {
         setState((prev) => ({
           ...prev,
           error: {
@@ -89,13 +109,12 @@ export function useGrades() {
       }
 
       const errorMessage =
-        error.response?.data?.error ||
-        error.message ||
-        "Failed to fetch grade card";
+        error instanceof Error ? error.message : "Failed to fetch grade card";
+      const errorCode = error instanceof PortalError ? error.code : undefined;
 
       setState((prev) => ({
         ...prev,
-        error: { message: errorMessage, code: error.response?.data?.code },
+        error: { message: errorMessage, code: errorCode },
         isLoading: false,
       }));
     }

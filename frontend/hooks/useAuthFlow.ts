@@ -1,25 +1,34 @@
 /**
- * useAuthFlow Hook
+ * useAuthFlow Hook (One-Hop Architecture)
  *
- * Drives CampusLynx authentication for JUET Nexus.
- * Supports unified single-screen login (`submitLogin`) where Enrollment,
- * Password, and Captcha are entered together, as well as step-by-step
- * compatibility functions.
+ * Drives CampusLynx authentication directly from the browser via /api/proxy/*:
+ *   1. GET  /api/proxy/token/getcaptcha
+ *   2. POST /api/proxy/token/pretoken-check   (AES-128-CBC encrypted)
+ *   3. POST /api/proxy/token/generatewebtoken (AES-128-CBC encrypted)
+ *   4. Persist session + encrypted password in localStorage for silent recovery
  */
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import axios from "axios";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { markSessionFresh } from "@/hooks/useSessionKeepAlive";
+import {
+  getCaptcha,
+  preTokenCheck,
+  generateWebToken,
+  type PortalCaptcha,
+  type PortalPreToken,
+} from "@/lib/portalClient";
+import { saveCredentials } from "@/lib/session";
+import { PortalError } from "@/lib/errors";
 import type { LoginFlow } from "@/types";
-
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/+$/, "");
 
 interface CaptchaState {
   image: string;
   sessionToken: string;
   captchaValue: string | null;
+  raw: PortalCaptcha;
 }
 
 export interface AuthError {
@@ -28,7 +37,6 @@ export interface AuthError {
 }
 
 export interface UseAuthFlowReturn {
-  // State
   isLoading: boolean;
   isFetchingCaptcha: boolean;
   captcha: CaptchaState | null;
@@ -37,102 +45,88 @@ export interface UseAuthFlowReturn {
   loginFlow: LoginFlow;
   step: 1 | 2;
   pendingEnrollment: string;
-
-  // Actions
   fetchCaptcha: (options?: { keepError?: boolean }) => Promise<void>;
-  /** Unified single-screen login submitting enrollment, password, and captcha */
   submitLogin: (credentials: {
     enrollment: string;
     password: string;
     captchaInput: string;
   }) => Promise<boolean>;
-  /** Step 1 verify */
   verifyUser: (credentials: { enrollment: string; captchaInput: string }) => Promise<boolean>;
-  /** Step 2 password submit */
   submitPassword: (credentials: { password: string }) => Promise<void>;
   backToIdentify: () => void;
   clearError: () => void;
+  cancelAuth: () => void;
   resetForm: () => void;
+}
+
+function toDataUri(image: string): string {
+  if (!image) return "";
+  return image.startsWith("data:") ? image : `data:image/png;base64,${image}`;
 }
 
 export function useAuthFlow(): UseAuthFlowReturn {
   const router = useRouter();
 
-  // State
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingCaptcha, setIsFetchingCaptcha] = useState(false);
   const [captcha, setCaptcha] = useState<CaptchaState | null>(null);
   const [error, setError] = useState<AuthError | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loginFlow, setLoginFlow] = useState<LoginFlow>("campuslynx");
+  const [loginFlow] = useState<LoginFlow>("campuslynx");
   const [step, setStep] = useState<1 | 2>(1);
-  const [loginToken, setLoginToken] = useState<string | null>(null);
   const [pendingEnrollment, setPendingEnrollment] = useState("");
+  const preTokenRef = useRef<PortalPreToken | null>(null);
+  const authAbortRef = useRef<AbortController | null>(null);
 
-  const persistSession = useCallback(
-    (enrollment: string, role: string, sessionToken?: string) => {
+  const completeLogin = useCallback(
+    async (enrollment: string, password: string) => {
+      // Never block navigation on IndexedDB; race against 1.5s timeout
+      await Promise.race([
+        saveCredentials(enrollment.toUpperCase(), password),
+        new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+      ]);
+      markSessionFresh();
       setIsAuthenticated(true);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("enrollment", enrollment.toUpperCase());
-        localStorage.setItem("role", role);
-        if (sessionToken) {
-          localStorage.setItem("sessionToken", sessionToken);
-        }
-      }
       router.push("/dashboard");
     },
     [router]
   );
 
-  /**
-   * Fetch captcha from backend with automatic retry for server cold starts
-   */
   const fetchCaptcha = useCallback(async (options?: { keepError?: boolean }) => {
     setIsFetchingCaptcha(true);
     if (!options?.keepError) {
       setError(null);
     }
 
-    let lastError: any = null;
-    const maxAttempts = 2;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const response = await axios.get(`${API_URL}/api/init`, {
-          timeout: 45000,
+        const raw = await getCaptcha();
+        setCaptcha({
+          image: toDataUri(raw.image),
+          sessionToken: raw.hidden,
+          captchaValue: null,
+          raw,
         });
-
-        if (response.data?.captchaImage && response.data?.sessionToken) {
-          setLoginFlow("campuslynx");
-          setCaptcha({
-            image: response.data.captchaImage,
-            sessionToken: response.data.sessionToken,
-            captchaValue: response.data.captchaValue ?? null,
-          });
-          setIsFetchingCaptcha(false);
-          return;
-        }
+        setIsFetchingCaptcha(false);
+        return;
       } catch (err) {
         lastError = err;
-        if (attempt < maxAttempts) {
-          await new Promise((r) => setTimeout(r, 1500));
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 800));
         }
       }
     }
 
     const message =
-      axios.isAxiosError(lastError) && lastError.response?.data?.error
-        ? lastError.response.data.error
+      lastError instanceof PortalError
+        ? lastError.message
         : "Portal connection timed out or is unavailable. Please click refresh to retry.";
 
     setError({ message });
-    console.error("Failed to fetch captcha:", lastError);
     setIsFetchingCaptcha(false);
   }, []);
 
-  /**
-   * Unified single-screen login action
-   */
   const submitLogin = useCallback(
     async (credentials: {
       enrollment: string;
@@ -144,50 +138,59 @@ export function useAuthFlow(): UseAuthFlowReturn {
         return false;
       }
 
+      authAbortRef.current?.abort();
+      const controller = new AbortController();
+      authAbortRef.current = controller;
+
       setIsLoading(true);
       setError(null);
+      const enrollment = credentials.enrollment.trim().toUpperCase();
 
       try {
-        // Step 1: verify user & captcha
-        const verifyRes = await axios.post(
-          `${API_URL}/api/auth/verify-user`,
+        const pre = await preTokenCheck(
           {
-            enrollment: credentials.enrollment.toUpperCase(),
-            captcha: credentials.captchaInput,
-            sessionToken: captcha.sessionToken,
+            username: enrollment,
+            usertype: "S",
+            captcha: { ...captcha.raw, captcha: credentials.captchaInput.trim() },
           },
-          { timeout: 30000, withCredentials: true }
+          controller.signal
         );
 
-        const token = verifyRes.data.loginToken;
-        setLoginToken(token);
-        setPendingEnrollment(credentials.enrollment.toUpperCase());
-
-        // Step 2: authenticate password
-        const authRes = await axios.post(
-          `${API_URL}/api/auth`,
-          { loginToken: token, password: credentials.password },
-          { timeout: 30000, withCredentials: true }
-        );
-
-        if (authRes.data.success) {
-          persistSession(credentials.enrollment.toUpperCase(), "Student", authRes.data.sessionToken);
-          return true;
-        } else {
-          setError({ message: authRes.data.error || "Authentication failed" });
+        if (pre.otppwd !== "PWD") {
+          setError({
+            message:
+              "This account requires an emailed one-time password, which is not supported yet.",
+          });
           await fetchCaptcha({ keepError: true });
           return false;
         }
+
+        preTokenRef.current = pre;
+        setPendingEnrollment(enrollment);
+
+        await generateWebToken(
+          {
+            otppwd: pre.otppwd,
+            username: enrollment,
+            passwordotpvalue: credentials.password,
+            random: pre.random,
+          },
+          controller.signal
+        );
+
+        await completeLogin(enrollment, credentials.password);
+        return true;
       } catch (err) {
-        if (axios.isAxiosError(err)) {
-          const status = err.response?.status;
-          const msg = err.response?.data?.error;
-          if (status === 401 && msg && msg.toLowerCase().includes("password")) {
-            setError({ field: "password", message: msg || "Invalid password." });
-          } else if (status === 401) {
-            setError({ field: "captcha", message: msg || "Invalid captcha or enrollment number." });
+        if (controller.signal.aborted) {
+          return false;
+        }
+        if (err instanceof PortalError) {
+          if (err.code === "INVALID_PASSWORD") {
+            setError({ field: "password", message: err.message });
+          } else if (err.code === "INVALID_CAPTCHA") {
+            setError({ field: "captcha", message: err.message });
           } else {
-            setError({ message: msg || "Unable to sign in. Please verify your details." });
+            setError({ message: err.message });
           }
         } else {
           setError({ message: "An unexpected error occurred. Please try again." });
@@ -198,14 +201,14 @@ export function useAuthFlow(): UseAuthFlowReturn {
         setIsLoading(false);
       }
     },
-    [captcha, fetchCaptcha, persistSession]
+    [captcha, fetchCaptcha, completeLogin]
   );
 
-  /**
-   * Step 1: verify enrollment and captcha
-   */
   const verifyUser = useCallback(
-    async (credentials: { enrollment: string; captchaInput: string }): Promise<boolean> => {
+    async (credentials: {
+      enrollment: string;
+      captchaInput: string;
+    }): Promise<boolean> => {
       if (!captcha) {
         setError({ message: "Captcha not loaded. Please refresh." });
         return false;
@@ -213,34 +216,35 @@ export function useAuthFlow(): UseAuthFlowReturn {
 
       setIsLoading(true);
       setError(null);
+      const enrollment = credentials.enrollment.trim().toUpperCase();
 
       try {
-        const response = await axios.post(
-          `${API_URL}/api/auth/verify-user`,
-          {
-            enrollment: credentials.enrollment.toUpperCase(),
-            captcha: credentials.captchaInput,
-            sessionToken: captcha.sessionToken,
-          },
-          { timeout: 30000, withCredentials: true }
-        );
+        const pre = await preTokenCheck({
+          username: enrollment,
+          usertype: "S",
+          captcha: { ...captcha.raw, captcha: credentials.captchaInput.trim() },
+        });
 
-        setLoginToken(response.data.loginToken);
-        setPendingEnrollment(credentials.enrollment.toUpperCase());
+        if (pre.otppwd !== "PWD") {
+          setError({
+            message:
+              "This account requires an emailed one-time password, which is not supported yet.",
+          });
+          await fetchCaptcha({ keepError: true });
+          return false;
+        }
+
+        preTokenRef.current = pre;
+        setPendingEnrollment(enrollment);
         setStep(2);
         return true;
       } catch (err) {
-        if (axios.isAxiosError(err)) {
-          const status = err.response?.status;
-          const message =
-            err.response?.data?.error ||
-            (status === 401
-              ? "Invalid enrollment number or captcha."
-              : "Unable to verify your enrollment. Please try again.");
-          setError({ message });
-        } else {
-          setError({ message: "An unexpected error occurred" });
-        }
+        setError({
+          message:
+            err instanceof PortalError
+              ? err.message
+              : "Invalid enrollment number or captcha.",
+        });
         await fetchCaptcha({ keepError: true });
         return false;
       } finally {
@@ -250,12 +254,10 @@ export function useAuthFlow(): UseAuthFlowReturn {
     [captcha, fetchCaptcha]
   );
 
-  /**
-   * Step 2: submit password
-   */
   const submitPassword = useCallback(
     async (credentials: { password: string }): Promise<void> => {
-      if (!loginToken) {
+      const pre = preTokenRef.current;
+      if (!pre || !pendingEnrollment) {
         setError({ message: "Your login session expired. Please start again." });
         setStep(1);
         return;
@@ -265,49 +267,29 @@ export function useAuthFlow(): UseAuthFlowReturn {
       setError(null);
 
       try {
-        const response = await axios.post(
-          `${API_URL}/api/auth`,
-          { loginToken, password: credentials.password },
-          { timeout: 20000, withCredentials: true }
-        );
+        await generateWebToken({
+          otppwd: pre.otppwd,
+          username: pendingEnrollment,
+          passwordotpvalue: credentials.password,
+          random: pre.random,
+        });
 
-        if (response.data.success) {
-          persistSession(pendingEnrollment, "Student", response.data.sessionToken);
-        } else {
-          setError({ message: response.data.error || "Authentication failed" });
-        }
+        await completeLogin(pendingEnrollment, credentials.password);
       } catch (err) {
-        if (axios.isAxiosError(err)) {
-          const status = err.response?.status;
-          const code = err.response?.data?.code;
-          if (code === "LOGIN_SESSION_EXPIRED") {
-            setLoginToken(null);
-            setStep(1);
-            setError({
-              message: "Your login session expired. Please enter your details again.",
-            });
-            await fetchCaptcha({ keepError: true });
-          } else if (status === 401) {
-            setError({ message: err.response?.data?.error || "Invalid password." });
-          } else {
-            setError({
-              message:
-                err.response?.data?.error || err.message || "Authentication failed",
-            });
-          }
-        } else {
-          setError({ message: "An unexpected error occurred" });
-        }
+        setError({
+          message:
+            err instanceof PortalError ? err.message : "Authentication failed",
+        });
       } finally {
         setIsLoading(false);
       }
     },
-    [loginToken, pendingEnrollment, fetchCaptcha, persistSession]
+    [pendingEnrollment, completeLogin]
   );
 
   const backToIdentify = useCallback(() => {
     setStep(1);
-    setLoginToken(null);
+    preTokenRef.current = null;
     fetchCaptcha();
   }, [fetchCaptcha]);
 
@@ -315,9 +297,16 @@ export function useAuthFlow(): UseAuthFlowReturn {
     setError(null);
   }, []);
 
+  const cancelAuth = useCallback(() => {
+    authAbortRef.current?.abort();
+    authAbortRef.current = null;
+    setIsLoading(false);
+    setError(null);
+  }, []);
+
   const resetForm = useCallback(() => {
     setStep(1);
-    setLoginToken(null);
+    preTokenRef.current = null;
     setPendingEnrollment("");
     setError(null);
     fetchCaptcha();
@@ -342,6 +331,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
     submitPassword,
     backToIdentify,
     clearError,
+    cancelAuth,
     resetForm,
   };
 }

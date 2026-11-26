@@ -1,15 +1,16 @@
 /**
- * CampusLynx captcha solver.
+ * captchaSolver.ts
+ *
+ * CampusLynx in-browser 5-character captcha solver.
  *
  * The portal renders a 310x60 PNG with 5 unrotated characters in a bold Arial
- * face, struck through by a wavy line. We build glyph templates on a canvas at
- * the same size/font, trace the strike-through line, and match each character
- * via the Dice coefficient while ignoring the line.
- *
- * The matching strategy (strike-line tracing, Dice scoring, gap-based advance
- * and glyph disambiguation) is adapted from the MIT-licensed lazyportal
- * project (github.com/jitendradara12/lazyportal) and tuned for our flow.
+ * face, struck through by a wavy line. We render reference glyph templates on a
+ * matching canvas, trace and mask the strike-through line, and score each
+ * character position via the Sørensen–Dice coefficient with gap detection and
+ * stroke-based disambiguation for visually similar glyph pairs.
  */
+
+"use client";
 
 const CHARACTERS = "abcdefghjkmnpqrstuvwxyz23456789";
 const BASELINES = [42, 43, 44, 45];
@@ -143,7 +144,11 @@ export async function solveCampusLynxCaptcha(
   const context = createContext();
   if (!context) return "";
 
-  const image = await loadImage(imageDataUrl);
+  const dataUri = imageDataUrl.startsWith("data:")
+    ? imageDataUrl
+    : `data:image/png;base64,${imageDataUrl}`;
+
+  const image = await loadImage(dataUri);
   context.drawImage(image, 0, 0);
   const pixels = context.getImageData(0, 0, WIDTH, HEIGHT).data;
 

@@ -1,17 +1,15 @@
 /**
  * useSessionKeepAlive Hook
  *
- * Proactively calls POST /api/auth/refresh to slide the 30-day auth cookie and
- * renew the CampusLynx portal token (which expires every ~15 minutes).
+ * Proactively calls `recoverSession()` (Tier 1 JWT slide, falling back to
+ * Tier 2 silent auto-login) to keep the CampusLynx portal session alive
+ * across the ~15-minute token window.
  *
  * Strategy:
  *   - Refresh every REFRESH_INTERVAL_MS while the page is visible.
  *   - Also refresh when the page becomes visible again or the window regains
- *     focus (handles kill + reopen, tab switch, phone unlock), but at most once
- *     per REFRESH_THROTTLE_MS — the periodic timer already covers the token's
- *     lifetime, so foreground events must not each force a portal renewal.
- *   - When the refresh is refused, fall back to `recoverSession()`, which does a
- *     transparent silent re-login with the server-stored password.
+ *     focus (handles kill + reopen, tab switch, phone unlock), throttled to
+ *     REFRESH_THROTTLE_MS so rapid focus switches don't spam the portal.
  *   - Silently ignores network errors so offline / flaky connections don't
  *     kick the user out.
  */
@@ -24,15 +22,19 @@ import { recoverSession } from "@/utils/sessionRecovery";
 // Refresh every 5 minutes — well within the 15-minute portal token window
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
-// Minimum spacing between any two refresh attempts. The 5-minute interval above
-// keeps the ~15-minute CampusLynx token alive on its own, so a focus/visibility
-// event only needs to trigger a renewal when we have not refreshed recently.
-// Without this, every alt-tab fires a forced portal round-trip
-// (POST /api/auth/refresh -> getOrRenewCampusLynxIdentity({ force: true })).
-const REFRESH_THROTTLE_MS = 60 * 1000;
+// Minimum spacing between any two foreground refresh attempts.
+const REFRESH_THROTTLE_MS = 3 * 60 * 1000;
 
 // Shared across every hook instance so two mounts cannot bypass the throttle.
 let lastRefreshAttemptAt = 0;
+
+/**
+ * Mark the session as recently established/verified (e.g. right after login)
+ * so DashboardSessionKeeper does not fire a redundant refresh right after login.
+ */
+export function markSessionFresh(): void {
+  lastRefreshAttemptAt = Date.now();
+}
 
 export function useSessionKeepAlive(enabled: boolean) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);

@@ -11,7 +11,7 @@ import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { CampusLynxLoginForm } from "@/components/CampusLynxLoginForm";
 import { LoginIllustration } from "@/components/LoginIllustration";
 import { useAuthFlow } from "@/hooks/useAuthFlow";
-import { apiClient } from "@/utils/api";
+import { loadSession } from "@/lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,34 +24,15 @@ export default function LoginPage() {
     fetchCaptcha,
     submitLogin,
     clearError,
+    cancelAuth,
   } = useAuthFlow();
 
-  // Redirect to dashboard if already logged in. This runs after hydration so
-  // the initial render matches the server (no hydration mismatch).
+  // Redirect to dashboard if already logged in with a valid client session.
   useEffect(() => {
-    let cancelled = false;
-
-    apiClient
-      .get("/api/auth/session")
-      .then((res) => {
-        if (!cancelled && res.data?.success && res.data?.enrollment) {
-          if (typeof window !== "undefined") {
-            localStorage.setItem("enrollment", res.data.enrollment.toUpperCase());
-            localStorage.setItem("role", "Student");
-            if (res.data.sessionToken) {
-              localStorage.setItem("sessionToken", res.data.sessionToken);
-            }
-          }
-          router.replace("/dashboard");
-        }
-      })
-      .catch(() => {
-        // A missing or expired cookie means the login form should remain available.
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    const session = loadSession();
+    if (session?.token && session?.enrollment) {
+      router.replace("/dashboard");
+    }
   }, [router]);
 
   return (
@@ -62,10 +43,8 @@ export default function LoginPage() {
       <LoadingOverlay
         isVisible={isLoading}
         message="Authenticating with student portal..."
-        timeoutMs={15000}
-        onCancel={() => {
-          clearError();
-        }}
+        timeoutMs={45000}
+        onCancel={cancelAuth}
       />
 
       <main className="w-full max-w-[960px] bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-[0_25px_60px_-15px_rgba(15,23,42,0.35)] overflow-hidden flex flex-col md:flex-row border border-[#e4e6e3]">

@@ -3,12 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { useDashboard } from "@/hooks/useDashboard";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useExamSchedule } from "@/hooks/useExamSchedule";
+import { loadSession } from "@/lib/session";
 import { ExamSchedule } from "@/components/ExamSchedule";
 import { performLogout } from "@/utils/logout";
-import { ArrowLeft, RefreshCw, Calendar } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { Typing } from "@/components/loading-ui/typing";
 
@@ -45,44 +45,60 @@ export default function ExamPage() {
   const [enrollment, setEnrollment] = useState<string | null>(null);
 
   const activeEnrollment = isHydrated
-    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    ? enrollment || loadSession()?.enrollment || null
     : null;
 
   useEffect(() => {
     if (!isHydrated) return;
-    const storedEnrollment = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
-    if (!storedEnrollment) {
-      router.push("/login");
+    const session = loadSession();
+    if (!session?.token || !session?.enrollment) {
+      router.replace("/login");
     } else {
-      setEnrollment(storedEnrollment);
+      setEnrollment(session.enrollment);
     }
   }, [router, isHydrated]);
 
-  const { data: dashboardData, isRefreshing: isDashboardRefreshing } = useDashboard(activeEnrollment);
-  const { data: examData, isLoading, error, refresh, selectedEventId, selectEvent } = useExamSchedule();
+  const { data: examData, isLoading, error, refresh } = useExamSchedule();
 
-  const courseMap = React.useMemo(() => {
+  // Read cached studentName & courseMap synchronously from localStorage so
+  // visiting /dashboard/exam never triggers an unrelated background /api/dashboard refresh.
+  const { studentName, courseMap } = React.useMemo(() => {
     const map: Record<string, string> = {};
-    if (dashboardData?.courses) {
-      for (const c of dashboardData.courses) {
-        if (c.code && c.title) {
-          map[c.code.toUpperCase()] = c.title;
-        }
-      }
+    let name = "Student";
+    if (!isHydrated || typeof window === "undefined" || !activeEnrollment) {
+      return { studentName: name, courseMap: map };
     }
-    if (dashboardData?.attendance) {
-      for (const a of dashboardData.attendance) {
-        if (a.subject && a.detailLink) {
-          const match = String(a.detailLink).match(/code=([^&]+)/);
-          if (match && match[1]) {
-            const code = decodeURIComponent(match[1]).toUpperCase();
-            map[code] = a.subject;
+    name = localStorage.getItem("studentName") || "Student";
+    try {
+      const raw = localStorage.getItem(`juet_dashboard_cache_v3_${activeEnrollment.trim().toUpperCase()}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const dashboardData = parsed?.data;
+        if (dashboardData?.student?.name) name = dashboardData.student.name;
+        if (Array.isArray(dashboardData?.courses)) {
+          for (const c of dashboardData.courses) {
+            if (c.code && c.title) {
+              map[String(c.code).toUpperCase()] = c.title;
+            }
+          }
+        }
+        if (Array.isArray(dashboardData?.attendance)) {
+          for (const a of dashboardData.attendance) {
+            if (a.subject && a.detailLink) {
+              const match = String(a.detailLink).match(/code=([^&]+)/);
+              if (match && match[1]) {
+                const code = decodeURIComponent(match[1]).toUpperCase();
+                map[code] = a.subject;
+              }
+            }
           }
         }
       }
+    } catch {
+      // Best-effort cache lookup
     }
-    return map;
-  }, [dashboardData]);
+    return { studentName: name, courseMap: map };
+  }, [isHydrated, activeEnrollment]);
 
   const handleLogout = async () => {
     await performLogout();
@@ -93,11 +109,11 @@ export default function ExamPage() {
 
   return (
     <DashboardLayout
-      studentName={dashboardData?.student?.name || "Student"}
+      studentName={studentName}
       enrollment={activeEnrollment}
       onLogout={handleLogout}
       onRefresh={refresh}
-      isRefreshing={isLoading || isDashboardRefreshing}
+      isRefreshing={isLoading}
     >
       <div className="space-y-6">
         {/* Top Action Bar */}
@@ -110,9 +126,8 @@ export default function ExamPage() {
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Dashboard</span>
             </Link>
-            <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)] flex items-center gap-2.5">
+            <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)]">
               Exam Schedule
-              <Calendar className="w-5 h-5 text-[var(--ink-muted)]" />
             </h2>
           </div>
 
@@ -133,13 +148,10 @@ export default function ExamPage() {
         ) : examData ? (
           <ExamSchedule
             schedule={examData}
-            selectedEventId={selectedEventId}
-            onSelectEvent={selectEvent}
             courseMap={courseMap}
           />
         ) : (
           <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-12 text-center">
-            <Calendar className="w-12 h-12 text-[var(--ink-muted)] opacity-50 mx-auto mb-3" />
             <h3 className="text-base font-bold text-[var(--ink-strong)]">
               No Exam Data Found
             </h3>
