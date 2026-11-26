@@ -16,6 +16,7 @@ import {
   parseDetailLink,
   displaySubjectName,
   fetchLatestRegistration,
+  fetchRegistrationsOrdered,
   fetchAttendanceSummary,
   fetchAttendanceDetail,
   parseDateForSort,
@@ -203,6 +204,35 @@ describe("fetchAttendanceSummary", () => {
         registrationcode: ctx.registrationcode,
       },
     });
+  });
+
+  test("returns empty array when the portal reports NO Attendance Found", async () => {
+    const transport = stubTransport({
+      "/StudentClassAttendance/getstudentattendancedetail": {
+        status: { responseStatus: "Failure", errors: ["NO Attendance Found"] },
+        response: {},
+      },
+    });
+    const records = await fetchAttendanceSummary(transport, ctx);
+    expect(records).toEqual([]);
+  });
+});
+
+describe("fetchRegistrationsOrdered", () => {
+  test("sorts registrations newest-first by registrationdateto", async () => {
+    const transport = stubTransport({
+      "/studentcommonsontroller/getsemestercode-exammarks": {
+        status: { responseStatus: "Success" },
+        response: {
+          semestercode: [
+            { registrationid: "OLD", registrationcode: "2026ODDSEM", registrationdateto: 1798655400000 },
+            { registrationid: "NEW", registrationcode: "2027EVENSEM", registrationdateto: 1814380200000 },
+          ],
+        },
+      },
+    });
+    const regs = await fetchRegistrationsOrdered(transport, ctx.instituteid);
+    expect(regs.map((r) => r.registrationid)).toEqual(["NEW", "OLD"]);
   });
 });
 

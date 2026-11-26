@@ -91,15 +91,6 @@ function loadCachedDashboard(enrollment: string | null): { data: DashboardRespon
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed?.data) {
-        // If cached data lacks multi-event evaluation history, drop it so fresh data is fetched
-        const hasMulti = parsed.data.detailedMarks?.some(
-          (m: any) => m.components && m.components.length > 1
-        );
-        if (!hasMulti) {
-          localStorage.removeItem(`${STORAGE_KEY_PREFIX}${key}`);
-          return null;
-        }
-
         const fetchedAt = parsed.fetchedAt ? new Date(parsed.fetchedAt) : new Date();
         const result = {
           data: parsed.data,

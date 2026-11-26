@@ -188,4 +188,51 @@ describe("GET /api/dashboard under campuslynx", () => {
     expect(res.statusCode).toBe(401);
     expect(res.json()).toMatchObject({ success: false, code: "SESSION_EXPIRED" });
   });
+
+  it("falls back to prior semester attendance when a newly added semester has no attendance yet", async () => {
+    mockPostEncrypted.mockImplementation(async (path: string, payload: Record<string, unknown>) => {
+      if (path.includes("loadData")) return profileFixture;
+      if (path.includes("getsemestercode-exammarks")) {
+        return {
+          status: { responseStatus: "Success", errors: null, identifier: null },
+          response: {
+            semestercode: [
+              {
+                registrationdesc: "2026 ODD SEMESTER",
+                registrationid: "JERUM26030000034",
+                registrationdateto: 1798655400000,
+                registrationcode: "2026ODDSEM",
+              },
+              {
+                registrationdesc: "2027 EVEN SEMESTER",
+                registrationid: "JERUM27010000001",
+                registrationdateto: 1814380200000,
+                registrationcode: "2027EVENSEM",
+              },
+            ],
+            examevent: [],
+          },
+        };
+      }
+      if (path.includes("getstudentattendancedetail")) {
+        if (payload.registrationid === "JERUM27010000001") {
+          return { status: { responseStatus: "Failure", errors: ["NO Attendance Found"] }, response: {} };
+        }
+        return summaryFixture;
+      }
+      if (path.includes("getstudent-exammarks")) return marksFixture;
+      if (path.includes("checkIfstudentmasterexist")) {
+        return { status: { responseStatus: "Failure", errors: ["No Result Found"] } };
+      }
+      throw new Error(`unexpected POST ${path}`);
+    });
+
+    app = await buildApp();
+    const res = await app.inject({ method: "GET", url: dashUrl(), cookies: cookie() });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.attendance).toHaveLength(11);
+  });
 });

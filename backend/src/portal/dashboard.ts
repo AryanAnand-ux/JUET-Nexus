@@ -55,9 +55,9 @@ import type {
 import { PortalError } from "./types";
 import {
   fetchAttendanceSummary,
-  fetchLatestRegistration,
+  fetchRegistrationsOrdered,
   parseDetailLink,
-  type AttendanceContext,
+  type PortalRegistration,
 } from "./attendance";
 
 // ---------------------------------------------------------------------------
@@ -381,85 +381,202 @@ export function parsePdfMarks(rawText: string): PortalMarkRow[] {
   const lines = rawText
     .split("\n")
     .map((l) => l.replace(/\\([()])/g, "$1").trim())
-    .filter((l) => l.length > 0 && l !== " ");
+    .filter((l) => l.length > 0 && l !== "\u00a0");
+
+  const isScoreCell = (line: string) => /^-?\d+(?:\.\d+)?\s*\/\s*-?\d+(?:\.\d+)?$/.test(line) || line === "-" || line === "--";
+  const isMarker = (line: string) => /om\s*\/\s*fm/i.test(line) || /ow\s*\/\s*wt/i.test(line) || /^obtained/i.test(line) || /^max/i.test(line) || /^weight/i.test(line);
+  const isFooter = (line: string) => /^legend$/i.test(line) || /^description/i.test(line) || /^note[:\s]/i.test(line) || /^page\s+\d+/i.test(line);
 
   let subjCodeIdx = lines.findIndex((l) => /subject\s*code/i.test(l));
   if (subjCodeIdx === -1) {
-    subjCodeIdx = lines.findIndex((l) => /^subject$/i.test(l) || /^course\s*code$/i.test(l));
+    subjCodeIdx = lines.findIndex((l) => /^subject$/i.test(l) || /^course\s*code$/i.test(l) || /^subject\s*name/i.test(l));
   }
   if (subjCodeIdx === -1) return [];
 
-  // Find events between "Subject Code" and the first "OM/FM"
+  // Event labels appear after subject header and before score/header markers.
   const events: string[] = [];
   let idx = subjCodeIdx + 1;
-  while (idx < lines.length && !/om\s*\/\s*fm/i.test(lines[idx])) {
-    if (lines[idx].length > 0) {
-      events.push(lines[idx]);
-    }
+  while (idx < lines.length) {
+    const line = lines[idx];
+    if (isMarker(line) || isScoreCell(line)) break;
+    if (isFooter(line)) return [];
+    if (!/^subject$/i.test(line) && !/^course$/i.test(line)) events.push(line);
     idx++;
   }
-
   if (events.length === 0) return [];
 
-  // Skip the OM/FM / OW/WT header section
-  while (idx < lines.length && (/om\s*\/\s*fm/i.test(lines[idx]) || /ow\s*\/\s*wt/i.test(lines[idx]))) {
-    idx++;
-  }
+  while (idx < lines.length && isMarker(lines[idx])) idx++;
 
-  const rows: PortalMarkRow[] = [];
+  type SubjectBlock = { labels: string[]; cells: string[] };
+  const blocks: SubjectBlock[] = [];
+  let current: SubjectBlock | null = null;
+  const cellsNeeded = events.length * 2;
 
-  while (idx < lines.length) {
-    if (lines[idx] === "Legend" || lines[idx].startsWith("Description")) {
-      break;
+  const flush = () => {
+    if (!current) return;
+    if (current.cells.length > 0) {
+      while (current.cells.length < cellsNeeded) current.cells.push("-");
+      blocks.push(current);
     }
+    current = null;
+  };
 
-    let subjectdesc = lines[idx];
-    let subjectcode = "";
-    idx++;
+  for (let i = idx; i < lines.length; i++) {
+    const line = lines[i];
+    if (isFooter(line)) break;
+    if (isMarker(line)) continue;
 
-    if (idx < lines.length && /^\([A-Z0-9_/-]+\)$/i.test(lines[idx])) {
-      subjectcode = lines[idx].replace(/[()]/g, "");
-      idx++;
-    } else {
-      const match = subjectdesc.match(/\(([^()]+)\)$/);
-      if (match) {
-        subjectcode = match[1];
-        subjectdesc = subjectdesc.replace(/\s*\([^()]+\)$/, "");
+    if (isScoreCell(line)) {
+      if (!current) {
+        // orphan score cell; ignore
+        continue;
       }
-    }
-
-    if (!subjectcode) {
+      if (current.cells.length >= cellsNeeded) {
+        flush();
+        // if somehow another score appears immediately after a full block, drop it
+        continue;
+      }
+      current.cells.push(line);
+      if (current.cells.length >= cellsNeeded) flush();
       continue;
     }
 
-    for (const ev of events) {
-      if (idx >= lines.length) break;
-      const omFm = lines[idx++];
-      const owWt = idx < lines.length ? lines[idx++] : "-";
+    // Non-score, non-marker text: subject label/name/code (or noise)
+    if (!current) {
+      current = { labels: [line], cells: [] };
+      continue;
+    }
+    if (current.cells.length === 0) {
+      current.labels.push(line);
+      continue;
+    }
+    if (current.cells.length < cellsNeeded) {
+      // New subject started before previous completed; pad and move on.
+      flush();
+      current = { labels: [line], cells: [] };
+      continue;
+    }
+    flush();
+    current = { labels: [line], cells: [] };
+  }
+  flush();
 
-      if (omFm && omFm !== "-") {
-        const parts = omFm.split("/").map((p) => parseFloat(p.trim()));
-        const obtained = Number.isFinite(parts[0]) ? parts[0] : 0;
-        const max = Number.isFinite(parts[1]) ? parts[1] : 0;
+  const rows: PortalMarkRow[] = [];
+  for (const block of blocks) {
+    let subjectdesc = "";
+    let subjectcode = "";
 
-        const wtParts = owWt !== "-" ? owWt.split("/").map((p) => parseFloat(p.trim())) : [];
-        const obtainedWeightage = Number.isFinite(wtParts[0]) ? wtParts[0] : obtained;
-        const weightage = Number.isFinite(wtParts[1]) ? wtParts[1] : max;
+    for (const label of block.labels) {
+      const trimmed = label.trim();
+      if (!trimmed) continue;
 
-        rows.push({
-          subjectcode,
-          subjectdesc,
-          eventcode: ev,
-          fullmarks: max,
-          obtainedmarks: obtained,
-          weightage,
-          obtainedWeightage,
-        });
+      const onlyCode = trimmed.match(/^\(([A-Z0-9_./-]+)\)$/i);
+      if (onlyCode) {
+        subjectcode = subjectcode || onlyCode[1].trim();
+        continue;
       }
+
+      const embedded = trimmed.match(/^(.*?)[\s]*\(([A-Z0-9_./-]+)\)\s*$/);
+      if (embedded) {
+        const namePart = embedded[1].trim();
+        const codePart = embedded[2].trim();
+        if (!subjectcode && /^[A-Z0-9]{2,}/i.test(codePart)) subjectcode = codePart;
+        if (namePart) subjectdesc = subjectdesc ? `${subjectdesc} ${namePart}` : namePart;
+        continue;
+      }
+
+      if (!subjectcode && /^[A-Z0-9]{2,}[A-Z0-9._/-]*$/i.test(trimmed) && trimmed.length <= 20 && !/\s/.test(trimmed)) {
+        subjectcode = trimmed;
+        continue;
+      }
+
+      subjectdesc = subjectdesc ? `${subjectdesc} ${trimmed}` : trimmed;
+    }
+
+    subjectdesc = subjectdesc.trim();
+    subjectcode = subjectcode.trim();
+    if (!subjectdesc && !subjectcode) continue;
+
+    for (let e = 0; e < events.length; e++) {
+      const omFm = block.cells[e * 2] ?? "-";
+      const owWt = block.cells[e * 2 + 1] ?? "-";
+      if (!omFm || omFm === "-" || omFm === "--" || !omFm.includes("/")) continue;
+
+      const parts = omFm.split("/").map((p) => parseFloat(p.trim()));
+      const obtained = Number.isFinite(parts[0]) ? parts[0] : 0;
+      const max = Number.isFinite(parts[1]) ? parts[1] : 0;
+
+      const wtParts = owWt && owWt !== "-" && owWt !== "--" && owWt.includes("/")
+        ? owWt.split("/").map((p) => parseFloat(p.trim()))
+        : [];
+      const obtainedWeightage = Number.isFinite(wtParts?.[0]) ? wtParts[0] : obtained;
+      const weightage = Number.isFinite(wtParts?.[1]) ? wtParts[1] : max;
+
+      rows.push({
+        subjectcode: subjectcode || subjectdesc,
+        subjectdesc: subjectdesc || subjectcode,
+        eventcode: events[e],
+        fullmarks: max,
+        obtainedmarks: obtained,
+        weightage,
+        obtainedWeightage,
+      });
     }
   }
 
   return rows;
+}
+
+function findMarkRowsDeep(payload: unknown): PortalMarkRow[] {
+  const seen = new Set<any>();
+  const out: PortalMarkRow[] = [];
+
+  function visit(node: unknown, depth: number) {
+    if (!node || depth > 6) return;
+    if (typeof node !== "object") return;
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      if (node.length > 0) {
+        const objects = node.filter((x) => x && typeof x === "object" && !Array.isArray(x)) as Record<string, unknown>[];
+        if (objects.length > 0) {
+          const score = (o: Record<string, unknown>) =>
+            (o.subjectcode || o.subjectCode || o.subjectdesc || o.subjectDesc || o.subject ? 1 : 0) +
+            (o.obtainedmarks || o.obtainedMarks || o.marks || o.obtained ? 1 : 0) +
+            (o.eventcode || o.eventCode || o.exameventid || o.examEventId || o.event ? 1 : 0);
+          const plausible = objects.filter((o) => score(o) >= 2);
+          if (plausible.length > 0) out.push(...(plausible as unknown as PortalMarkRow[]));
+        }
+      }
+      for (const item of node) visit(item, depth + 1);
+      return;
+    }
+
+    const obj = node as Record<string, unknown>;
+    const priorityKeys = ["viewmarksbystudent", "studentMarks", "studentmarks", "marks", "subjectMarks", "exammarks"];
+    for (const k of priorityKeys) {
+      if (Array.isArray(obj[k])) visit(obj[k], depth + 1);
+    }
+    for (const value of Object.values(obj)) visit(value, depth + 1);
+  }
+
+  visit(payload, 0);
+  return out;
+}
+
+function extractMarkRowsFromPayload(rawResponse: unknown, path: string): PortalMarkRow[] {
+  try {
+    const response = extractDashboardResponse(rawResponse, path, true);
+    const direct = (response as any).viewmarksbystudent;
+    if (Array.isArray(direct)) return direct as PortalMarkRow[];
+    const deep = findMarkRowsDeep(response);
+    if (deep.length > 0) return deep;
+  } catch {
+    // fall through to deep scan on raw payload
+  }
+  const deepRaw = findMarkRowsDeep(rawResponse);
+  return deepRaw;
 }
 
 export async function fetchMarkRows(
@@ -473,123 +590,188 @@ export async function fetchMarkRows(
   }
 ): Promise<PortalMarkRow[]> {
   const allRows: PortalMarkRow[] = [];
+  const log = (msg: string, ...data: unknown[]) => console.log(`[Marks:${args.enrollment ?? "?"}] ${msg}`, ...data);
 
-  // Primary Strategy: Fetch the official Event-Wise Marks PDF report from CampusLynx.
-  // The JSON endpoint getstudent-exammarks only returns the single latest test,
-  // whereas printstudent-exammarks contains every published evaluation (TEST-1, P-1, TEST-2, etc.).
+  log("fetchMarkRows START", { registrationcode: args.registrationcode, hasGetBuffer: !!transport.getBuffer });
+
+  // Strategy 1: Fetch the official Event-Wise Marks PDF report from CampusLynx.
   if (transport.getBuffer && args.registrationcode) {
     try {
       const reportPath = `/studentsexamview/printstudent-exammarks/${args.instituteid}/${args.registrationid}/${args.registrationcode}`;
+      log("Strategy 1 (PDF): requesting", reportPath);
       const pdfBuf = await transport.getBuffer(reportPath);
+      log("Strategy 1 (PDF): received buffer", { length: pdfBuf?.length });
       if (pdfBuf && pdfBuf.length > 0) {
         const rawText = extractTextFromPdf(pdfBuf);
+        log("Strategy 1 (PDF): extracted text length", rawText.length, "first 500 chars:", rawText.substring(0, 500));
         const reportRows = parsePdfMarks(rawText);
+        log("Strategy 1 (PDF): parsed rows", reportRows.length, reportRows.map(r => `${r.subjectcode}/${r.eventcode}`));
         if (reportRows.length > 0) {
           allRows.push(...reportRows);
         }
       }
-    } catch {
-      // PDF report fetch failed, fall back
+    } catch (err: any) {
+      log("Strategy 1 (PDF): FAILED", err?.message || err);
     }
+  } else {
+    log("Strategy 1 (PDF): SKIPPED", { hasGetBuffer: !!transport.getBuffer, registrationcode: args.registrationcode });
   }
 
-  // Base JSON fetch
+  // Strategy 2: Base JSON fetch (returns the latest published event only in many cases)
+  let baseRows: PortalMarkRow[] = [];
   try {
-    const response = extractDashboardResponse(
-      await transport.postEncrypted(EXAM_MARKS_PATH, {
-        instituteid: args.instituteid,
-        registrationid: args.registrationid,
-        companyid: args.companyid,
-      }),
-      EXAM_MARKS_PATH,
-      /* tolerateNoRecords */ true
-    );
-    if (Array.isArray(response.viewmarksbystudent)) {
-      allRows.push(...(response.viewmarksbystudent as PortalMarkRow[]));
-    }
-  } catch {
-    // Tolerant
-  }
-
-  // Multi-event query strategy: Query all exam events for this student/registration
-  // CampusLynx's generic call often only returns the latest event (e.g. TEST-2 or P-1).
-  // Querying per exameventid retrieves all prior evaluations (e.g. TEST-1, P-1, etc.).
-  try {
-    const eventRes = (await transport.postEncrypted(GET_EVENTS_PATH, {
+    const rawResponse = await transport.postEncrypted(EXAM_MARKS_PATH, {
       instituteid: args.instituteid,
-      registationid: args.registrationid, // Note portal API typo: registationid
       registrationid: args.registrationid,
-    })) as any;
+      companyid: args.companyid,
+    });
+    log("Strategy 2 (JSON): raw response keys", Object.keys((rawResponse as any)?.response || {}));
+    baseRows = extractMarkRowsFromPayload(rawResponse, EXAM_MARKS_PATH);
+    if (baseRows.length > 0) {
+      log("Strategy 2 (JSON): got rows", baseRows.length, baseRows.map(r => `${r.subjectcode}/${r.eventcode}/${(r as any).exameventid}`));
+      allRows.push(...baseRows);
+    } else {
+      log("Strategy 2 (JSON): no mark rows found in response");
+    }
+  } catch (err: any) {
+    log("Strategy 2 (JSON): FAILED", err?.message || err);
+  }
 
-    const rawEvents =
-      eventRes?.response?.eventcode?.examevent ||
-      eventRes?.response?.examevent ||
-      eventRes?.eventcode?.examevent ||
-      [];
-    const events: Array<{ exameventid: string; exameventdesc?: string }> = Array.isArray(rawEvents)
-      ? rawEvents
-          .map((ev: any) => ({
-            exameventid: String(ev.exameventid ?? ev.id ?? "").trim(),
-            exameventdesc: String(ev.exameventdesc ?? ev.eventdesc ?? ev.eventcode ?? "").trim(),
-          }))
-          .filter((ev) => ev.exameventid.length > 0)
-      : [];
+  // Strategy 3: Multi-event query.
+  const knownEventIds = new Set<string>();
+  const seenEventKeys = new Set<string>();
 
-    if (events.length > 0) {
-      const perEventPromises = events.map(async (ev) => {
-        try {
-          const res = extractDashboardResponse(
-            await transport.postEncrypted(EXAM_MARKS_PATH, {
-              instituteid: args.instituteid,
-              registrationid: args.registrationid,
-              companyid: args.companyid,
-              exameventid: ev.exameventid,
-              eventcode: ev.exameventdesc,
-            }),
-            EXAM_MARKS_PATH,
-            true
-          );
-          const rows = Array.isArray(res.viewmarksbystudent)
-            ? (res.viewmarksbystudent as PortalMarkRow[])
-            : [];
-          return rows.map((r) => {
-            const copy = { ...r };
-            if (!copy.eventcode && ev.exameventdesc) {
-              copy.eventcode = ev.exameventdesc;
-            }
-            if (!copy.exameventid) {
-              copy.exameventid = ev.exameventid;
-            }
-            return copy;
-          });
-        } catch {
-          return [] as PortalMarkRow[];
-        }
-      });
+  const addEventId = (id: unknown) => {
+    const s = String(id ?? "").trim();
+    if (s) knownEventIds.add(s);
+  };
 
-      const perEventResults = await Promise.allSettled(perEventPromises);
-      for (const res of perEventResults) {
-        if (res.status === "fulfilled" && res.value.length > 0) {
-          allRows.push(...res.value);
+  const collectEventIdsDeep = (payload: unknown, depth = 0) => {
+    if (!payload || depth > 6) return;
+    if (typeof payload !== "object") return;
+    const key = payload as any;
+    if (seenEventKeys.has(key)) return;
+    seenEventKeys.add(key);
+
+    if (Array.isArray(payload)) {
+      for (const item of payload) collectEventIdsDeep(item, depth + 1);
+      return;
+    }
+    for (const [k, v] of Object.entries(payload as Record<string, unknown>)) {
+      const lk = k.toLowerCase();
+      if ((lk.includes("exameventid") || lk === "eventid" || lk === "id") && (typeof v === "string" || typeof v === "number")) {
+        const sv = String(v).trim();
+        if (/^[A-Z0-9_-]{5,}$/i.test(sv)) addEventId(sv);
+      }
+      collectEventIdsDeep(v, depth + 1);
+    }
+  };
+
+  // 3a: Try the dedicated events endpoint with a few payload variants
+  const eventPayloadVariants: Record<string, unknown>[] = [
+    { instituteid: args.instituteid, registationid: args.registrationid, registrationid: args.registrationid },
+    { instituteid: args.instituteid, registrationid: args.registrationid },
+    { instituteid: args.instituteid, registationid: args.registrationid },
+    ...(args.registrationcode ? [{ instituteid: args.instituteid, registrationid: args.registrationid, registrationcode: args.registrationcode }] : []),
+  ];
+
+  for (let i = 0; i < eventPayloadVariants.length; i++) {
+    try {
+      const eventRes = (await transport.postEncrypted(GET_EVENTS_PATH, eventPayloadVariants[i])) as any;
+      if (i === 0) log("Strategy 3a (events endpoint): raw response", JSON.stringify(eventRes).substring(0, 1000));
+
+      const rawEvents =
+        eventRes?.response?.eventcode?.examevent ||
+        eventRes?.response?.eventcode ||
+        eventRes?.response?.examevent ||
+        eventRes?.response?.events ||
+        eventRes?.eventcode?.examevent ||
+        [];
+
+      if (Array.isArray(rawEvents)) {
+        for (const ev of rawEvents) {
+          addEventId(ev?.exameventid ?? ev?.eventid ?? ev?.id);
         }
       }
+      collectEventIdsDeep(eventRes);
+      if (knownEventIds.size > 0) break;
+    } catch (err: any) {
+      if (i === 0) log("Strategy 3a (events endpoint): FAILED", err?.message || err);
     }
-  } catch {
-    // Tolerant
+  }
+  log("Strategy 3a: event IDs after events endpoint", [...knownEventIds]);
+
+  // 3b: Collect distinct exameventid values from any fetched rows so far
+  for (const row of [...baseRows, ...allRows]) {
+    addEventId((row as any).exameventid ?? (row as any).examEventId ?? (row as any).eventid);
+  }
+  log("Strategy 3b: total known event IDs (after rows)", [...knownEventIds]);
+
+  // 3c: Discover older/related event IDs by probing sequential suffixes.
+  // CampusLynx exam event IDs often follow patterns like JEEXV<YYMM>A<7-digit-seq>.
+  const discoveredIds = new Set<string>();
+  for (const id of [...knownEventIds]) {
+    const match = id.match(/^(.*?)(\d{7})$/);
+    if (match) {
+      const prefix = match[1];
+      const seqNum = parseInt(match[2], 10);
+      for (let i = 1; i <= Math.max(seqNum + 1, 8); i++) {
+        const probeId = `${prefix}${String(i).padStart(7, "0")}`;
+        if (!knownEventIds.has(probeId)) discoveredIds.add(probeId);
+      }
+    }
+  }
+  if (discoveredIds.size > 0) {
+    log("Strategy 3c: discovered additional event IDs to probe", [...discoveredIds]);
+    for (const id of discoveredIds) knownEventIds.add(id);
   }
 
-  // Deduplicate rows by (subjectcode + eventcode)
+  // 3d: For each known event ID, query marks specifically for that event.
+  if (knownEventIds.size > 0) {
+    const ids = [...knownEventIds];
+    log("Strategy 3d: querying per-event marks for", ids);
+    const perEventPromises = ids.map(async (exameventid) => {
+      try {
+        const rawRes = await transport.postEncrypted(EXAM_MARKS_PATH, {
+          instituteid: args.instituteid,
+          registrationid: args.registrationid,
+          companyid: args.companyid,
+          exameventid,
+        });
+        const rows = extractMarkRowsFromPayload(rawRes, EXAM_MARKS_PATH);
+        log(`Strategy 3d: event ${exameventid} returned ${rows.length} rows`, rows.map(r => `${r.subjectcode}/${r.eventcode || (r as any).eventdesc}`));
+        return rows;
+      } catch (err: any) {
+        log(`Strategy 3d: event ${exameventid} FAILED`, err?.message || err);
+        return [] as PortalMarkRow[];
+      }
+    });
+
+    const perEventResults = await Promise.allSettled(perEventPromises);
+    for (const res of perEventResults) {
+      if (res.status === "fulfilled" && res.value.length > 0) {
+        allRows.push(...res.value);
+      }
+    }
+  }
+
+  // Deduplicate rows by (subjectcode + event). Prefer eventcode/eventdesc; fall back to exameventid if needed.
   const seen = new Set<string>();
   const deduped: PortalMarkRow[] = [];
   for (const row of allRows) {
-    const sub = String(row.subjectcode || row.subjectdesc || "").trim().toUpperCase();
-    const ev = String(row.eventcode || (row as any).exameventid || "").trim().toUpperCase();
+    const r = row as Record<string, unknown>;
+    const sub = String(r.subjectcode || r.subjectdesc || r.subject || "").trim().toUpperCase();
+    const ev = String(r.eventcode || r.eventCode || r.eventdesc || r.eventDesc || r.event || r.exameventid || "").trim().toUpperCase();
     const key = `${sub}:::${ev}`;
+    if (!sub && !ev) continue;
     if (!seen.has(key)) {
       seen.add(key);
       deduped.push(row);
     }
   }
+
+  log("FINAL: total allRows", allRows.length, "deduped", deduped.length,
+    "events found:", [...new Set(deduped.map(r => String((r as any).eventcode || (r as any).eventdesc || (r as any).event || "")))]);
 
   return deduped;
 }
@@ -771,6 +953,30 @@ export interface CampusLynxDashboardArgs {
   username: string;
 }
 
+async function fetchAttendanceWithFallback(
+  transport: DashboardTransport,
+  instituteid: string,
+  stynumber: string,
+  registrations: PortalRegistration[]
+): Promise<AttendanceRecord[]> {
+  // Try the newest registration first; if the university just added an upcoming
+  // semester with no attendance yet, fall back through up to 2 prior registrations.
+  const candidates = registrations.slice(0, 3);
+  for (const reg of candidates) {
+    if (!reg.registrationid) continue;
+    const records = await fetchAttendanceSummary(transport, {
+      instituteid,
+      stynumber,
+      registrationid: reg.registrationid,
+      registrationcode: reg.registrationcode ?? "",
+    });
+    if (records.length > 0) {
+      return records;
+    }
+  }
+  return [];
+}
+
 /**
  * Build the full dashboard. Profile, registration and attendance are required
  * (their absence means the session or the portal is broken, mirroring how the
@@ -781,11 +987,11 @@ export async function fetchCampusLynxDashboard(
   transport: DashboardTransport,
   args: CampusLynxDashboardArgs
 ): Promise<DashboardResponse> {
-  // Phase 1: Fetch student profile, latest registration, and notices concurrently.
+  // Phase 1: Fetch student profile, ordered registrations, and notices concurrently.
   // None of these three depend on each other, saving multiple sequential roundtrips.
   const [profileSettled, regSettled, noticesSettled] = await Promise.allSettled([
     fetchStudentProfile(transport, args.instituteid),
-    fetchLatestRegistration(transport, args.instituteid),
+    fetchRegistrationsOrdered(transport, args.instituteid),
     fetchNotices(transport),
   ]);
 
@@ -797,19 +1003,13 @@ export async function fetchCampusLynxDashboard(
   if (regSettled.status === "rejected") {
     throw regSettled.reason;
   }
-  const registration = regSettled.value;
-  if (!registration.registrationid) {
+  const registrations = regSettled.value;
+  const registration = registrations[0];
+  if (!registration?.registrationid) {
     throw new PortalError("The portal returned no usable registration.", 502);
   }
 
   const notices = noticesSettled.status === "fulfilled" ? noticesSettled.value : [];
-
-  const ctx: AttendanceContext = {
-    instituteid: args.instituteid,
-    stynumber: profile.stynumber,
-    registrationid: registration.registrationid,
-    registrationcode: registration.registrationcode ?? "",
-  };
 
   // Phase 2: Fetch attendance, marks, and semesters concurrently.
   // Semesters has a race timeout because CampusLynx frequently hangs or errors on it.
@@ -824,7 +1024,7 @@ export async function fetchCampusLynxDashboard(
   ]);
 
   const [attendanceSettled, marksSettled, semestersSettled] = await Promise.allSettled([
-    fetchAttendanceSummary(transport, ctx),
+    fetchAttendanceWithFallback(transport, args.instituteid, profile.stynumber, registrations),
     fetchMarkRows(transport, {
       instituteid: args.instituteid,
       registrationid: registration.registrationid,

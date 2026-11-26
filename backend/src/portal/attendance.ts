@@ -229,7 +229,9 @@ function isNoRecordsFailure(payload: unknown): boolean {
   const envelope = payload as any;
   const errors = envelope?.status?.errors ?? envelope?.errors ?? envelope?.status?.message ?? envelope?.message;
   const messages = Array.isArray(errors) ? errors : errors ? [errors] : [];
-  return messages.some((message) => /no attendance|no record|not found|records? not available/i.test(String(message)));
+  return messages.some((message) =>
+    /no attendance|no record|no data|no subject|not found|records? not available/i.test(String(message))
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -406,13 +408,13 @@ export function mapAttendanceLog(
 // ---------------------------------------------------------------------------
 
 /**
- * Pick the current registration out of the semester-codes response.
- * Registrations carry a validity window; the one ending latest wins.
+ * Return all valid registrations from the semester-codes response, sorted by
+ * `registrationdateto` descending (newest semester first).
  */
-export async function fetchLatestRegistration(
+export async function fetchRegistrationsOrdered(
   transport: AttendanceTransport,
   instituteid: string
-): Promise<PortalRegistration> {
+): Promise<PortalRegistration[]> {
   const response = extractResponse(
     await transport.postEncrypted(SEMESTERCODES_PATH, { instituteid }),
     SEMESTERCODES_PATH
@@ -427,9 +429,21 @@ export async function fetchLatestRegistration(
       502
     );
   }
-  return withIds.reduce((best, cur) =>
-    safeFloat(cur.registrationdateto) >= safeFloat(best.registrationdateto) ? cur : best
+  return [...withIds].sort(
+    (a, b) => safeFloat(b.registrationdateto) - safeFloat(a.registrationdateto)
   );
+}
+
+/**
+ * Pick the current registration out of the semester-codes response.
+ * Registrations carry a validity window; the one ending latest wins.
+ */
+export async function fetchLatestRegistration(
+  transport: AttendanceTransport,
+  instituteid: string
+): Promise<PortalRegistration> {
+  const ordered = await fetchRegistrationsOrdered(transport, instituteid);
+  return ordered[0];
 }
 
 /** Fetch the per-subject percentages for one registration and map them. */
@@ -458,6 +472,10 @@ export async function fetchAttendanceSummary(
     } else {
       throw err;
     }
+  }
+
+  if (isNoRecordsFailure(payload)) {
+    return [];
   }
 
   const response = extractResponse(payload, SUBJECT_LIST_PATH);
