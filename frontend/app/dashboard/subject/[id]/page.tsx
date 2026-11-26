@@ -52,6 +52,7 @@ function SubjectDetailContent() {
   const [targetPercentage, setTargetPercentage] = useState(75);
   const [extraAttends, setExtraAttends] = useState(0);
   const [extraBunks, setExtraBunks] = useState(0);
+  const [retroFixes, setRetroFixes] = useState(0);
 
   // Log filter state
   const [logFilter, setLogFilter] = useState<"all" | "present" | "absent">("all");
@@ -127,6 +128,12 @@ function SubjectDetailContent() {
     !!data &&
     data.logs.some((l) => l.type === "Practical") &&
     data.logs.some((l) => l.type === "Lecture" || l.type === "Tutorial");
+    
+  const recordedAbsences = (data?.logs ?? []).filter((l) => l.status === "Absent" && !(practicalsExcluded && l.type ==="Practical")).length;
+  const fixes = Math.min(retroFixes, recordedAbsences);
+  const retroPct = baseHeld > 0 ? ((baseAttended + fixes) / baseHeld) * 100 : 0;
+  // ponytail: 1e-9 guards float error from the fractional baseAttended; fine for class counts.
+  const retroNeeded = Math.max(0, Math.ceil((targetPercentage * baseHeld) / 100 - baseAttended - 1e-9));
 
   const handleLogout = async () => {
     await performLogout();
@@ -426,7 +433,44 @@ function SubjectDetailContent() {
               </>
             )}
           </FigmaCard>
-
+	          {hasDetailData && (
+            <FigmaCard heading="Marked Absent by Mistake?">
+              <p className="text-xs text-[var(--ink-muted)] mb-4">
+                Corrected a past absence? Total classes stay the same, attended goes up.
+              </p>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <button
+                  onClick={() => setRetroFixes((n) => Math.max(0, n - 1))}
+                  disabled={fixes <= 0}
+                  aria-label="Correct one fewer absence"
+                  className="w-12 py-2 rounded-xl border border-[var(--line-subtle)] font-black disabled:opacity-40"
+                >
+                  −
+                </button>
+                <span className="text-sm font-bold text-[var(--ink-strong)] tabular-nums">
+                  {fixes} of {recordedAbsences} absences corrected
+                </span>
+                <button
+                  onClick={() => setRetroFixes((n) => Math.min(recordedAbsences, n + 1))}
+                  disabled={fixes >= recordedAbsences}
+                  aria-label="Correct one more absence"
+                  className="w-12 py-2 rounded-xl bg-accent-primary text-white font-black disabled:opacity-40"
+                >
+                  +
+                </button>
+              </div>
+              <p className="text-sm font-bold text-center text-[var(--ink-strong)]">
+                {officialPct.toFixed(1)}% → {retroPct.toFixed(1)}%
+              </p>
+              <p className="text-xs text-center text-[var(--ink-muted)] mt-1">
+                {retroNeeded === 0
+                  ? `Already at or above ${targetPercentage}%.`
+                  : retroNeeded > recordedAbsences
+                  ? `Correcting every absence still can't reach ${targetPercentage}%.`
+                  : `Correct ${retroNeeded} absence${retroNeeded !== 1 ? "s" : ""} to reach ${targetPercentage}%.`}
+              </p>
+            </FigmaCard>
+          )}
         </div>
 
         {/* RIGHT: Daily Log */}
