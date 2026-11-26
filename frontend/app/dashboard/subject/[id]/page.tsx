@@ -129,10 +129,12 @@ function SubjectDetailContent() {
     data.logs.some((l) => l.type === "Practical") &&
     data.logs.some((l) => l.type === "Lecture" || l.type === "Tutorial");
     
-  const recordedAbsences = (data?.logs ?? []).filter((l) => l.status === "Absent" && !(practicalsExcluded && l.type ==="Practical")).length;
+  const recordedAbsences = (data?.logs ?? []).filter(
+    (l) => l.status === "Absent" && !(practicalsExcluded && l.type === "Practical")
+  ).length;
   const fixes = Math.min(retroFixes, recordedAbsences);
-  const retroPct = baseHeld > 0 ? ((baseAttended + fixes) / baseHeld) * 100 : 0;
-  // ponytail: 1e-9 guards float error from the fractional baseAttended; fine for class counts.
+  const retroPct = baseHeld > 0 ? Math.min(100, ((baseAttended + fixes) / baseHeld) * 100) : 0;
+  // 1e-9 guards float error from the fractional baseAttended; fine for class counts.
   const retroNeeded = Math.max(0, Math.ceil((targetPercentage * baseHeld) / 100 - baseAttended - 1e-9));
 
   const handleLogout = async () => {
@@ -433,7 +435,7 @@ function SubjectDetailContent() {
               </>
             )}
           </FigmaCard>
-	          {hasDetailData && (
+          {hasDetailData && (
             <FigmaCard heading="Marked Absent by Mistake?">
               <p className="text-xs text-[var(--ink-muted)] mb-4">
                 Corrected a past absence? Total classes stay the same, attended goes up.
