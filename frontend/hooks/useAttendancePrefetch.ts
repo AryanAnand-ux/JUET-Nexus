@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { AttendanceRecord } from "@/types";
+import { PortalError, SessionExpiredError } from "@/lib/errors";
 import {
+  computeAttendanceChecksum,
   fetchAttendanceDetailDirect,
   getStoredAttendanceDetail,
 } from "@/utils/attendanceCache";
@@ -14,10 +16,33 @@ export interface AttendancePrefetchStatus {
   failed: number;
 }
 
-const MAX_CONCURRENT_PREFETCH = 2; // Optimal concurrency for CampusLynx session stability
-const INITIAL_PREFETCH_DELAY_MS = 1500; // Defer past initial hydration & active route paint
-const TASK_STAGGER_MS = 150; // Stagger between requests to prevent upstream session locks
-const REVALIDATE_THROTTLE_MS = 10 * 60 * 1000; // Throttle focus/visibility re-scans to 10 minutes
+const MAX_CONCURRENT_PREFETCH = 1; // 1 subject at a time (each subject already fans out 1-3 L/T/P calls)
+const INITIAL_PREFETCH_DELAY_MS = 1200; // Let deferred performance extras finish before queuing subject logs
+const TASK_STAGGER_MS = 0;
+
+// Module-level guard so navigating between routes does NOT re-trigger prefetch;
+// only fresh app open, login, or an explicit dashboard refresh (`juet:dashboard-updated`)
+// resets this.
+let completedPrefetchEnrollment: string | null = null;
+
+// Live set of subjects currently queued/fetching in background prefetch
+let currentPendingSubjects = new Set<string>();
+const pendingListeners = new Set<(subjects: Set<string>) => void>();
+
+function publishPendingSubjects(next: Set<string>): void {
+  currentPendingSubjects = next;
+  pendingListeners.forEach((listener) => listener(next));
+}
+
+export function subscribePrefetchSubjects(
+  listener: (subjects: Set<string>) => void
+): () => void {
+  pendingListeners.add(listener);
+  listener(currentPendingSubjects);
+  return () => {
+    pendingListeners.delete(listener);
+  };
+}
 
 function isSlowOrSaveDataConnection(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -48,33 +73,19 @@ export function useAttendancePrefetch(
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeEnrollmentRef = useRef<string | null>(null);
   const isRunningRef = useRef<boolean>(false);
-  const lastRevalidateAtRef = useRef<number>(0);
 
-  // Listen to visibilitychange, focus, and custom dashboard updates
+  // Only re-scan subjects when dashboard data is refreshed (login, app reopen, or Refresh button)
   useEffect(() => {
     if (!enabled) return;
 
-    const handleRevalidate = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        const now = Date.now();
-        if (now - lastRevalidateAtRef.current < REVALIDATE_THROTTLE_MS) return;
-        lastRevalidateAtRef.current = now;
-        setRefreshTrigger((prev) => prev + 1);
-      }
-    };
-
     const handleDashboardUpdated = () => {
-      lastRevalidateAtRef.current = Date.now();
+      completedPrefetchEnrollment = null;
       setRefreshTrigger((prev) => prev + 1);
     };
 
-    window.addEventListener("visibilitychange", handleRevalidate);
-    window.addEventListener("focus", handleRevalidate);
     window.addEventListener("juet:dashboard-updated", handleDashboardUpdated);
 
     return () => {
-      window.removeEventListener("visibilitychange", handleRevalidate);
-      window.removeEventListener("focus", handleRevalidate);
       window.removeEventListener("juet:dashboard-updated", handleDashboardUpdated);
     };
   }, [enabled]);
@@ -96,7 +107,7 @@ export function useAttendancePrefetch(
               records = parsed.data.attendance;
             }
           }
-        } catch {}
+        } catch { }
       }
     }
 
@@ -108,6 +119,12 @@ export function useAttendancePrefetch(
     );
 
     if (eligibleRecords.length === 0) return;
+
+    // If prefetch already completed in this app session (e.g. user is just navigating
+    // between routes), do not re-trigger it.
+    if (completedPrefetchEnrollment === normalizedEnrollment && refreshTrigger === 0) {
+      return;
+    }
 
     // If already running for this exact enrollment without new refresh trigger, let it continue
     if (isRunningRef.current && activeEnrollmentRef.current === normalizedEnrollment && refreshTrigger === 0) {
@@ -137,9 +154,11 @@ export function useAttendancePrefetch(
           record.detailLink!,
           normalizedEnrollment
         );
+        const currentChecksum = computeAttendanceChecksum(record);
         if (!cached) {
           missingCache.push(record);
-        } else if (cached.isStale) {
+        } else if (cached.checksum !== currentChecksum) {
+          // Re-fetch whenever summary percentages changed (or legacy entry lacks checksum)
           staleCache.push(record);
         }
       });
@@ -148,6 +167,8 @@ export function useAttendancePrefetch(
       const queue = [...missingCache, ...staleCache];
 
       if (queue.length === 0) {
+        completedPrefetchEnrollment = normalizedEnrollment;
+        publishPendingSubjects(new Set());
         setStatus({
           isPrefetching: false,
           total: eligibleRecords.length,
@@ -157,6 +178,9 @@ export function useAttendancePrefetch(
         isRunningRef.current = false;
         return;
       }
+
+      const pendingSet = new Set(queue.map((r) => r.subject));
+      publishPendingSubjects(pendingSet);
 
       setStatus({
         isPrefetching: true,
@@ -182,19 +206,22 @@ export function useAttendancePrefetch(
               item.subject,
               item.detailLink,
               normalizedEnrollment,
-              false,
-              controller.signal
+              true,
+              controller.signal,
+              computeAttendanceChecksum(item)
             );
             completedCount++;
-          } catch (err: any) {
+          } catch (err: unknown) {
             failedCount++;
             if (
-              err?.response?.status === 401 ||
-              err?.response?.data?.code === "SESSION_EXPIRED"
+              err instanceof SessionExpiredError ||
+              (err instanceof PortalError && err.httpStatus === 401)
             ) {
               sessionExpired = true;
             }
           } finally {
+            pendingSet.delete(item.subject);
+            publishPendingSubjects(new Set(pendingSet));
             if (!controller.signal.aborted) {
               setStatus((prev) => ({
                 ...prev,
@@ -217,6 +244,8 @@ export function useAttendancePrefetch(
       await Promise.allSettled(workers);
 
       if (!controller.signal.aborted) {
+        completedPrefetchEnrollment = normalizedEnrollment;
+        publishPendingSubjects(new Set());
         setStatus((prev) => ({
           ...prev,
           isPrefetching: false,
@@ -228,6 +257,7 @@ export function useAttendancePrefetch(
     return () => {
       clearTimeout(timer);
       controller.abort();
+      publishPendingSubjects(new Set());
       isRunningRef.current = false;
     };
   }, [attendanceRecords, enrollment, refreshTrigger, enabled]);

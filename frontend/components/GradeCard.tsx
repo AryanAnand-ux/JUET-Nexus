@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useDeferredValue } from "react";
-import type { GradeCardResponse, GradeSubject } from "@/types";
+import type { GradeCardResponse } from "@/types";
 import {
   Award,
   CheckCircle2,

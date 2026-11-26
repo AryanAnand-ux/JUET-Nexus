@@ -1,56 +1,24 @@
 /**
- * Root Route Page
- * Seamlessly directs authenticated users to /dashboard and unauthenticated users to /login
- * without unwanted login form flashes or redundant captcha fetching.
+ * Root Route Page (One-Hop Architecture)
+ * Checks localStorage session synchronously and routes to /dashboard or /login.
  */
 
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { apiClient } from "@/utils/api";
+import { loadSession } from "@/lib/session";
 
 export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    let cancelled = false;
-
-    // Fast client-side check
-    if (typeof window !== "undefined") {
-      const storedEnrollment = localStorage.getItem("enrollment");
-      if (storedEnrollment) {
-        router.replace("/dashboard");
-        return;
-      }
+    const session = loadSession();
+    if (session?.token && session?.enrollment) {
+      router.replace("/dashboard");
+    } else {
+      router.replace("/login");
     }
-
-    // Verify session with backend cookie
-    apiClient
-      .get("/api/auth/session")
-      .then((res) => {
-        if (!cancelled && res.data?.success && res.data?.enrollment) {
-          if (typeof window !== "undefined") {
-            localStorage.setItem("enrollment", res.data.enrollment.toUpperCase());
-            localStorage.setItem("role", "Student");
-            if (res.data.sessionToken) {
-              localStorage.setItem("sessionToken", res.data.sessionToken);
-            }
-          }
-          router.replace("/dashboard");
-        } else if (!cancelled) {
-          router.replace("/login");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          router.replace("/login");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
   }, [router]);
 
   return (

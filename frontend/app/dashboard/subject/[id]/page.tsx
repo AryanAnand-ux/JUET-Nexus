@@ -377,55 +377,59 @@ function SubjectDetailContent() {
             {/* Buttons */}
             {totalCount > 0 && (
               <>
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2.5">
                   {/* Attend Class stepper */}
-                  <div className="flex items-stretch gap-2">
-                    <button
-                      onClick={undoAttend}
-                      disabled={extraAttends <= 0}
-                      aria-label="Remove an attended class"
-                      className="w-12 shrink-0 flex items-center justify-center rounded-xl bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-2 border-green-200 dark:border-green-900/40 font-black text-lg transition-colors hover:bg-green-100 dark:hover:bg-green-950/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-green-50 dark:disabled:hover:bg-green-950/30 font-nunito"
-                    >
-                      −
-                    </button>
-                    <div className="flex-1 flex flex-col items-center justify-center py-2.5 px-4 rounded-xl bg-green-500 text-white border-2 border-green-600 font-nunito">
-                      <span className="text-sm font-black">Attend Class</span>
+                  <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-green-500 text-white border-2 border-green-600 font-nunito">
+                    <div className="flex items-center justify-between px-0.5">
+                      <span className="text-xs font-black">Attend</span>
                       {extraAttends > 0 && (
-                        <span className="text-[10px] font-bold opacity-80">+{extraAttends} added</span>
+                        <span className="text-[10px] font-bold opacity-90">+{extraAttends}</span>
                       )}
                     </div>
-                    <button
-                      onClick={handleAttend}
-                      aria-label="Add an attended class"
-                      className="w-12 shrink-0 flex items-center justify-center rounded-xl bg-green-500 text-white border-2 border-green-600 font-black text-lg transition-all hover:bg-green-600 active:scale-95 font-nunito"
-                    >
-                      +
-                    </button>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={undoAttend}
+                        disabled={extraAttends <= 0}
+                        aria-label="Remove an attended class"
+                        className="h-9 flex items-center justify-center rounded-lg bg-white/15 hover:bg-white/25 text-white font-black text-base transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        −
+                      </button>
+                      <button
+                        onClick={handleAttend}
+                        aria-label="Add an attended class"
+                        className="h-9 flex items-center justify-center rounded-lg bg-white/25 hover:bg-white/35 text-white font-black text-base transition-all active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
 
                   {/* Skip Class stepper */}
-                  <div className="flex items-stretch gap-2">
-                    <button
-                      onClick={undoBunk}
-                      disabled={extraBunks <= 0}
-                      aria-label="Remove a skipped class"
-                      className="w-12 shrink-0 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-2 border-red-200 dark:border-red-900/40 font-black text-lg transition-colors hover:bg-red-100 dark:hover:bg-red-950/50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-50 dark:disabled:hover:bg-red-950/30 font-nunito"
-                    >
-                      −
-                    </button>
-                    <div className="flex-1 flex flex-col items-center justify-center py-2.5 px-4 rounded-xl bg-red-500 text-white border-2 border-red-600 font-nunito">
-                      <span className="text-sm font-black">Skip Class</span>
+                  <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-red-500 text-white border-2 border-red-600 font-nunito">
+                    <div className="flex items-center justify-between px-0.5">
+                      <span className="text-xs font-black">Skip</span>
                       {extraBunks > 0 && (
-                        <span className="text-[10px] font-bold opacity-80">+{extraBunks} skipped</span>
+                        <span className="text-[10px] font-bold opacity-90">+{extraBunks}</span>
                       )}
                     </div>
-                    <button
-                      onClick={handleBunk}
-                      aria-label="Add a skipped class"
-                      className="w-12 shrink-0 flex items-center justify-center rounded-xl bg-red-500 text-white border-2 border-red-600 font-black text-lg transition-all hover:bg-red-600 active:scale-95 font-nunito"
-                    >
-                      +
-                    </button>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={undoBunk}
+                        disabled={extraBunks <= 0}
+                        aria-label="Remove a skipped class"
+                        className="h-9 flex items-center justify-center rounded-lg bg-white/15 hover:bg-white/25 text-white font-black text-base transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        −
+                      </button>
+                      <button
+                        onClick={handleBunk}
+                        aria-label="Add a skipped class"
+                        className="h-9 flex items-center justify-center rounded-lg bg-white/25 hover:bg-white/35 text-white font-black text-base transition-all active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -442,9 +446,6 @@ function SubjectDetailContent() {
           </FigmaCard>
           {hasDetailData && (
             <FigmaCard heading="Marked Absent by Mistake?">
-              <p className="text-xs text-[var(--ink-muted)] mb-4">
-                Corrected a past absence? Total classes stay the same, attended goes up.
-              </p>
               <div className="flex items-center justify-between gap-3 mb-4">
                 <button
                   onClick={() => setRetroFixes((n) => Math.max(0, n - 1))}

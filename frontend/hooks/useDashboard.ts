@@ -1,21 +1,23 @@
 /**
  * useDashboard Hook
- * Fetch and manage dashboard data from backend
+ * Fetch and manage dashboard data via CampusLynx One-Hop transport.
  *
- * On tab reopen the CampusLynx token (≈15 min lifespan) is usually dead.
- * `useSessionKeepAlive` fires `recoverSession()` immediately on mount, but
- * `fetchDashboard` used to race it and hit a 401 before recovery finished.
- *
- * Fix: when localStorage holds cached data we defer the first network fetch
- * (SESSION_RECOVERY_GRACE_MS) so the keepalive can restore the token first.
- * If a 401 still lands *and* cached data is displayed, we silently retry
- * (up to MAX_SILENT_RETRIES) with back-off before surfacing an error banner.
+ * Uses localStorage + in-memory snapshot (`sharedData`) for instant rendering,
+ * refreshing only on login, app reopen (`visibilitychange`), or explicit user refresh.
+ * If an auth failure occurs while cached data is shown, silently retries
+ * (up to MAX_SILENT_RETRIES) while session recovery completes before surfacing an error.
  */
 
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { apiClient } from "@/utils/api";
+import { postEncrypted, getEncrypted, getBuffer } from "@/lib/portalClient";
+import {
+  fetchAttendanceOverview,
+  fetchPerformanceExtras,
+} from "@/lib/portalDashboard";
+import { loadSession } from "@/lib/session";
+import { PortalError, SessionExpiredError } from "@/lib/errors";
 import type { DashboardResponse } from "@/types";
 
 export interface DashboardState {
@@ -31,33 +33,19 @@ export interface DashboardState {
 export interface UseDashboardReturn extends DashboardState {
   refresh: () => Promise<void>;
   invalidateCache: () => Promise<boolean>;
-  checkCacheStatus: () => Promise<void>;
 }
 
 const STORAGE_KEY_PREFIX = "juet_dashboard_cache_v3_";
 
-/** Minimum interval between auto-refreshes triggered by screen switches or focus (ms). */
-const AUTO_REFRESH_THROTTLE_MS = 12_000;
+/** Minimum interval between auto-refreshes triggered by app reopen (ms). */
+const AUTO_REFRESH_THROTTLE_MS = 5 * 60 * 1000;
 let lastAutoRefreshAt = 0;
-
-/** Grace period to let `useSessionKeepAlive` recover the token before we hit the API. */
-const SESSION_RECOVERY_GRACE_MS = 3_500;
 
 /** Silent retries before we surface a 401 error banner when cached data is shown. */
 const MAX_SILENT_RETRIES = 2;
 
 /** Back-off between silent retries (ms). */
 const SILENT_RETRY_DELAY_MS = 4_000;
-
-/**
- * How long a payload fetched by one dashboard page may be reused by another.
- *
- * `/dashboard`, `/dashboard/courses` and `/dashboard/performance` each mount
- * their own `useDashboard` instance, so navigating between them used to
- * re-download the entire dashboard payload every time. Module-level so every
- * instance shares one snapshot.
- */
-const SHARED_DATA_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes (aligned with FRESH_TTL_SEC)
 
 let sharedData: {
   enrollment: string;
@@ -67,6 +55,7 @@ let sharedData: {
 
 let inFlightDashboardPromise: Promise<{ data: any; cacheHeader: any; fetchedAt: Date; ttl: number }> | null = null;
 let inFlightEnrollment: string | null = null;
+let inFlightExtrasEnrollment: string | null = null;
 
 /** Clears the cross-page snapshot (used on manual cache invalidation and logout). */
 export function clearSharedDashboard(enrollment?: string | null) {
@@ -112,9 +101,6 @@ function loadCachedDashboard(enrollment: string | null): { data: DashboardRespon
 export function useDashboard(enrollment: string | null): UseDashboardReturn {
   /** Tracks silent 401 retries so we don't immediately show the error banner. */
   const silentRetryCount = useRef(0);
-
-  /** Whether the very first fetch was deferred due to localStorage cache. */
-  const deferredInitialFetch = useRef(false);
 
   /**
    * Tracks data availability via ref so it can be read safely in callbacks
@@ -176,7 +162,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
    * @param isSilent When true, a 401 with cached data triggers a silent retry
    *                 instead of showing the error banner.
    */
-  const fetchDashboard = useCallback(async (isRetry = false, isSilent = false, forceFresh = false) => {
+  const fetchDashboard = useCallback(async (_isRetry = false, isSilent = false, forceFresh = false) => {
     // No-op when enrollment isn't loaded yet — the parent component sets it
     // asynchronously from localStorage, so null is the expected initial value.
     if (!enrollment) return;
@@ -199,16 +185,77 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       } else {
         inFlightEnrollment = key;
         const currentPromise = (async () => {
-          const response = await apiClient.get(
-            `/api/dashboard?enrollment=${encodeURIComponent(enrollment)}`,
-            {
-              timeout: 60000,
-            }
-          );
-          const { data, ttl } = response.data;
-          const cacheHeader = response.headers["x-cache"];
-          const fetchedAt = response.data?.fetchedAt ? new Date(response.data.fetchedAt) : new Date();
-          return { data, cacheHeader, fetchedAt, ttl };
+          const session = loadSession();
+          if (!session?.token || !session?.instituteid) {
+            throw new SessionExpiredError();
+          }
+          const transport = { postEncrypted, getEncrypted, getBuffer };
+          const args = {
+            instituteid: session.instituteid,
+            companyid: session.companyid,
+            username: session.username || session.enrollment,
+          };
+
+          // Phase 1 (Fast Path): fetch profile + attendance overview immediately (~700ms)
+          const overview = await fetchAttendanceOverview(transport, args);
+          const fetchedAt = new Date();
+
+          // Preserve previously cached performance/marks while background extras load
+          const existing = loadCachedDashboard(key);
+          const initialData: DashboardResponse = {
+            ...overview.dashboard,
+            performance:
+              existing?.data?.performance?.semesters?.length ||
+              existing?.data?.performance?.recentMarks?.length
+                ? existing.data.performance
+                : overview.dashboard.performance,
+            detailedMarks: existing?.data?.detailedMarks?.length
+              ? existing.data.detailedMarks
+              : overview.dashboard.detailedMarks,
+          };
+
+          // Phase 2 (Deferred): fetch marks & semester SGPA in background without blocking Attendance
+          if (inFlightExtrasEnrollment !== key) {
+            inFlightExtrasEnrollment = key;
+            void fetchPerformanceExtras(
+              transport,
+              args,
+              overview.profile,
+              overview.registrations
+            )
+              .then((extras) => {
+                const merged: DashboardResponse = {
+                  ...overview.dashboard,
+                  performance: extras.performance,
+                  detailedMarks: extras.detailedMarks,
+                };
+                const updatedAt = new Date();
+                if (typeof window !== "undefined") {
+                  try {
+                    localStorage.setItem(
+                      `${STORAGE_KEY_PREFIX}${key}`,
+                      JSON.stringify({ data: merged, fetchedAt: updatedAt.toISOString() })
+                    );
+                  } catch {}
+                  sharedData = { enrollment: key, data: merged, fetchedAt: updatedAt };
+                }
+                setState((prev) => ({
+                  ...prev,
+                  data: merged,
+                  cachedAt: updatedAt,
+                }));
+              })
+              .catch(() => {
+                // Non-fatal: attendance is already rendered
+              })
+              .finally(() => {
+                if (inFlightExtrasEnrollment === key) {
+                  inFlightExtrasEnrollment = null;
+                }
+              });
+          }
+
+          return { data: initialData, cacheHeader: "miss", fetchedAt, ttl: 300 };
         })();
         inFlightDashboardPromise = currentPromise;
 
@@ -260,27 +307,19 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
           `[Dashboard] Fetched (${cacheHeader === "hit" ? "cached" : "fresh"})`
         );
       }
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        // When we have cached data displayed, silently retry a few times before
-        // showing the error banner. This absorbs the race where the keepalive
-        // hasn't finished restoring the token yet.
-        //
-        // Uses hasDataRef (not setState updater) to avoid side-effects inside
-        // state updaters — React StrictMode double-invokes updaters.
+    } catch (error: unknown) {
+      const isAuthErr =
+        error instanceof SessionExpiredError ||
+        (error instanceof PortalError && error.httpStatus === 401);
+
+      if (isAuthErr) {
         if (hasDataRef.current && silentRetryCount.current < MAX_SILENT_RETRIES) {
           silentRetryCount.current += 1;
-          if (process.env.NODE_ENV === "development") {
-            console.debug(
-              `[Dashboard] 401 with cached data — silent retry ${silentRetryCount.current}/${MAX_SILENT_RETRIES}`
-            );
-          }
           setState((prev) => ({ ...prev, isLoading: false, isRefreshing: false }));
           setTimeout(() => fetchDashboard(false, true), SILENT_RETRY_DELAY_MS);
           return;
         }
 
-        // Exhausted retries or no cached data — surface the error
         silentRetryCount.current = 0;
         setState((prev) => ({
           ...prev,
@@ -288,7 +327,7 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
             message: prev.data
               ? "We could not reconnect to the portal. Your last synced records are still shown."
               : "We could not reconnect to the portal. Please try again.",
-            code: error.response?.data?.code || "SESSION_RENEWING",
+            code: "SESSION_RENEWING",
           },
           isLoading: false,
           isRefreshing: false,
@@ -296,29 +335,13 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         return;
       }
 
-      // Transient re-login failure — credentials are still intact, auto-retry
-      if (error.response?.status === 503 && error.response?.data?.code === "RELOGIN_FAILED" && !isRetry) {
-        setState((prev) => ({
-          ...prev,
-          error: {
-            message: "Refreshing your session… retrying automatically.",
-            code: "RELOGIN_FAILED",
-          },
-          isLoading: true,
-          isRefreshing: true,
-        }));
-        setTimeout(() => fetchDashboard(true), 3000);
-        return;
-      }
-
       const errorMessage =
-        error.response?.data?.error ||
-        error.message ||
-        "Failed to fetch dashboard";
+        error instanceof Error ? error.message : "Failed to fetch dashboard";
+      const errorCode = error instanceof PortalError ? error.code : undefined;
 
       setState((prev) => ({
         ...prev,
-        error: { message: errorMessage, code: error.response?.data?.code },
+        error: { message: errorMessage, code: errorCode },
         isLoading: false,
         isRefreshing: false,
       }));
@@ -326,47 +349,24 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
   }, [enrollment]);
 
   /**
-   * Manually invalidate cache
+   * Manually invalidate cache & re-fetch fresh data directly from CampusLynx
    */
   const invalidateCache = useCallback(async (): Promise<boolean> => {
     if (!enrollment) return false;
 
     try {
-      // Keep existing localStorage/sharedData intact until fresh data arrives so
-      // browser refresh or navigating back to /dashboard never drops to a blank
-      // "Loading your dashboard..." skeleton while syncing.
       setState((prev) => ({ ...prev, isLoading: !prev.data, isRefreshing: true, error: null }));
-      await apiClient.get(
-        `/api/dashboard/invalidate?enrollment=${encodeURIComponent(
-          enrollment
-        )}`
-      );
-      // Fetch fresh data, bypassing any pre-invalidation in-flight request
       await fetchDashboard(false, false, true);
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[Dashboard] Cache invalidation error:", error);
-      if (error.response?.status === 401) {
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          isRefreshing: false,
-          error: {
-            message: prev.data
-              ? "We could not reconnect to the portal. Your last synced records are still shown."
-              : "We could not reconnect to the portal. Please try again.",
-            code: error.response?.data?.code || "SESSION_RENEWING",
-          },
-        }));
-        return false;
-      }
       setState((prev) => ({
         ...prev,
         isLoading: false,
         isRefreshing: false,
         error: {
-          message: error.response?.data?.error || error.message || "Failed to sync portal data",
-          code: error.response?.data?.code,
+          message: error instanceof Error ? error.message : "Failed to sync portal data",
+          code: error instanceof PortalError ? error.code : undefined,
         },
       }));
       return false;
@@ -374,34 +374,10 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
   }, [enrollment, fetchDashboard]);
 
   /**
-   * Check cache status
-   */
-  const checkCacheStatus = useCallback(async () => {
-    if (!enrollment) return;
-    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-
-    try {
-      const response = await apiClient.get(
-        `/api/dashboard/cache-status?enrollment=${encodeURIComponent(
-          enrollment
-        )}`
-      );
-
-      const { cached, ttl } = response.data;
-      setState((prev) => ({ ...prev, cached, ttl }));
-    } catch {
-      // Silently ignore cache status errors
-    }
-  }, [enrollment]);
-
-  /**
    * Fetch on mount and enrollment change.
    *
-   * When we already have localStorage-cached data, defer the first network
-   * fetch by SESSION_RECOVERY_GRACE_MS so that `useSessionKeepAlive` (which
-   * also fires on mount) has time to call `recoverSession()` and restore the
-   * expired CampusLynx token. Without this grace period the dashboard fetch
-   * races the keepalive and almost always hits a 401 on tab reopen.
+   * Serves in-memory/localStorage cached data immediately and refreshes once on
+   * fresh app open / login; navigating between routes reuses `sharedData`.
    */
   useEffect(() => {
     // Wait for enrollment to be loaded from localStorage by the parent component.
@@ -411,7 +387,8 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
 
     const key = enrollment.toUpperCase();
 
-    // If memory snapshot exists, render immediately and auto-refresh in background
+    // If in-memory snapshot already exists, the user is navigating between pages
+    // within the already-open app — serve it immediately without re-fetching.
     if (
       sharedData &&
       sharedData.enrollment === key &&
@@ -426,16 +403,11 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         isLoading: false,
         error: null,
       }));
-
-      // Auto-refresh in background on screen switch if throttle window passed
-      const now = Date.now();
-      if (now - lastAutoRefreshAt > AUTO_REFRESH_THROTTLE_MS) {
-        lastAutoRefreshAt = now;
-        fetchDashboard(false, true);
-      }
       return;
     }
 
+    // Fresh app open / reload with localStorage cache: show cached data
+    // immediately and refresh once in the background.
     const cached = loadCachedDashboard(enrollment);
     if (cached) {
       setState((prev) => ({
@@ -447,27 +419,23 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
         error: null,
       }));
 
-      // Auto-refresh in background on screen switch if throttle window passed
-      const now = Date.now();
-      if (now - lastAutoRefreshAt > AUTO_REFRESH_THROTTLE_MS) {
-        lastAutoRefreshAt = now;
-        fetchDashboard(false, true);
-      }
+      lastAutoRefreshAt = Date.now();
+      fetchDashboard(false, true);
       return;
     }
 
-    // No cached data — fetch immediately (first visit or cleared storage)
+    // No cached data (new login or cleared storage) — fetch immediately
     lastAutoRefreshAt = Date.now();
     fetchDashboard();
   }, [fetchDashboard, enrollment]);
 
   /**
-   * Auto-refresh when tab is reopened or regains window focus
+   * Auto-refresh when the app/tab becomes visible again after being hidden/closed
    */
   useEffect(() => {
     if (!enrollment) return;
 
-    const handleFocusOrVisible = () => {
+    const handleVisible = () => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
         const now = Date.now();
         if (now - lastAutoRefreshAt > AUTO_REFRESH_THROTTLE_MS) {
@@ -477,46 +445,17 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       }
     };
 
-    document.addEventListener("visibilitychange", handleFocusOrVisible);
-    window.addEventListener("focus", handleFocusOrVisible);
+    document.addEventListener("visibilitychange", handleVisible);
 
     return () => {
-      document.removeEventListener("visibilitychange", handleFocusOrVisible);
-      window.removeEventListener("focus", handleFocusOrVisible);
+      document.removeEventListener("visibilitychange", handleVisible);
     };
   }, [enrollment, fetchDashboard]);
-
-  /**
-   * Periodic cache status check (every 60s while tab is visible)
-   */
-  useEffect(() => {
-    if (!enrollment) return;
-
-    const interval = setInterval(() => {
-      checkCacheStatus();
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [enrollment, checkCacheStatus]);
-
-  /**
-   * Auto-refresh when cache is about to expire
-   */
-  useEffect(() => {
-    if (state.ttl > 10 && state.ttl < 60) {
-      const refreshTimer = setTimeout(() => {
-        fetchDashboard();
-      }, (state.ttl - 10) * 1000);
-
-      return () => clearTimeout(refreshTimer);
-    }
-  }, [state.ttl, fetchDashboard]);
 
   return {
     ...state,
     refresh: fetchDashboard,
     invalidateCache,
-    checkCacheStatus,
   };
 }
 

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { apiClient } from "@/utils/api";
-import axios from "axios";
+import { PortalError, SessionExpiredError } from "@/lib/errors";
 import type { AttendanceDetailsResponse } from "@/types";
 
 export interface AttendanceDetailsState {
@@ -134,13 +133,16 @@ export function useAttendanceDetails(
           isRetrying: false,
           error: null,
         });
-      } catch (error: any) {
-        // If aborted by a new request or unmount, ignore
-        if (axios.isCancel(error) || error?.name === "CanceledError" || controller.signal.aborted) {
+      } catch (error: unknown) {
+        const e = error as { name?: string; code?: string; message?: string };
+        if (e?.name === "AbortError" || controller.signal.aborted) {
           return;
         }
 
-        if (error.response?.status === 401 || error.response?.data?.code === "SESSION_EXPIRED") {
+        if (
+          error instanceof SessionExpiredError ||
+          (error instanceof PortalError && error.httpStatus === 401)
+        ) {
           setState((prev) => ({
             ...prev,
             error: {
@@ -154,10 +156,8 @@ export function useAttendanceDetails(
         }
 
         const isTimeout =
-          error.code === "ECONNABORTED" ||
-          error.response?.status === 504 ||
-          error.response?.data?.code === "ATTENDANCE_TIMEOUT" ||
-          /timeout/i.test(error.message || "");
+          e?.code === "REQUEST_TIMEOUT" ||
+          /timeout/i.test(e?.message || "");
 
         if (isTimeout) {
           setState((prev) => ({
@@ -174,19 +174,18 @@ export function useAttendanceDetails(
         }
 
         const isNetworkError =
-          !error.response &&
-          (error.code === "ERR_NETWORK" || /network/i.test(error.message || ""));
+          e?.code === "NETWORK_ERROR" || /network/i.test(e?.message || "");
 
         const userMessage = isNetworkError
           ? "Unable to reach the server. Please check your internet connection."
-          : error.response?.data?.error ||
+          : e?.message ||
             "Unable to load attendance logs at this time. Please try again.";
 
         setState((prev) => ({
           ...prev,
           error: {
             message: userMessage,
-            code: error.response?.data?.code || "ATTENDANCE_FETCH_FAILED",
+            code: e?.code || "ATTENDANCE_FETCH_FAILED",
           },
           isLoading: false,
           isRetrying: false,

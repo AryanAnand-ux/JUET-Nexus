@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { Settings, RefreshCw } from "lucide-react";
-import { MobileBottomNav } from "./MobileBottomNav";
+import { MobileBottomNav, type DashboardTabId } from "./MobileBottomNav";
 import { useAttendancePrefetch } from "@/hooks/useAttendancePrefetch";
 
 export interface DashboardLayoutProps {
@@ -16,6 +16,8 @@ export interface DashboardLayoutProps {
   onLogout?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  activeTab?: DashboardTabId;
+  onTabChange?: (tab: DashboardTabId) => void;
 }
 
 interface SyncButtonProps {
@@ -96,10 +98,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   attendanceRecords,
   onRefresh,
   isRefreshing = false,
+  activeTab,
+  onTabChange,
 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
-  const enablePrefetch = pathname === "/dashboard";
+  // Background prefetch runs 1 subject at a time (after initial paint) so it
+  // populates localStorage/memory cache without saturating CampusLynx.
+  const enablePrefetch = true;
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
   const previousPathname = React.useRef<string | null>(null);
@@ -134,11 +140,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   const navItems: Array<{
+    id: DashboardTabId;
     href: string;
     label: string;
     icon: React.ReactNode;
   }> = [
     {
+      id: "attendance",
       href: "/dashboard",
       label: "Attendance",
       icon: (
@@ -148,7 +156,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       ),
     },
     {
-      href: "/dashboard/performance",
+      id: "performance",
+      href: "/dashboard#performance",
       label: "Performance",
       icon: (
         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,7 +166,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       ),
     },
     {
-      href: "/dashboard/exam",
+      id: "exam",
+      href: "/dashboard#exam",
       label: "Exam Schedule",
       icon: (
         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,7 +176,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       ),
     },
     {
-      href: "/dashboard/settings",
+      id: "settings",
+      href: "/dashboard#settings",
       label: "Settings",
       icon: <Settings className="w-5 h-5 shrink-0" />,
     },
@@ -234,19 +245,39 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {/* Navigation Items */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto" aria-label="Dashboard sections">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = activeTab
+              ? activeTab === item.id
+              : item.id === "attendance"
+                ? pathname === "/dashboard"
+                : pathname === `/dashboard/${item.id}`;
+            const cls = clsx(
+              "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium tracking-wide transition-all text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)]",
+              isActive
+                ? "bg-midnight dark:bg-neutral-800 text-white shadow-sm"
+                : "text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)]",
+              sidebarCollapsed && "justify-center"
+            );
+            if (onTabChange) {
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onTabChange(item.id)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cls}
+                  title={sidebarCollapsed ? item.label : undefined}
+                >
+                  {item.icon}
+                  {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                </button>
+              );
+            }
             return (
               <Link
-                key={item.href}
+                key={item.id}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={clsx(
-                  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium tracking-wide transition-all text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)]",
-                  isActive
-                    ? "bg-midnight dark:bg-neutral-800 text-white shadow-sm"
-                    : "text-[var(--ink-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--ink-strong)]",
-                  sidebarCollapsed && "justify-center"
-                )}
+                className={cls}
                 title={sidebarCollapsed ? item.label : undefined}
               >
                 {item.icon}
@@ -327,7 +358,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </div>
 
       {/* Fixed bottom navigation for mobile */}
-      <MobileBottomNav />
+      <MobileBottomNav activeTab={activeTab} onTabChange={onTabChange} />
     </div>
   );
 };

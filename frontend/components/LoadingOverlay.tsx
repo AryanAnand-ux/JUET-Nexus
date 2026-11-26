@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from "react";
 import clsx from "clsx";
 import { Typing } from "@/components/loading-ui/typing";
-import { AlertCircle, RotateCcw, X } from "lucide-react";
+import { AlertCircle, RotateCcw } from "lucide-react";
 
 export interface LoadingOverlayProps {
   isVisible: boolean;

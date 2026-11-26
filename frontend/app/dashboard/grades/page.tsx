@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useGrades } from "@/hooks/useGrades";
+import { loadSession } from "@/lib/session";
 import { GradeCard } from "@/components/GradeCard";
 import { performLogout } from "@/utils/logout";
 import { ArrowLeft, RefreshCw, Award } from "lucide-react";
@@ -42,16 +43,16 @@ export default function GradesPage() {
   const [enrollment, setEnrollment] = useState<string | null>(null);
 
   const activeEnrollment = isHydrated
-    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    ? enrollment || loadSession()?.enrollment || null
     : null;
 
   useEffect(() => {
     if (!isHydrated) return;
-    const storedEnrollment = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
-    if (!storedEnrollment) {
-      router.push("/login");
+    const session = loadSession();
+    if (!session?.token || !session?.enrollment) {
+      router.replace("/login");
     } else {
-      setEnrollment(storedEnrollment);
+      setEnrollment(session.enrollment);
     }
   }, [router, isHydrated]);
 

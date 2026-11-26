@@ -14,6 +14,6 @@ Built by a JUET student, for JUET students. It talks directly to CampusLynx unde
 - Stays logged in — no re-entering credentials every time
 - Works great on mobile
 
-**Stack** — Next.js 15 · Fastify · TypeScript · CampusLynx API
+**Stack** — Next.js 15 (App Router, Serverless Proxy) · TypeScript · Tailwind CSS · CampusLynx API
 
 **Live** → [juetnexus.vercel.app](https://juetnexus.vercel.app)

@@ -1,20 +1,16 @@
 "use client";
 
-import React, { useState, useMemo, useDeferredValue } from "react";
-import type { ExamScheduleResponse, ExamScheduleItem } from "@/types";
+import React, { useMemo } from "react";
+import type { ExamScheduleResponse } from "@/types";
 import {
-  Calendar,
   Clock,
   MapPin,
   Hash,
-  Search,
   BookOpen,
 } from "lucide-react";
 
 export interface ExamScheduleProps {
   schedule: ExamScheduleResponse;
-  selectedEventId?: string | null;
-  onSelectEvent?: (eventId: string) => void;
   courseMap?: Record<string, string>;
 }
 
@@ -210,39 +206,43 @@ function getExamStatus(dateStr: string) {
   }
 }
 
+function formatRoomCode(raw?: string): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  const colonIdx = trimmed.indexOf(":");
+  if (colonIdx > 0) {
+    const code = trimmed.slice(0, colonIdx).trim();
+    if (code) return code;
+  }
+  return trimmed;
+}
+
 export const ExamSchedule: React.FC<ExamScheduleProps> = ({
   schedule,
-  selectedEventId,
-  onSelectEvent,
   courseMap,
 }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const deferredSearch = useDeferredValue(searchTerm);
-
   const preparedItems = useMemo(() => {
     const rawItems = schedule.items || [];
-    return rawItems.map((item, idx) => {
-      const cleanedSubject = cleanSubjectName(item.subject, courseMap);
-      return {
-        item,
-        paperNum: idx + 1,
-        cleanedSubject,
-        searchBlob: `${cleanedSubject}\0${item.subject}\0${item.roomcode}`.toLowerCase(),
-        status: getExamStatus(item.datetime),
-        dateStr: formatDate(item.datetime),
-        timeStr: formatTime(item.datetime, item.datetimeupto),
-      };
-    });
+    return rawItems
+      .map((item, idx) => {
+        const cleanedSubject = cleanSubjectName(item.subject, courseMap);
+        return {
+          item,
+          paperNum: idx + 1,
+          cleanedSubject,
+          roomLabel: formatRoomCode(item.roomcode),
+          status: getExamStatus(item.datetime),
+          dateStr: formatDate(item.datetime),
+          timeStr: formatTime(item.datetime, item.datetimeupto),
+        };
+      })
+      // Show only upcoming exams (today, tomorrow, future, or undated)
+      .filter((entry) => entry.status?.label !== "Completed");
   }, [schedule.items, courseMap]);
 
-  const items = schedule.items || [];
-  const filtered = useMemo(() => {
-    const term = deferredSearch.trim().toLowerCase();
-    if (!term) return preparedItems;
-    return preparedItems.filter((entry) => entry.searchBlob.includes(term));
-  }, [preparedItems, deferredSearch]);
-
-  const availableEvents = schedule.availableEvents || [];
+  const allItems = schedule.items || [];
+  const upcomingCount = preparedItems.length;
+  const completedCount = allItems.length - upcomingCount;
 
   return (
     <div className="space-y-6">
@@ -260,83 +260,29 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-white/10 text-brand-100">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-400">Total Exams</p>
-                <p className="text-lg font-bold text-white">{items.length}</p>
-              </div>
+            <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
+              <p className="text-xs text-slate-400">Upcoming Exams</p>
+              <p className="text-lg font-bold text-white">{upcomingCount}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Exam Event Switcher Tabs */}
-      {availableEvents.length > 1 && onSelectEvent && (
-        <div className="flex flex-wrap gap-2 items-center p-1.5 bg-[var(--surface-subtle)] rounded-2xl w-fit border border-[var(--line-subtle)]">
-          {availableEvents.map((ev) => {
-            const isSelected = selectedEventId
-              ? selectedEventId === ev.exameventid
-              : schedule.event === ev.exameventdesc;
-
-            return (
-              <button
-                key={ev.exameventid}
-                onClick={() => onSelectEvent(ev.exameventid)}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all touch-manipulation active:scale-95 ${
-                  isSelected
-                    ? "bg-midnight text-white shadow-sm"
-                    : "text-[var(--ink-muted)] hover:text-[var(--ink-strong)] hover:bg-[var(--surface-card)]"
-                }`}
-              >
-                {ev.exameventdesc}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Search & Filter Toolbar */}
-      {items.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--ink-muted)]" />
-            <input
-              type="text"
-              placeholder="Search exam by subject or room..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-strong)] text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/30 transition-all shadow-card placeholder:text-[var(--ink-muted)] touch-manipulation"
-            />
-          </div>
-          <span className="text-xs text-[var(--ink-muted)] self-center sm:self-auto">
-            Showing {filtered.length} of {items.length} exams
-          </span>
-        </div>
-      )}
-
       {/* Exam Items Grid */}
-      {items.length === 0 ? (
+      {upcomingCount === 0 ? (
         <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-12 text-center">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-[var(--surface-subtle)] flex items-center justify-center text-[var(--ink-muted)] mb-4">
-            <Calendar className="w-8 h-8" />
-          </div>
           <h3 className="text-lg font-bold text-[var(--ink-strong)]">
-            No Upcoming Exams Scheduled
+            No Upcoming Exams
           </h3>
           <p className="mt-2 text-sm text-[var(--ink-muted)] max-w-sm mx-auto">
-            Your exam timetable will appear here automatically once announced by the examination cell.
+            {completedCount > 0
+              ? `All ${completedCount} exam${completedCount === 1 ? "" : "s"} from this session have been completed.`
+              : "Your exam timetable will appear here automatically once announced by the examination cell."}
           </p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-8 text-center text-[var(--ink-muted)]">
-          No exams found matching &ldquo;{searchTerm}&rdquo;
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map(({ item, paperNum, cleanedSubject, status, dateStr, timeStr }, index) => (
+          {preparedItems.map(({ item, paperNum, cleanedSubject, roomLabel, status, dateStr, timeStr }, index) => (
               <div
                 key={`${item.subject}-${paperNum}-${index}`}
                 className="group relative flex flex-col justify-between rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-5 shadow-card hover:shadow-elevated hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors duration-200"
@@ -366,7 +312,6 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
                   {/* Date & Time */}
                   <div className="mt-3.5 space-y-2 text-xs text-[var(--ink-muted)]">
                     <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-brand-600 shrink-0" />
                       <span>{dateStr || "Date to be announced"}</span>
                     </div>
 
@@ -381,7 +326,7 @@ export const ExamSchedule: React.FC<ExamScheduleProps> = ({
                 <div className="mt-5 pt-3.5 border-t border-[var(--line-subtle)] flex items-center justify-between text-xs text-[var(--ink-muted)]">
                   <div className="flex items-center gap-1.5 font-semibold text-[var(--ink-strong)]">
                     <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                    <span>Room: {item.roomcode || "TBA"}</span>
+                    <span>Room: {roomLabel || "TBA"}</span>
                   </div>
 
                   <div className="flex items-center gap-1.5 font-semibold text-[var(--ink-strong)]">

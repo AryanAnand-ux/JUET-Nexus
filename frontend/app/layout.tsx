@@ -148,8 +148,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           name="google-site-verification"
           content="0niLebqPCbZ9SH5BLX0uP_S53oiuwx6Zrxmmw5xAWFM"
         />
-        <link rel="preconnect" href="https://juet-nexus-backend.onrender.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://juet-nexus-backend.onrender.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

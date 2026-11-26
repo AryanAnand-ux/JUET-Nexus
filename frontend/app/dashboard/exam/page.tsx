@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useExamSchedule } from "@/hooks/useExamSchedule";
+import { loadSession } from "@/lib/session";
 import { ExamSchedule } from "@/components/ExamSchedule";
 import { performLogout } from "@/utils/logout";
-import { ArrowLeft, RefreshCw, Calendar } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { Typing } from "@/components/loading-ui/typing";
 
@@ -44,20 +45,20 @@ export default function ExamPage() {
   const [enrollment, setEnrollment] = useState<string | null>(null);
 
   const activeEnrollment = isHydrated
-    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") : null)
+    ? enrollment || loadSession()?.enrollment || null
     : null;
 
   useEffect(() => {
     if (!isHydrated) return;
-    const storedEnrollment = typeof window !== "undefined" ? localStorage.getItem("enrollment") : null;
-    if (!storedEnrollment) {
-      router.push("/login");
+    const session = loadSession();
+    if (!session?.token || !session?.enrollment) {
+      router.replace("/login");
     } else {
-      setEnrollment(storedEnrollment);
+      setEnrollment(session.enrollment);
     }
   }, [router, isHydrated]);
 
-  const { data: examData, isLoading, error, refresh, selectedEventId, selectEvent } = useExamSchedule();
+  const { data: examData, isLoading, error, refresh } = useExamSchedule();
 
   // Read cached studentName & courseMap synchronously from localStorage so
   // visiting /dashboard/exam never triggers an unrelated background /api/dashboard refresh.
@@ -125,9 +126,8 @@ export default function ExamPage() {
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Dashboard</span>
             </Link>
-            <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)] flex items-center gap-2.5">
+            <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)]">
               Exam Schedule
-              <Calendar className="w-5 h-5 text-[var(--ink-muted)]" />
             </h2>
           </div>
 
@@ -148,13 +148,10 @@ export default function ExamPage() {
         ) : examData ? (
           <ExamSchedule
             schedule={examData}
-            selectedEventId={selectedEventId}
-            onSelectEvent={selectEvent}
             courseMap={courseMap}
           />
         ) : (
           <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-12 text-center">
-            <Calendar className="w-12 h-12 text-[var(--ink-muted)] opacity-50 mx-auto mb-3" />
             <h3 className="text-base font-bold text-[var(--ink-strong)]">
               No Exam Data Found
             </h3>
