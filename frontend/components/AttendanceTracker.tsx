@@ -31,6 +31,18 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     return subscribePrefetchSubjects(setPendingPrefetchSubjects);
   }, []);
 
+  // Safety reset so "Opening..." never stays stuck if navigation is cancelled or restored from bfcache
+  useEffect(() => {
+    if (!navigatingSubject) return;
+    const timer = setTimeout(() => setNavigatingSubject(null), 6000);
+    const handlePageShow = () => setNavigatingSubject(null);
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, [navigatingSubject]);
+
   const getRingColor = (percentage: number, classesHeld?: number): string => {
     if (classesHeld === 0 && percentage === 0) {
       return "text-neutral-300 dark:text-neutral-700";
@@ -127,7 +139,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
               return (
                 <Link
-                  href={`/dashboard/subject/${encodeURIComponent(record.subject)}?pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
+                  href={`/dashboard/subject?id=${encodeURIComponent(record.subject)}&pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
                   key={record.subject}
                   onClick={() => setNavigatingSubject(record.subject)}
                   className="group relative block bg-[var(--surface-card)] hover:bg-neutral-50 dark:hover:bg-[#202020] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-[20px] p-3.5 sm:p-5 transition-colors duration-200 hover:shadow-elevated active:scale-[0.995] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-600"
