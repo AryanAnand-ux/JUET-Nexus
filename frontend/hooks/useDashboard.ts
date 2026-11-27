@@ -224,6 +224,9 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
               overview.registrations
             )
               .then((extras) => {
+                if (loadSession()?.enrollment?.trim().toUpperCase() !== key) {
+                  return;
+                }
                 const merged: DashboardResponse = {
                   ...overview.dashboard,
                   performance: extras.performance,

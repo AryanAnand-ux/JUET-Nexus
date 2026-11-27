@@ -21,7 +21,6 @@ import { performLogout } from "@/utils/logout";
 import { loadSession } from "@/lib/session";
 import {
   AlertTriangle,
-  RefreshCw,
   ChevronRight,
   LogOut,
   MessageSquare,
@@ -141,16 +140,6 @@ const ExamTabPanel: React.FC<{
         <h2 className="text-3xl font-editorial-italic text-[var(--ink-strong)]">
           Exam Schedule
         </h2>
-
-        <button
-          type="button"
-          onClick={() => refresh()}
-          disabled={isLoading}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-strong)] text-xs font-semibold shadow-card hover:bg-[var(--surface-subtle)] transition-colors self-start sm:self-auto disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
-          <span>Refresh Schedule</span>
-        </button>
       </div>
 
       {error && <ErrorBanner error={error} onRetry={() => refresh()} />}

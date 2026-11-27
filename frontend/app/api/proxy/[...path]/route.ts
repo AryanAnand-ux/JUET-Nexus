@@ -191,16 +191,31 @@ async function handleProxy(
       );
     }
 
-    const arrayBuf = await req.arrayBuffer();
-    if (arrayBuf.byteLength > MAX_BODY_BYTES) {
-      return Response.json(
-        { status: { responseStatus: "Failure" }, message: "Payload Too Large" },
-        { status: 413 }
-      );
-    }
-    if (arrayBuf.byteLength > 0) {
-      body = Buffer.from(arrayBuf);
-      headers["content-length"] = String(body.length);
+    if (req.body) {
+      const reader = req.body.getReader();
+      const chunks: Buffer[] = [];
+      let totalBytes = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          totalBytes += value.byteLength;
+          if (totalBytes > MAX_BODY_BYTES) {
+            await reader.cancel().catch(() => {});
+            return Response.json(
+              { status: { responseStatus: "Failure" }, message: "Payload Too Large" },
+              { status: 413 }
+            );
+          }
+          chunks.push(Buffer.from(value));
+        }
+      }
+
+      if (totalBytes > 0) {
+        body = Buffer.concat(chunks, totalBytes);
+        headers["content-length"] = String(body.length);
+      }
     }
   }
 

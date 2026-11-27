@@ -211,6 +211,29 @@ export function clearAttendanceDetailCache(enrollment?: string | null): void {
   }
 }
 
+function raceWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) {
+    return Promise.reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (val) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(val);
+      },
+      (err) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(err);
+      }
+    );
+  });
+}
+
 /**
  * Direct fetch helper with caching and in-flight deduplication.
  * Can be invoked by background prefetchers or directly.
@@ -236,7 +259,7 @@ export async function fetchAttendanceDetailDirect(
   // Deduplicate against an already running in-flight request
   const existingPromise = inFlightDetailsRequests.get(cacheKey);
   if (existingPromise && !isRefresh) {
-    return existingPromise;
+    return raceWithAbort(existingPromise, signal);
   }
 
   const fetchPromise = (async () => {
@@ -248,7 +271,7 @@ export async function fetchAttendanceDetailDirect(
       const responseData = await fetchAttendanceDetail(
         {
           postEncrypted: (path, payload, options) =>
-            postEncrypted(path, payload, { timeout: options?.timeout, signal }),
+            postEncrypted(path, payload, { timeout: options?.timeout }),
         },
         ref,
         {
@@ -267,5 +290,5 @@ export async function fetchAttendanceDetailDirect(
   })();
 
   inFlightDetailsRequests.set(cacheKey, fetchPromise);
-  return fetchPromise;
+  return raceWithAbort(fetchPromise, signal);
 }
