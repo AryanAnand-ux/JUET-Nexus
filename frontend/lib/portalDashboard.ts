@@ -71,9 +71,15 @@ const EXAM_MARKS_PATH = "/studentsexamview/getstudent-exammarks";
 const MARQUEE_PATH = "/token/marqeelist";
 
 const unsupportedAllSemesters = new Set<string>();
+const preferredRegistrationByEnrollment = new Map<string, string>();
 
-export function clearPortalDashboardSessionState(): void {
+export function clearPortalDashboardSessionState(enrollment?: string): void {
+  if (enrollment) {
+    preferredRegistrationByEnrollment.delete(enrollment.trim().toUpperCase());
+    return;
+  }
   unsupportedAllSemesters.clear();
+  preferredRegistrationByEnrollment.clear();
 }
 
 /** Transport the provider needs: encrypted POST plus the authenticated GET. */
@@ -1019,6 +1025,19 @@ export interface CampusLynxDashboardArgs {
   username: string;
 }
 
+function orderCandidates(
+  registrations: PortalRegistration[],
+  enrollment?: string
+): PortalRegistration[] {
+  const candidates = registrations.slice(0, 2).filter((r) => r.registrationid);
+  const key = enrollment?.trim().toUpperCase();
+  const preferredId = key ? preferredRegistrationByEnrollment.get(key) : undefined;
+  if (!preferredId) return candidates;
+  const idx = candidates.findIndex((r) => r.registrationid === preferredId);
+  if (idx <= 0) return candidates;
+  return [candidates[idx], ...candidates.slice(0, idx), ...candidates.slice(idx + 1)];
+}
+
 async function fetchMarkRowsWithFallback(
   transport: DashboardTransport,
   args: {
@@ -1028,7 +1047,8 @@ async function fetchMarkRowsWithFallback(
   },
   registrations: PortalRegistration[]
 ): Promise<PortalMarkRow[]> {
-  const candidates = registrations.slice(0, 2).filter((r) => r.registrationid);
+  const candidates = orderCandidates(registrations, args.enrollment);
+  const key = args.enrollment?.trim().toUpperCase();
   for (const reg of candidates) {
     try {
       const rows = await fetchMarkRows(transport, {
@@ -1038,7 +1058,12 @@ async function fetchMarkRowsWithFallback(
         registrationcode: reg.registrationcode,
         enrollment: args.enrollment,
       });
-      if (rows.length > 0) return rows;
+      if (rows.length > 0) {
+        if (key && reg.registrationid) {
+          preferredRegistrationByEnrollment.set(key, reg.registrationid);
+        }
+        return rows;
+      }
     } catch {
       // Try next registration
     }
@@ -1050,9 +1075,11 @@ async function fetchAttendanceWithFallback(
   transport: DashboardTransport,
   instituteid: string,
   stynumber: string,
-  registrations: PortalRegistration[]
+  registrations: PortalRegistration[],
+  enrollment?: string
 ): Promise<AttendanceRecord[]> {
-  const candidates = registrations.slice(0, 2).filter((r) => r.registrationid);
+  const candidates = orderCandidates(registrations, enrollment);
+  const key = enrollment?.trim().toUpperCase();
   let lastError: unknown;
   for (const reg of candidates) {
     try {
@@ -1062,7 +1089,12 @@ async function fetchAttendanceWithFallback(
         registrationid: reg.registrationid!,
         registrationcode: reg.registrationcode ?? "",
       });
-      if (rows.length > 0) return rows;
+      if (rows.length > 0) {
+        if (key && reg.registrationid) {
+          preferredRegistrationByEnrollment.set(key, reg.registrationid);
+        }
+        return rows;
+      }
     } catch (err) {
       lastError = err;
     }
@@ -1112,7 +1144,8 @@ export async function fetchAttendanceOverview(
     transport,
     args.instituteid,
     profile.stynumber,
-    registrations
+    registrations,
+    profile.enrollment
   );
 
   return {
