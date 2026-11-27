@@ -17,13 +17,3 @@ export function useHydrated(): boolean {
   );
 }
 
-/**
- * Safely reads a value from localStorage without triggering SSR hydration mismatches.
- */
-export function useClientStorage(key: string, fallback: string = ""): string {
-  const isHydrated = useHydrated();
-  if (!isHydrated || typeof window === "undefined") {
-    return fallback;
-  }
-  return localStorage.getItem(key) ?? fallback;
-}
