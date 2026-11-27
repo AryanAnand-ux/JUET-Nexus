@@ -1,3 +1,5 @@
+import { DEFAULT_ATTENDANCE_TARGET } from "../lib/attendanceTarget.ts";
+
 export interface BunkStatus {
   status: 'safe' | 'caution' | 'critical';
   count: number;
@@ -6,7 +8,7 @@ export interface BunkStatus {
 export function calculateBunkStatus(
   attended: number,
   held: number,
-  target: number = 75
+  target: number = DEFAULT_ATTENDANCE_TARGET
 ): BunkStatus {
   if (target <= 0) {
     return { status: 'safe', count: Infinity };
@@ -23,7 +25,8 @@ export function calculateBunkStatus(
     // the requested target: a 10-point cushion above it is "safe", otherwise
     // "caution". (Previously hardcoded to 85/75, which mislabelled custom targets
     // -- e.g. target 60% at 70% was reported as "critical".)
-    const status: 'safe' | 'caution' = percentage >= target + 10 ? 'safe' : 'caution';
+    const status: 'safe' | 'caution' =
+      percentage >= Math.min(100, target + 10) ? 'safe' : 'caution';
     return { status, count: safeSkips };
   } else {
     if (target >= 100) {

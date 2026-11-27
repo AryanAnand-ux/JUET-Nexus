@@ -3,7 +3,8 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
 import { Plus_Jakarta_Sans, Playfair_Display } from "next/font/google";
-import { ThemeProvider } from "../context/ThemeContext";
+import { ThemeEnforcer } from "../components/ThemeEnforcer";
+import { AttendanceTargetProvider } from "../context/AttendanceTargetContext";
 import { ToastProvider } from "../context/ToastContext";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -24,10 +25,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
-    { media: "(prefers-color-scheme: dark)", color: "#0F0F10" },
-  ],
+  // Dark is the only application theme; the login screen opts out via ThemeEnforcer.
+  themeColor: "#0F0F10",
 };
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://juetnexus.vercel.app";
@@ -39,7 +38,7 @@ export const metadata: Metadata = {
     template: "%s | JUET Nexus",
   },
   description:
-    "Fast, modern student portal client and academic dashboard for Jaypee University of Engineering and Technology (JUET). Instant CampusLynx attendance tracking, safe-bunk calculator above 75%, exam schedule, and SGPA forecasting.",
+    "Fast, modern student portal client and academic dashboard for Jaypee University of Engineering and Technology (JUET). Instant CampusLynx attendance tracking, customizable safe-bunk calculations, exam schedule, and SGPA forecasting.",
   applicationName: "JUET Nexus",
   keywords: [
     "JUET",
@@ -69,7 +68,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "JUET Nexus — Student Portal & Real-Time Attendance Tracker",
     description:
-      "Instant CampusLynx attendance tracking, safe-bunk calculations above 75%, SGPA forecasting, and exam schedules for JUET students.",
+      "Instant CampusLynx attendance tracking, customizable safe-bunk calculations, SGPA forecasting, and exam schedules for JUET students.",
     url: "/",
     siteName: "JUET Nexus",
     locale: "en_IN",
@@ -79,7 +78,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "JUET Nexus — Student Portal & Real-Time Attendance Tracker",
     description:
-      "Instant CampusLynx attendance tracking, safe-bunk calculations above 75%, SGPA forecasting, and exam schedules for JUET students.",
+      "Instant CampusLynx attendance tracking, customizable safe-bunk calculations, SGPA forecasting, and exam schedules for JUET students.",
   },
   robots: {
     index: true,
@@ -108,7 +107,7 @@ const jsonLd = {
       applicationCategory: "EducationalApplication",
       operatingSystem: "All modern browsers (PWA supported)",
       description:
-        "High-speed academic dashboard and CampusLynx portal client for Jaypee University of Engineering and Technology (JUET) students. Tracks real-time attendance, safe bunking limits above 75%, SGPA/CGPA, and exam timetables.",
+        "High-speed academic dashboard and CampusLynx portal client for Jaypee University of Engineering and Technology (JUET) students. Tracks real-time attendance, customizable safe-bunking limits, SGPA/CGPA, and exam timetables.",
       browserRequirements: "Requires JavaScript. Requires HTML5.",
       softwareVersion: "1.0.0",
       offers: {
@@ -137,11 +136,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${jakarta.variable} ${playfair.variable}`} suppressHydrationWarning>
       <head>
-        {/* Applies the persisted theme before first paint so dark-mode users
-            never see a white flash. Mirrors ThemeContext logic exactly. */}
+        {/* Applies the dark theme before first paint. The login screen is the
+            only light-design route and is exempted by path. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme-mode');var d=t==='dark';var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();`,
+            __html: `(function(){try{var p=location.pathname;var login=p==='/login'||p.indexOf('/login/')===0;var r=document.documentElement;r.classList.toggle('dark',!login);r.style.colorScheme=login?'light':'dark';}catch(e){}})();`,
           }}
         />
         <meta
@@ -161,11 +160,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           Skip to main content
         </a>
-        <ThemeProvider>
+        <ThemeEnforcer />
+        <AttendanceTargetProvider>
           <ToastProvider>
             {children}
           </ToastProvider>
-        </ThemeProvider>
+        </AttendanceTargetProvider>
         <Analytics />
         <SpeedInsights />
         <Script id="register-sw" strategy="afterInteractive">

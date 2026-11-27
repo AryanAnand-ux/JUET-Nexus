@@ -10,6 +10,8 @@ import Link from "next/link";
 import { FigmaCard } from "./base";
 import type { AttendanceRecord } from "@/types";
 import { calculateBunkStatus } from "@/utils/bunkHelpers";
+import { getDisplayableAttendanceComponents } from "@/lib/attendanceComponents";
+import { useAttendanceTarget } from "@/context/AttendanceTargetContext";
 import { subscribePrefetchSubjects } from "@/hooks/useAttendancePrefetch";
 import { Loader2 } from "lucide-react";
 
@@ -22,6 +24,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   attendanceRecords,
   isRefreshing = false,
 }) => {
+  const { attendanceTarget } = useAttendanceTarget();
   const [navigatingSubject, setNavigatingSubject] = useState<string | null>(null);
   const [pendingPrefetchSubjects, setPendingPrefetchSubjects] = useState<Set<string>>(
     () => new Set()
@@ -47,8 +50,8 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     if (classesHeld === 0 && percentage === 0) {
       return "text-neutral-300 dark:text-neutral-700";
     }
-    if (percentage >= 85) return "text-emerald-500";
-    if (percentage >= 75) return "text-amber-500";
+    if (percentage >= Math.min(100, attendanceTarget + 10)) return "text-emerald-500";
+    if (percentage >= attendanceTarget) return "text-amber-500";
     return "text-rose-600";
   };
 
@@ -62,10 +65,10 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       activeRecords.length > 0
         ? activeRecords.reduce((sum, r) => sum + r.percentage, 0) / activeRecords.length
         : 0;
-    const belowThreshold = activeRecords.filter((r) => r.percentage < 75).length;
+    const belowThreshold = activeRecords.filter((r) => r.percentage < attendanceTarget).length;
 
     return { subjectCount: attendanceRecords.length, avgPercentage, belowThreshold };
-  }, [attendanceRecords]);
+  }, [attendanceRecords, attendanceTarget]);
 
   return (
     <FigmaCard 
@@ -92,7 +95,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             </div>
             <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-[20px] p-4 sm:p-5 shadow-card transition-all hover:scale-[1.01] duration-300">
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-1.5">
-                Attention Required (&lt;75%)
+                Attention Required (&lt;{attendanceTarget}%)
               </p>
               <p className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                 {stats.belowThreshold}
@@ -120,7 +123,11 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 if (record.classesHeld <= 0) {
                   return null;
                 }
-                const bunkStatus = calculateBunkStatus(record.classesAttended, record.classesHeld, 75);
+                const bunkStatus = calculateBunkStatus(
+                  record.classesAttended,
+                  record.classesHeld,
+                  attendanceTarget
+                );
                 if (bunkStatus.status === "critical") {
                   return {
                     text: `Must attend next ${bunkStatus.count} class${bunkStatus.count > 1 ? "es" : ""}`,
@@ -137,6 +144,8 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 };
               })();
 
+              const activeComponents = getDisplayableAttendanceComponents(record);
+
               return (
                 <Link
                   href={`/dashboard/subject?id=${encodeURIComponent(record.subject)}&pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
@@ -147,7 +156,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   {/* Unified Responsive Layout: single SVG + metrics DOM shared across mobile and desktop */}
                   <div className="grid grid-cols-[72px_1fr] md:grid-cols-[96px_1fr] gap-x-3 gap-y-3 md:gap-x-6 md:gap-y-3 items-center">
                     {/* Circular Progress Indicator */}
-                    <div className="relative w-[72px] h-[72px] md:w-24 md:h-24 md:row-span-2 flex items-center justify-center shrink-0 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-full">
+                    <div className="relative w-[72px] h-[72px] md:w-24 md:h-24 flex items-center justify-center shrink-0 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-full">
                       <svg viewBox="0 0 96 96" className="transform -rotate-90 w-[72px] h-[72px] md:w-24 md:h-24">
                         <circle
                           cx="48"
@@ -208,6 +217,20 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                         )}
                       </div>
 
+                      {/* Active L / T / P percentages, inline below the course name */}
+                      {activeComponents.length > 0 && (
+                        <div className="mb-1.5 md:mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] md:text-xs tabular-nums">
+                          {activeComponents.map((component) => (
+                            <span key={component.key} className="text-[var(--ink-muted)] font-medium">
+                              {component.key}{" "}
+                              <strong className="font-bold text-[var(--ink-strong)] ml-0.5">
+                                {component.value.toFixed(0)}%
+                              </strong>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Quick-Info Skip Indicator */}
                       {skipInfo && (
                         <div className="flex items-center">
@@ -216,28 +239,6 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                           </span>
                         </div>
                       )}
-                    </div>
-
-                    {/* Component Breakdowns (full width on mobile, right column on desktop) */}
-                    <div className="col-span-2 md:col-span-1 md:col-start-2 flex items-center justify-between md:justify-end gap-4 pt-2 md:pt-0 border-t md:border-t-0 border-[var(--line-subtle)] text-xs md:text-sm tabular-nums">
-                      <span className="text-[var(--ink-muted)] font-medium">
-                        L{" "}
-                        <strong className="font-bold text-[var(--ink-strong)] ml-0.5">
-                          {record.lecturePercent > 0 ? `${record.lecturePercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
-                        </strong>
-                      </span>
-                      <span className="text-[var(--ink-muted)] font-medium">
-                        T{" "}
-                        <strong className="font-bold text-[var(--ink-strong)] ml-0.5">
-                          {record.tutorialPercent > 0 ? `${record.tutorialPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
-                        </strong>
-                      </span>
-                      <span className="text-[var(--ink-muted)] font-medium">
-                        P{" "}
-                        <strong className="font-bold text-[var(--ink-strong)] ml-0.5">
-                          {record.practicalPercent > 0 ? `${record.practicalPercent.toFixed(0)}%` : (record.percentage > 0 ? "—" : "0%")}
-                        </strong>
-                      </span>
                     </div>
                   </div>
                 </Link>

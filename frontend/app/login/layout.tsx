@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export const metadata: Metadata = {
   title: "Login to CampusLynx Portal",
   description:
-    "Log in to JUET Nexus to access real-time CampusLynx attendance tracking, calculate safe bunks above 75%, and check your semester SGPA and exam schedule.",
+    "Log in to JUET Nexus to access real-time CampusLynx attendance tracking, calculate safe bunks with a custom target, and check your semester SGPA and exam schedule.",
   alternates: {
     canonical: "/login",
   },

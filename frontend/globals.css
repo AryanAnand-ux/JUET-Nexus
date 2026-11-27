@@ -2,12 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* JUET Nexus — Editorial design tokens */
+/* JUET Nexus — Dark-only editorial design tokens.
+   The login screen is the sole light-design exception: it is the only route
+   without the `dark` class on <html>, so it keeps the override block below. */
 :root {
   --accent-primary: #6355D8;
   --accent-primary-hover: #5842E3;
   --accent-primary-light: rgba(99, 85, 216, 0.10);
-  /* Brand-tinted TEXT (links, accents) — lightened in dark mode for contrast */
+  --accent-text: #FFFFFF;
+  --surface-page: #121212;
+  --surface-card: #1C1C1C;
+  --surface-subtle: #242424;
+  --ink-strong: #FFFFFF;
+  --ink-body: #E0E0E0;
+  --ink-muted: #9E9E9E;
+  --line-subtle: #2C2C2C;
+  --focus-ring: #FFFFFF;
+  --font-inter: var(--font-next-jakarta, "Plus Jakarta Sans"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-newsreader: var(--font-next-playfair, "Playfair Display"), Georgia, "Times New Roman", serif;
+  --font-nunito-sans: var(--font-next-jakarta, "Plus Jakarta Sans"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-jakarta: var(--font-next-jakarta, "Plus Jakarta Sans"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Login-only light surface tokens (never an application theme). */
+html:not(.dark) {
   --accent-text: #6355D8;
   --surface-page: #FFFFFF;
   --surface-card: #FFFFFF;
@@ -17,30 +35,6 @@
   --ink-muted: #6B6B72;
   --line-subtle: #E6E6E9;
   --focus-ring: #6355D8;
-  --font-inter: var(--font-next-jakarta, "Plus Jakarta Sans"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-newsreader: var(--font-next-playfair, "Playfair Display"), Georgia, "Times New Roman", serif;
-  --font-nunito-sans: var(--font-next-jakarta, "Plus Jakarta Sans"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-jakarta: var(--font-next-jakarta, "Plus Jakarta Sans"), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-:root.accent-indigo {
-  --accent-primary: #6355D8;
-  --accent-primary-hover: #5842E3;
-  --accent-primary-light: rgba(99, 85, 216, 0.10);
-  --accent-text: #6355D8;
-}
-
-:root.dark,
-:root.dark.accent-indigo {
-  --surface-page: #121212;
-  --surface-card: #1C1C1C;
-  --surface-subtle: #242424;
-  --ink-strong: #FFFFFF;
-  --ink-body: #E0E0E0;
-  --ink-muted: #9E9E9E;
-  --line-subtle: #2C2C2C;
-  --focus-ring: #FFFFFF;
-  --accent-text: #FFFFFF;
 }
 
 /* Global Base Styles */
@@ -160,7 +154,7 @@
 
   /* Page transition — subtle fade when navigating between sidebar pages.
      Opacity only: a transform here would create a containing block that
-     breaks `position: fixed` overlays (FeedbackModal, LoadingOverlay). */
+     breaks `position: fixed` overlays such as LoadingOverlay. */
   @keyframes page-enter {
     from {
       opacity: 0;
@@ -218,39 +212,40 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #C4C4C8;
+  background: #27272a;
   border-radius: 9999px;
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9A9A9F;
-}
-
-.dark ::-webkit-scrollbar-thumb,
-:root.dark ::-webkit-scrollbar-thumb,
-html.dark ::-webkit-scrollbar-thumb {
-  background: #27272a;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover,
-:root.dark ::-webkit-scrollbar-thumb:hover,
-html.dark ::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: #C4C4C8;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: #9A9A9F;
 }
 
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #C4C4C8 transparent;
+  scrollbar-color: #27272a transparent;
 }
 
-.dark * {
-  scrollbar-color: #27272a transparent;
+html:not(.dark) * {
+  scrollbar-color: #C4C4C8 transparent;
 }
 
 /* Selection Styling */
 ::selection {
+  background: rgba(99, 85, 216, 0.38);
+  color: #FFFFFF;
+}
+
+html:not(.dark) ::selection {
   background: #d9d0ff;
   color: #21164f;
 }

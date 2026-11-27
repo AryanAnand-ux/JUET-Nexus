@@ -24,7 +24,7 @@ import type {
   AttendanceDetailItem,
   AttendanceDetailsResponse,
 } from "@/types";
-import { PortalError } from "./errors";
+import { PortalError } from "./errors.ts";
 
 // ---------------------------------------------------------------------------
 // Portal shapes (live-verified)
