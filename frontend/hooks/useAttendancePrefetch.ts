@@ -16,8 +16,8 @@ export interface AttendancePrefetchStatus {
   failed: number;
 }
 
-const MAX_CONCURRENT_PREFETCH = 1; // 1 subject at a time (each subject already fans out 1-3 L/T/P calls)
-const INITIAL_PREFETCH_DELAY_MS = 1200; // Let deferred performance extras finish before queuing subject logs
+const MAX_CONCURRENT_PREFETCH = 3; // Prefetch up to 3 subjects in parallel
+const INITIAL_PREFETCH_DELAY_MS = 300; // Short settle delay after overview renders
 const TASK_STAGGER_MS = 0;
 
 // Module-level guard so navigating between routes does NOT re-trigger prefetch;

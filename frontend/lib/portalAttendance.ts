@@ -528,7 +528,7 @@ export async function fetchAttendanceDetail(
       if (err instanceof PortalError && err.httpStatus === 404) {
         return [];
       }
-      if (/timeout|network|ECONN|reset/i.test(err?.message || "")) {
+      if (/network|ECONN|reset/i.test(err?.message || "")) {
         try {
           payload = await makeRequest();
         } catch (retryErr: any) {
@@ -574,8 +574,8 @@ export async function fetchAttendanceDetail(
     }
   }
 
-  // If every component failed and we had active components, throw the error
-  if (activeComponents.length > 0 && successCount === 0) {
+  // Fail if any component failed so partial logs are never cached or shown as complete
+  if (errors.length > 0) {
     throw errors[0] || new Error("Failed to fetch attendance details");
   }
 

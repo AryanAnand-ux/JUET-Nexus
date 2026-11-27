@@ -44,6 +44,8 @@ function ensureStorageListener(): void {
   window.addEventListener("storage", (e: StorageEvent) => {
     if (!e.key) {
       memCache.clear();
+    } else if (e.key === "juet.session" && !e.newValue) {
+      invalidateCacheGeneration();
     } else if (e.key.startsWith(STORAGE_PREFIX)) {
       memCache.delete(e.key.slice(STORAGE_PREFIX.length));
     }
@@ -160,6 +162,23 @@ export function invalidateCacheGeneration(): void {
   }
   inFlight.clear();
   memCache.clear();
+  const storage = safeStorage();
+  if (storage) {
+    try {
+      const toRemove: string[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k && k.startsWith(STORAGE_PREFIX)) {
+          toRemove.push(k);
+        }
+      }
+      for (const k of toRemove) {
+        storage.removeItem(k);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 /** True if the cache entry is fresh (within staleMs). */

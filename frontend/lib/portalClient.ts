@@ -102,6 +102,16 @@ async function anonymousHeaders(now = new Date()): Promise<Record<string, string
   };
 }
 
+const responseCleanups = new WeakMap<Response, () => void>();
+
+function cleanupResponse(res: Response): void {
+  const fn = responseCleanups.get(res);
+  if (fn) {
+    responseCleanups.delete(res);
+    fn();
+  }
+}
+
 async function fetchWithTimeout(
   url: string,
   init: RequestInit,
@@ -121,9 +131,52 @@ async function fetchWithTimeout(
     controller.abort(new RequestTimeoutError());
   }, timeoutMs);
 
+  const cleanup = () => {
+    clearTimeout(timer);
+    externalSignal?.removeEventListener("abort", onExternalAbort);
+  };
+
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    const res = await fetch(url, { ...init, signal: controller.signal });
+    responseCleanups.set(res, cleanup);
+
+    const origText = res.text.bind(res);
+    res.text = async () => {
+      try {
+        return await origText();
+      } catch (err: unknown) {
+        if (controller.signal.aborted) {
+          if (controller.signal.reason instanceof PortalError) {
+            throw controller.signal.reason;
+          }
+          throw err;
+        }
+        throw err;
+      } finally {
+        cleanupResponse(res);
+      }
+    };
+
+    const origArrayBuffer = res.arrayBuffer.bind(res);
+    res.arrayBuffer = async () => {
+      try {
+        return await origArrayBuffer();
+      } catch (err: unknown) {
+        if (controller.signal.aborted) {
+          if (controller.signal.reason instanceof PortalError) {
+            throw controller.signal.reason;
+          }
+          throw err;
+        }
+        throw err;
+      } finally {
+        cleanupResponse(res);
+      }
+    };
+
+    return res;
   } catch (err: unknown) {
+    cleanup();
     if (controller.signal.aborted) {
       if (controller.signal.reason instanceof PortalError) {
         throw controller.signal.reason;
@@ -136,9 +189,6 @@ async function fetchWithTimeout(
         ? "You are offline."
         : "JUET's portal is unreachable."
     );
-  } finally {
-    clearTimeout(timer);
-    externalSignal?.removeEventListener("abort", onExternalAbort);
   }
 }
 
@@ -344,13 +394,18 @@ let refreshGeneration = 0;
 let lastRefreshAt = 0;
 let failedAuthorization: { token: string; failedAt: number } | null = null;
 
-// Sync cross-tab session renewals so sibling tabs immediately benefit from a fresh token
+// Sync cross-tab session renewals and logouts so sibling tabs stay consistent
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (event) => {
-    if (event.key === "juet.session" && event.newValue) {
-      failedAuthorization = null;
-      lastRefreshAt = Date.now();
-      setSessionStatus("authenticated");
+    if (event.key === "juet.session") {
+      if (event.newValue) {
+        failedAuthorization = null;
+        lastRefreshAt = Date.now();
+        setSessionStatus("authenticated");
+      } else {
+        cancelRefresh();
+        setSessionStatus("expired");
+      }
     }
   });
 }
@@ -407,8 +462,12 @@ export async function refreshPortalToken(signal?: AbortSignal): Promise<{
       .find((v): v is string => typeof v === "string" && v.length > 0);
 
     if (rotatedToken) {
+      const latest = loadSession();
+      if (!latest || latest.enrollment !== session.enrollment) {
+        return { ok: false };
+      }
       saveSession({
-        ...session,
+        ...latest,
         token: rotatedToken,
         tokenExpiry: jwtExpiry(rotatedToken),
         issuedAt: Date.now(),
@@ -658,6 +717,7 @@ async function executeAuthenticated<T>(
   let res = await run(activeToken);
 
   if (res.status === 401) {
+    cleanupResponse(res);
     const recoveredToken = await tryRecover(true);
     if (recoveredToken) {
       res = await run(recoveredToken);

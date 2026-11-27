@@ -15,7 +15,7 @@ export interface GradesState {
 }
 
 const GRADES_CACHE_TTL_MS = 10 * 60 * 1000;
-let inFlightGradesPromise: Promise<GradeCardResponse[]> | null = null;
+const inFlightGradesByEnrollment = new Map<string, Promise<GradeCardResponse[]>>();
 
 export function useGrades() {
   const [state, setState] = useState<GradesState>(() => {
@@ -72,17 +72,21 @@ export function useGrades() {
         error: null,
       }));
 
-      let responseData: GradeCardResponse[];
-      if (inFlightGradesPromise) {
-        responseData = await inFlightGradesPromise;
-      } else {
-        inFlightGradesPromise = fetchGradeCard(
+      const enrollmentKey = session.enrollment.trim().toUpperCase();
+      let promise = inFlightGradesByEnrollment.get(enrollmentKey);
+      if (!promise) {
+        promise = fetchGradeCard(
           { postEncrypted: (path, payload) => postEncrypted(path, payload) },
           session
         ).finally(() => {
-          inFlightGradesPromise = null;
+          inFlightGradesByEnrollment.delete(enrollmentKey);
         });
-        responseData = await inFlightGradesPromise;
+        inFlightGradesByEnrollment.set(enrollmentKey, promise);
+      }
+      const responseData = await promise;
+
+      if (loadSession()?.enrollment?.trim().toUpperCase() !== enrollmentKey) {
+        return;
       }
 
       setCached(key, responseData);

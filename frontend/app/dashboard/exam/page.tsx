@@ -8,7 +8,7 @@ import { useExamSchedule } from "@/hooks/useExamSchedule";
 import { loadSession } from "@/lib/session";
 import { ExamSchedule } from "@/components/ExamSchedule";
 import { performLogout } from "@/utils/logout";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Typing } from "@/components/loading-ui/typing";
 
@@ -130,15 +130,6 @@ export default function ExamPage() {
               Exam Schedule
             </h2>
           </div>
-
-          <button
-            onClick={() => refresh()}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-strong)] text-xs font-semibold shadow-card hover:bg-[var(--surface-subtle)] transition-colors self-start sm:self-auto disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
-            <span>Refresh Schedule</span>
-          </button>
         </div>
 
         {error && <ErrorBanner error={error} />}
