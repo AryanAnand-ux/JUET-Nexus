@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { postEncrypted, getEncrypted, getBuffer } from "@/lib/portalClient";
 import {
+  clearPortalDashboardSessionState,
   fetchAttendanceOverview,
   fetchPerformanceExtras,
 } from "@/lib/portalDashboard";
@@ -183,6 +184,9 @@ export function useDashboard(enrollment: string | null): UseDashboardReturn {
       if (!forceFresh && inFlightDashboardPromise && inFlightEnrollment === key) {
         responsePayload = await inFlightDashboardPromise;
       } else {
+        if (forceFresh) {
+          clearPortalDashboardSessionState(key);
+        }
         inFlightEnrollment = key;
         const currentPromise = (async () => {
           const session = loadSession();

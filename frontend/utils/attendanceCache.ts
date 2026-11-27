@@ -244,7 +244,8 @@ export async function fetchAttendanceDetailDirect(
   enrollment?: string | null,
   isRefresh = false,
   signal?: AbortSignal,
-  checksum?: string
+  checksum?: string,
+  timeoutMs?: number
 ): Promise<AttendanceDetailsResponse> {
   const cacheKey = getMemoryCacheKey(subject, link, enrollment);
 
@@ -271,7 +272,7 @@ export async function fetchAttendanceDetailDirect(
       const responseData = await fetchAttendanceDetail(
         {
           postEncrypted: (path, payload, options) =>
-            postEncrypted(path, payload, { timeout: options?.timeout }),
+            postEncrypted(path, payload, { timeout: timeoutMs ?? options?.timeout }),
         },
         ref,
         {

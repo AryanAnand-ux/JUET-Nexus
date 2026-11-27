@@ -194,24 +194,41 @@ async function fetchWithTimeout(
 
 // ── Auth endpoints ───────────────────────────────────────────────────────────
 
-export async function getCaptcha(signal?: AbortSignal): Promise<PortalCaptcha> {
-  const res = await fetchWithTimeout(normalizeEndpoint("token/getcaptcha"), {
-    method: "GET",
-    headers: await anonymousHeaders(new Date()),
-    signal,
-  });
+let inFlightCaptcha: Promise<PortalCaptcha> | null = null;
 
-  const text = await res.text();
-  const parsed = parseJsonText(text) as {
-    response?: { captcha?: PortalCaptcha };
-  };
-  const captcha = parsed?.response?.captcha;
-  if (!captcha?.hidden || !captcha?.image) {
-    throw new PortalError("CampusLynx captcha service returned no image.", {
-      httpStatus: 502,
-    });
+export async function getCaptcha(signal?: AbortSignal): Promise<PortalCaptcha> {
+  if (!signal && inFlightCaptcha) {
+    return inFlightCaptcha;
   }
-  return captcha;
+
+  const run = async (): Promise<PortalCaptcha> => {
+    const res = await fetchWithTimeout(normalizeEndpoint("token/getcaptcha"), {
+      method: "GET",
+      headers: await anonymousHeaders(new Date()),
+      signal,
+    });
+
+    const text = await res.text();
+    const parsed = parseJsonText(text) as {
+      response?: { captcha?: PortalCaptcha };
+    };
+    const captcha = parsed?.response?.captcha;
+    if (!captcha?.hidden || !captcha?.image) {
+      throw new PortalError("CampusLynx captcha service returned no image.", {
+        httpStatus: 502,
+      });
+    }
+    return captcha;
+  };
+
+  if (signal) {
+    return run();
+  }
+
+  inFlightCaptcha = run().finally(() => {
+    inFlightCaptcha = null;
+  });
+  return inFlightCaptcha;
 }
 
 export async function preTokenCheck(
@@ -722,6 +739,13 @@ async function executeAuthenticated<T>(
     if (recoveredToken) {
       res = await run(recoveredToken);
     }
+  }
+
+  // HTTP 204 No Content is a valid empty response (e.g. getstudentexamevents with no events),
+  // not an expired token. Never trigger session recovery on 204.
+  if (res.status === 204) {
+    cleanupResponse(res);
+    return (opts.isBuffer ? new Uint8Array() : {}) as unknown as T;
   }
 
   if (opts.isBuffer && res.ok) {
