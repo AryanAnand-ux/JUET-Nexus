@@ -189,11 +189,6 @@ function SubjectDetailContent() {
     return "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800";
   };
 
-  const radius = 68;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset =
-    circumference - (Math.min(100, displayPercent) / 100) * circumference;
-
   // Compute action text only when we have raw counts
   let actionText = "";
   if (totalCount > 0) {
@@ -260,73 +255,68 @@ function SubjectDetailContent() {
         {/* LEFT: Calculator */}
         <div className="xl:col-span-1 space-y-6">
           <FigmaCard heading="Attendance Calculator">
-            {/* Ring */}
-            <div className="flex justify-center my-6">
-              <div className="relative w-40 h-40 flex items-center justify-center shrink-0 bg-[var(--surface-subtle)] border border-[var(--line-subtle)] rounded-full shadow-card">
-                <svg className="transform -rotate-90 w-40 h-40">
+            {/* Ring — bare SVG, no extra wrapper box */}
+            <div className="flex flex-col items-center gap-1 my-5">
+              <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
+                <svg className="transform -rotate-90 w-36 h-36">
                   <circle
-                    cx="80"
-                    cy="80"
-                    r="68"
+                    cx="72"
+                    cy="72"
+                    r="60"
                     stroke="currentColor"
-                    strokeWidth="12"
+                    strokeWidth="10"
                     fill="transparent"
                     className="text-gray-100 dark:text-slate-800"
                   />
                   <circle
-                    cx="80"
-                    cy="80"
-                    r="68"
+                    cx="72"
+                    cy="72"
+                    r="60"
                     stroke="currentColor"
-                    strokeWidth="12"
+                    strokeWidth="10"
                     fill="transparent"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={strokeDashoffset}
+                    strokeDasharray={2 * Math.PI * 60}
+                    strokeDashoffset={2 * Math.PI * 60 - (Math.min(100, displayPercent) / 100) * 2 * Math.PI * 60}
                     strokeLinecap="round"
                     className={`transition-all duration-700 ${getRingColor(displayPercent)}`}
                   />
                 </svg>
-                <div className="absolute inset-0 flex items-center justify-center p-2 text-center pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <span className={`${
                     (displayPercent % 1 === 0 ? displayPercent.toFixed(0) : displayPercent.toFixed(1)).length >= 4
-                      ? "text-3xl sm:text-4xl"
-                      : "text-4xl sm:text-5xl"
+                      ? "text-3xl"
+                      : "text-4xl"
                   } font-black tracking-tight text-[var(--ink-strong)] leading-none tabular-nums select-none`}>
                     {displayPercent % 1 === 0 ? displayPercent.toFixed(0) : displayPercent.toFixed(1)}%
                   </span>
                 </div>
               </div>
+
+              {/* Inline stats under ring */}
+              {totalCount > 0 && (
+                <p className="text-xs font-semibold text-[var(--ink-muted)] font-nunito tabular-nums">
+                  {Math.round(attendedCount)} attended · {totalCount} total
+                </p>
+              )}
+
+              {/* Status line */}
+              {totalCount > 0 && actionText && (
+                <p className={`text-[11px] font-bold text-center font-nunito mt-0.5 ${
+                  isMeetingTarget ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
+                }`}>
+                  {actionText}
+                </p>
+              )}
             </div>
 
-            {/* Stats */}
-            {totalCount > 0 && (
-              <div className="flex justify-around text-center mb-6 border-y border-[var(--line-subtle)] py-4 bg-[var(--surface-subtle)] rounded-xl">
-                <div>
-                  <p className="text-xs uppercase font-bold text-gray-400 dark:text-slate-500 font-nunito">
-                    Attended
-                  </p>
-                  <p className="text-2xl font-black text-[var(--ink-strong)]">
-                    {Math.round(attendedCount)}
-                  </p>
-                </div>
-                <div className="w-px bg-gray-200 dark:bg-slate-700" />
-                <div>
-                  <p className="text-xs uppercase font-bold text-gray-400 dark:text-slate-500 font-nunito">
-                    Total
-                  </p>
-                  <p className="text-2xl font-black text-[var(--ink-strong)]">{totalCount}</p>
-                </div>
-              </div>
-            )}
-
             {practicalsExcluded && (
-              <p className="mb-6 -mt-3 text-center text-[11px] font-medium text-gray-400 dark:text-slate-500 font-nunito">
-                Practicals appear in the log below but are excluded from the overall %, matching your portal.
+              <p className="mb-4 text-center text-[11px] font-medium text-gray-400 dark:text-slate-500 font-nunito">
+                Practicals excluded from overall %, matching your portal.
               </p>
             )}
 
             {!hasDetailData && isLoading && (
-              <div className="mb-6 py-3 flex flex-col items-center gap-2">
+              <div className="mb-4 py-2 flex flex-col items-center gap-2">
                 <Typing size="sm" duration={0.8} className="text-[var(--accent-text)]" />
                 <p className="text-xs font-medium text-gray-400 dark:text-slate-500 font-nunito">
                   Loading class counts from portal…
@@ -335,7 +325,7 @@ function SubjectDetailContent() {
             )}
 
             {!hasDetailData && !isLoading && !detailLink && (
-              <div className="mb-6 py-3 text-center">
+              <div className="mb-4 py-2 text-center">
                 <p className="text-xs font-medium text-gray-400 dark:text-slate-500 font-nunito">
                   Daily log unavailable — showing overall percentage only.
                 </p>
@@ -343,12 +333,12 @@ function SubjectDetailContent() {
             )}
 
             {/* Target Slider */}
-            <div className="mb-6">
+            <div className="mb-5">
               <div className="flex justify-between items-center mb-2">
                 <label className="text-xs uppercase font-bold tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
-                  Target Criteria
+                  Target
                 </label>
-                <span className="text-sm font-black bg-accent-primary text-white px-2.5 py-0.5 rounded-full font-nunito">
+                <span className="text-xs font-black text-[var(--ink-strong)] font-nunito">
                   {targetPercentage}%
                 </span>
               </div>
@@ -358,77 +348,58 @@ function SubjectDetailContent() {
                 max="100"
                 value={targetPercentage}
                 onChange={(e) => setTargetPercentage(Number(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-accent-primary"
+                className="w-full h-1.5 bg-gray-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-accent-primary"
               />
             </div>
 
-            {/* Action Text */}
-            {totalCount > 0 && (
-              <div
-                className={`p-4 rounded-xl border mb-6 ${
-                  isMeetingTarget
-                    ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40 text-green-800 dark:text-green-300"
-                    : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-300"
-                }`}
-              >
-                <p className="text-sm font-bold text-center font-nunito">
-                  {actionText || "Simulate classes below."}
-                </p>
-              </div>
-            )}
-
-            {/* Buttons */}
+            {/* Minimal inline steppers */}
             {totalCount > 0 && (
               <>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {/* Attend Class stepper */}
-                  <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-green-500 text-white border-2 border-green-600 font-nunito">
-                    <div className="flex items-center justify-between px-0.5">
-                      <span className="text-xs font-black">Attend</span>
-                      {extraAttends > 0 && (
-                        <span className="text-[10px] font-bold opacity-90">+{extraAttends}</span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex flex-col gap-2">
+                  {/* Attend row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-green-600 dark:text-green-400 font-nunito w-12">Attend</span>
+                    <div className="flex items-center gap-3 ml-auto">
                       <button
                         onClick={undoAttend}
                         disabled={extraAttends <= 0}
                         aria-label="Remove an attended class"
-                        className="h-9 flex items-center justify-center rounded-lg bg-white/15 hover:bg-white/25 text-white font-black text-base transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-[var(--line-subtle)] text-[var(--ink-muted)] font-black text-base hover:bg-[var(--surface-subtle)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         −
                       </button>
+                      <span className="w-6 text-center text-sm font-black text-[var(--ink-strong)] tabular-nums font-nunito">
+                        {extraAttends}
+                      </span>
                       <button
                         onClick={handleAttend}
                         aria-label="Add an attended class"
-                        className="h-9 flex items-center justify-center rounded-lg bg-white/25 hover:bg-white/35 text-white font-black text-base transition-all active:scale-95"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-green-500 text-white font-black text-base hover:bg-green-600 transition-all active:scale-95"
                       >
                         +
                       </button>
                     </div>
                   </div>
 
-                  {/* Skip Class stepper */}
-                  <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-red-500 text-white border-2 border-red-600 font-nunito">
-                    <div className="flex items-center justify-between px-0.5">
-                      <span className="text-xs font-black">Skip</span>
-                      {extraBunks > 0 && (
-                        <span className="text-[10px] font-bold opacity-90">+{extraBunks}</span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
+                  {/* Skip row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-red-500 dark:text-red-400 font-nunito w-12">Skip</span>
+                    <div className="flex items-center gap-3 ml-auto">
                       <button
                         onClick={undoBunk}
                         disabled={extraBunks <= 0}
                         aria-label="Remove a skipped class"
-                        className="h-9 flex items-center justify-center rounded-lg bg-white/15 hover:bg-white/25 text-white font-black text-base transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-[var(--line-subtle)] text-[var(--ink-muted)] font-black text-base hover:bg-[var(--surface-subtle)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         −
                       </button>
+                      <span className="w-6 text-center text-sm font-black text-[var(--ink-strong)] tabular-nums font-nunito">
+                        {extraBunks}
+                      </span>
                       <button
                         onClick={handleBunk}
                         aria-label="Add a skipped class"
-                        className="h-9 flex items-center justify-center rounded-lg bg-white/25 hover:bg-white/35 text-white font-black text-base transition-all active:scale-95"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500 text-white font-black text-base hover:bg-red-600 transition-all active:scale-95"
                       >
                         +
                       </button>
@@ -439,7 +410,7 @@ function SubjectDetailContent() {
                 {data && (extraAttends > 0 || extraBunks > 0) && (
                   <button
                     onClick={resetSimulation}
-                    className="w-full mt-4 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] hover:text-[var(--ink-strong)] transition-colors"
+                    className="w-full mt-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] hover:text-[var(--ink-strong)] transition-colors"
                   >
                     ↻ Reset to Actual
                   </button>
@@ -449,37 +420,41 @@ function SubjectDetailContent() {
           </FigmaCard>
           {hasDetailData && (
             <FigmaCard heading="Marked Absent by Mistake?">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <button
-                  onClick={() => setRetroFixes((n) => Math.max(0, n - 1))}
-                  disabled={fixes <= 0}
-                  aria-label="Correct one fewer absence"
-                  className="w-12 py-2 rounded-xl border border-[var(--line-subtle)] font-black disabled:opacity-40"
-                >
-                  −
-                </button>
-                <span className="text-sm font-bold text-[var(--ink-strong)] tabular-nums">
-                  {fixes} of {recordedAbsences} absences corrected
-                </span>
-                <button
-                  onClick={() => setRetroFixes((n) => Math.min(recordedAbsences, n + 1))}
-                  disabled={fixes >= recordedAbsences}
-                  aria-label="Correct one more absence"
-                  className="w-12 py-2 rounded-xl bg-accent-primary text-white font-black disabled:opacity-40"
-                >
-                  +
-                </button>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-[var(--ink-strong)]">
+                    {officialPct.toFixed(1)}% → {retroPct.toFixed(1)}%
+                  </p>
+                  <p className="text-[11px] text-[var(--ink-muted)] mt-0.5 font-nunito">
+                    {retroNeeded === 0
+                      ? `Already at or above ${targetPercentage}%.`
+                      : retroNeeded > recordedAbsences
+                      ? `Correcting every absence still can't reach ${targetPercentage}%.`
+                      : `Correct ${retroNeeded} absence${retroNeeded !== 1 ? "s" : ""} to reach ${targetPercentage}%.`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setRetroFixes((n) => Math.max(0, n - 1))}
+                    disabled={fixes <= 0}
+                    aria-label="Correct one fewer absence"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-[var(--line-subtle)] font-black text-[var(--ink-muted)] hover:bg-[var(--surface-subtle)] transition-colors disabled:opacity-30"
+                  >
+                    −
+                  </button>
+                  <span className="text-xs font-black text-[var(--ink-strong)] tabular-nums font-nunito w-8 text-center">
+                    {fixes}/{recordedAbsences}
+                  </span>
+                  <button
+                    onClick={() => setRetroFixes((n) => Math.min(recordedAbsences, n + 1))}
+                    disabled={fixes >= recordedAbsences}
+                    aria-label="Correct one more absence"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-accent-primary text-white font-black hover:bg-accent-primary/90 transition-colors disabled:opacity-30"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-              <p className="text-sm font-bold text-center text-[var(--ink-strong)]">
-                {officialPct.toFixed(1)}% → {retroPct.toFixed(1)}%
-              </p>
-              <p className="text-xs text-center text-[var(--ink-muted)] mt-1">
-                {retroNeeded === 0
-                  ? `Already at or above ${targetPercentage}%.`
-                  : retroNeeded > recordedAbsences
-                  ? `Correcting every absence still can't reach ${targetPercentage}%.`
-                  : `Correct ${retroNeeded} absence${retroNeeded !== 1 ? "s" : ""} to reach ${targetPercentage}%.`}
-              </p>
             </FigmaCard>
           )}
         </div>
