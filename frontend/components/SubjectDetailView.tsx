@@ -6,7 +6,9 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { FigmaCard } from "@/components/base";
 import { useAttendanceDetails } from "@/hooks/useAttendanceDetails";
 import { calculateBunkStatus } from "@/utils/bunkHelpers";
+import { useAttendanceTarget } from "@/context/AttendanceTargetContext";
 import { performLogout } from "@/utils/logout";
+import { loadSession } from "@/lib/session";
 import { Typing } from "@/components/loading-ui/typing";
 import { AlertTriangle, Clock, Lock, RefreshCw, Calendar } from "lucide-react";
 
@@ -39,6 +41,7 @@ function SubjectDetailContent() {
   const urlPp = parseFloat(searchParams.get("pp") || "0");
 
   const [enrollment, setEnrollment] = useState<string | null>(null);
+  const [studentName, setStudentName] = useState<string>("");
   const [recoveredLink, setRecoveredLink] = useState<string | null>(null);
   const [recoveredPct, setRecoveredPct] = useState<number | null>(null);
   const [recoveredLp, setRecoveredLp] = useState<number | null>(null);
@@ -51,8 +54,8 @@ function SubjectDetailContent() {
   const activeTp = urlTp || (recoveredTp ?? 0);
   const activePp = urlPp || (recoveredPp ?? 0);
 
-  // Interactive Calculator State
-  const [targetPercentage, setTargetPercentage] = useState(75);
+  // Global default target saved in Settings; calculator simulation state is local.
+  const { attendanceTarget: targetPercentage } = useAttendanceTarget();
   const [extraAttends, setExtraAttends] = useState(0);
   const [extraBunks, setExtraBunks] = useState(0);
   const [retroFixes, setRetroFixes] = useState(0);
@@ -69,6 +72,7 @@ function SubjectDetailContent() {
       return;
     }
     setEnrollment(stored);
+    setStudentName(loadSession()?.name || localStorage.getItem("studentName") || stored);
 
     // If detailLink was not provided in the URL query string (direct visit or bookmark), recover from dashboard cache
     if (!detailLink) {
@@ -178,14 +182,16 @@ function SubjectDetailContent() {
   const isMeetingTarget = displayPercent >= targetPercentage;
 
   const getRingColor = (percent: number) => {
-    if (percent >= 85) return "text-green-500";
-    if (percent >= 75) return "text-amber-500";
+    if (percent >= Math.min(100, targetPercentage + 10)) return "text-green-500";
+    if (percent >= targetPercentage) return "text-amber-500";
     return "text-red-500";
   };
 
   const getStatusBadgeColor = (percent: number) => {
-    if (percent >= 85) return "bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800";
-    if (percent >= 75) return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800";
+    if (percent >= Math.min(100, targetPercentage + 10))
+      return "bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800";
+    if (percent >= targetPercentage)
+      return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800";
     return "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800";
   };
 
@@ -208,7 +214,7 @@ function SubjectDetailContent() {
 
   return (
     <DashboardLayout
-      studentName="Student"
+      studentName={studentName}
       enrollment={enrollment}
       onLogout={handleLogout}
     >
@@ -331,26 +337,6 @@ function SubjectDetailContent() {
                 </p>
               </div>
             )}
-
-            {/* Target Slider */}
-            <div className="mb-5">
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs uppercase font-bold tracking-wider text-gray-500 dark:text-slate-400 font-nunito">
-                  Target
-                </label>
-                <span className="text-xs font-black text-[var(--ink-strong)] font-nunito">
-                  {targetPercentage}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min="50"
-                max="100"
-                value={targetPercentage}
-                onChange={(e) => setTargetPercentage(Number(e.target.value))}
-                className="w-full h-1.5 bg-gray-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-accent-primary"
-              />
-            </div>
 
             {/* Minimal inline steppers */}
             {totalCount > 0 && (

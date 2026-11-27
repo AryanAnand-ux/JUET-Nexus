@@ -1,111 +1,75 @@
 "use client";
 
 /**
- * Settings Page
- * Centralises app preferences: Feedback submission, Theme switching, and Logout.
- * Reuses the existing FeedbackModal, ThemeContext, and performLogout logic.
+ * Standalone Settings route. Uses the authenticated session and the existing
+ * dashboard cache/api hook for profile data; no student details are hardcoded.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { SettingsPanel } from "@/components/SettingsPanel";
+import { useDashboard } from "@/hooks/useDashboard";
 import { useHydrated } from "@/hooks/useHydrated";
-import { ThemeToggle } from "@/components/ThemeToggle";
-
-const FeedbackModal = dynamic(
-  () => import("@/components/FeedbackModal").then((mod) => mod.FeedbackModal),
-  { ssr: false }
-);
+import { loadSession } from "@/lib/session";
 import { performLogout } from "@/utils/logout";
-import { ChevronRight, LogOut, MessageSquare, Palette } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
   const isHydrated = useHydrated();
-  const [studentName, setStudentName] = useState("Student");
-  const [enrollment, setEnrollment] = useState("");
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [enrollment, setEnrollment] = useState<string | null>(null);
+
+  const session = useMemo(() => (isHydrated ? loadSession() : null), [isHydrated]);
+  const activeEnrollment = isHydrated
+    ? enrollment || session?.enrollment || null
+    : null;
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedName = localStorage.getItem("studentName");
-    if (storedName) setStudentName(storedName);
-    const storedEnr = localStorage.getItem("enrollment");
-    if (storedEnr) setEnrollment(storedEnr);
-  }, []);
+    if (!isHydrated) return;
+    const stored = loadSession();
+    if (!stored?.token || !stored.enrollment) {
+      router.replace("/login");
+      return;
+    }
+    setEnrollment(stored.enrollment);
+  }, [router, isHydrated]);
 
-  const activeName = isHydrated
-    ? studentName !== "Student"
-      ? studentName
-      : typeof window !== "undefined"
-      ? localStorage.getItem("studentName") || "Student"
-      : "Student"
-    : "Student";
-
-  const activeEnrollment = isHydrated
-    ? enrollment || (typeof window !== "undefined" ? localStorage.getItem("enrollment") || "" : "")
-    : "";
+  const { data, cachedAt } = useDashboard(activeEnrollment);
 
   const handleLogout = async () => {
     await performLogout();
     router.push("/login");
   };
 
+  if (!activeEnrollment) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--surface-page)] font-nunito">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-accent-primary border-t-transparent" />
+          <p className="text-sm font-bold text-[var(--ink-muted)]">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DashboardLayout
-      studentName={activeName}
-      enrollment={activeEnrollment}
+      studentName={data?.student.name || session?.name || "Student"}
+      enrollment={data?.student.enrollment || activeEnrollment}
       onLogout={handleLogout}
     >
       <div className="mx-auto w-full max-w-lg">
-        <h2 className="text-2xl sm:text-3xl font-editorial-italic text-[var(--ink-strong)] mb-6">
+        <h2 className="mb-6 text-2xl font-editorial-italic text-[var(--ink-strong)] sm:text-3xl">
           Settings
         </h2>
-
-        <div className="rounded-[24px] border border-[var(--line-subtle)] bg-[var(--surface-card)] divide-y divide-[var(--line-subtle)] shadow-card overflow-hidden">
-          {/* Feedback */}
-          <button
-            type="button"
-            onClick={() => setFeedbackOpen(true)}
-            className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--surface-subtle)] cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] border border-[var(--line-subtle)] text-[var(--ink-muted)] flex items-center justify-center shrink-0">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <span className="text-sm font-semibold text-[var(--ink-strong)] flex-1">Feedback</span>
-            <ChevronRight className="w-4 h-4 text-[var(--ink-muted)] shrink-0" />
-          </button>
-
-          {/* Theme */}
-          <div className="w-full flex items-center gap-4 px-5 py-4">
-            <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] border border-[var(--line-subtle)] text-[var(--ink-muted)] flex items-center justify-center shrink-0">
-              <Palette className="w-5 h-5" />
-            </div>
-            <p className="text-sm font-semibold text-[var(--ink-strong)] flex-1">Theme</p>
-            <ThemeToggle />
-          </div>
-
-          {/* Logout */}
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-              <LogOut className="w-5 h-5" />
-            </div>
-            <span className="text-sm font-semibold text-rose-600 dark:text-rose-400 flex-1">Logout</span>
-          </button>
-        </div>
+        <SettingsPanel
+          studentName={data?.student.name || session?.name}
+          enrollment={data?.student.enrollment || activeEnrollment}
+          branch={data?.student.branch || session?.branch}
+          lastSyncedAt={cachedAt}
+          onLogout={handleLogout}
+        />
       </div>
-
-      <FeedbackModal
-        isOpen={feedbackOpen}
-        onClose={() => setFeedbackOpen(false)}
-        enrollment={enrollment}
-        studentName={studentName}
-      />
     </DashboardLayout>
   );
 }

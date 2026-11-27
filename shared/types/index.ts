@@ -140,6 +140,3 @@ export interface GradeCardResponse {
   subjects: GradeSubject[];
 }
 
-// Feedback
-export type FeedbackCategory = "bug" | "feature" | "improvement" | "general";
-

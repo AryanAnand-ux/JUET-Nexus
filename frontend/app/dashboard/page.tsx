@@ -19,15 +19,10 @@ import { useExamSchedule } from "@/hooks/useExamSchedule";
 import { useHydrated } from "@/hooks/useHydrated";
 import { performLogout } from "@/utils/logout";
 import { loadSession } from "@/lib/session";
-import {
-  AlertTriangle,
-  ChevronRight,
-  LogOut,
-  MessageSquare,
-  Palette,
-} from "lucide-react";
+import { SettingsPanel } from "@/components/SettingsPanel";
+import { useAttendanceTarget } from "@/context/AttendanceTargetContext";
+import { AlertTriangle } from "lucide-react";
 import { Typing } from "@/components/loading-ui/typing";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 const PerformanceHub = dynamic(
   () => import("@/components/PerformanceHub").then((m) => m.PerformanceHub),
@@ -37,11 +32,6 @@ const ExamSchedule = dynamic(
   () => import("@/components/ExamSchedule").then((m) => m.ExamSchedule),
   { ssr: false }
 );
-const FeedbackModal = dynamic(
-  () => import("@/components/FeedbackModal").then((m) => m.FeedbackModal),
-  { ssr: false }
-);
-
 const VALID_TABS: DashboardTabId[] = ["attendance", "performance", "exam", "settings"];
 
 function tabFromHash(): DashboardTabId {
@@ -173,7 +163,7 @@ export default function DashboardPage() {
   const [visited, setVisited] = useState<Set<DashboardTabId>>(
     () => new Set<DashboardTabId>(["attendance"])
   );
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const { attendanceTarget } = useAttendanceTarget();
 
   // Sync initial hash + listen for browser back/forward hash changes
   useEffect(() => {
@@ -336,9 +326,9 @@ export default function DashboardPage() {
               <div className="bg-[var(--surface-card)] border border-[var(--line-subtle)] rounded-[24px] p-6 shadow-card flex flex-col md:flex-row items-center justify-between gap-6 transition-colors">
                 <div className="flex items-center gap-5 w-full md:w-auto">
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-2xl font-extrabold tabular-nums ${
-                    overallPct >= 75
+                    overallPct >= attendanceTarget
                       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60"
-                      : overallPct >= 70
+                      : overallPct >= Math.max(0, attendanceTarget - 5)
                       ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60"
                       : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
                   }`}>
@@ -348,13 +338,17 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="text-base font-bold text-[var(--ink-strong)]">Overall Attendance</h3>
                       <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-[0.14em] ${
-                        overallPct >= 75
+                        overallPct >= attendanceTarget
                           ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                          : overallPct >= 70
+                          : overallPct >= Math.max(0, attendanceTarget - 5)
                           ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                           : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                       }`}>
-                        {overallPct >= 75 ? "Good Standing" : overallPct >= 70 ? "Caution Zone" : "Critical"}
+                        {overallPct >= attendanceTarget
+                          ? "Good Standing"
+                          : overallPct >= Math.max(0, attendanceTarget - 5)
+                          ? "Caution Zone"
+                          : "Critical"}
                       </span>
                     </div>
                     <p className="text-xs text-[var(--ink-muted)] mt-1.5">
@@ -445,51 +439,14 @@ export default function DashboardPage() {
             <h2 className="text-2xl sm:text-3xl font-editorial-italic text-[var(--ink-strong)] mb-6">
               Settings
             </h2>
-
-            <div className="rounded-[24px] border border-[var(--line-subtle)] bg-[var(--surface-card)] divide-y divide-[var(--line-subtle)] shadow-card overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setFeedbackOpen(true)}
-                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--surface-subtle)] cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] border border-[var(--line-subtle)] text-[var(--ink-muted)] flex items-center justify-center shrink-0">
-                  <MessageSquare className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-semibold text-[var(--ink-strong)] flex-1">
-                  Feedback
-                </span>
-                <ChevronRight className="w-4 h-4 text-[var(--ink-muted)] shrink-0" />
-              </button>
-
-              <div className="w-full flex items-center gap-4 px-5 py-4">
-                <div className="w-10 h-10 rounded-xl bg-[var(--surface-subtle)] border border-[var(--line-subtle)] text-[var(--ink-muted)] flex items-center justify-center shrink-0">
-                  <Palette className="w-5 h-5" />
-                </div>
-                <p className="text-sm font-semibold text-[var(--ink-strong)] flex-1">Theme</p>
-                <ThemeToggle />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                  <LogOut className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-semibold text-rose-600 dark:text-rose-400 flex-1">
-                  Logout
-                </span>
-              </button>
-            </div>
+            <SettingsPanel
+              studentName={data?.student.name}
+              enrollment={data?.student.enrollment || activeEnrollment}
+              branch={data?.student.branch}
+              lastSyncedAt={cachedAt}
+              onLogout={handleLogout}
+            />
           </div>
-
-          <FeedbackModal
-            isOpen={feedbackOpen}
-            onClose={() => setFeedbackOpen(false)}
-            enrollment={activeEnrollment}
-            studentName={data?.student.name || "Student"}
-          />
         </div>
       )}
     </DashboardLayout>
