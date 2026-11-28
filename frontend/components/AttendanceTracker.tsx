@@ -83,21 +83,21 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         </div>
       ) : (
         <>
-          {/* Overall Stats Cards */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
-            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-[20px] p-4 sm:p-5 shadow-card transition-all hover:scale-[1.01] duration-300">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-1.5">
+          {/* Overall Stats Cards — compact */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-2xl p-3 sm:p-4 shadow-card transition-all hover:scale-[1.01] duration-300">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-muted)] mb-1">
                 Enrolled Courses
               </p>
-              <p className="text-3xl sm:text-4xl font-extrabold text-[var(--ink-strong)] tracking-tight">
+              <p className="text-2xl sm:text-3xl font-extrabold text-[var(--ink-strong)] tracking-tight">
                 {stats.subjectCount}
               </p>
             </div>
-            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-[20px] p-4 sm:p-5 shadow-card transition-all hover:scale-[1.01] duration-300">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-muted)] mb-1.5">
+            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-2xl p-3 sm:p-4 shadow-card transition-all hover:scale-[1.01] duration-300">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-muted)] mb-1">
                 Attention Required (&lt;{attendanceTarget}%)
               </p>
-              <p className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+              <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                 {stats.belowThreshold}
               </p>
             </div>

@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import type { DashboardTabId } from "@/components/MobileBottomNav";
 import { AttendanceTracker } from "@/components/AttendanceTracker";
+import { ExamFilterChips } from "@/components/ExamFilterChips";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useExamSchedule } from "@/hooks/useExamSchedule";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -38,13 +39,6 @@ function tabFromHash(): DashboardTabId {
   if (typeof window === "undefined") return "attendance";
   const h = window.location.hash.slice(1) as DashboardTabId;
   return VALID_TABS.includes(h) ? h : "attendance";
-}
-
-function getTimeGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour >= 4 && hour < 12) return "Good morning";
-  if (hour >= 12 && hour < 17) return "Good afternoon";
-  return "Good evening";
 }
 
 const ErrorBanner: React.FC<{
@@ -122,6 +116,8 @@ const ExamTabPanel: React.FC<{
     isLoading,
     error,
     refresh,
+    selectedEventId,
+    selectEvent,
   } = useExamSchedule();
 
   return (
@@ -133,6 +129,15 @@ const ExamTabPanel: React.FC<{
       </div>
 
       {error && <ErrorBanner error={error} onRetry={() => refresh()} />}
+
+      {examData && (examData.availableEvents?.length ?? 0) > 0 && (
+        <ExamFilterChips
+          events={examData.availableEvents ?? []}
+          selectedEventId={selectedEventId}
+          isLoading={isLoading}
+          onSelect={selectEvent}
+        />
+      )}
 
       {isLoading && !examData ? (
         <LoadingSkeleton label="Loading exam schedule…" />
@@ -279,7 +284,6 @@ export default function DashboardPage() {
   const totalAttended = data?.attendance.reduce((sum, r) => sum + r.classesAttended, 0) || 0;
   const totalHeld = data?.attendance.reduce((sum, r) => sum + r.classesHeld, 0) || 0;
   const overallPct = totalHeld > 0 ? (totalAttended / totalHeld) * 100 : 0;
-  const greeting = getTimeGreeting();
 
   return (
     <DashboardLayout
@@ -294,28 +298,6 @@ export default function DashboardPage() {
     >
       {/* Tab 1: Attendance (always mounted) */}
       <div hidden={activeTab !== "attendance"}>
-        {/* Header Section — Compact welcome banner */}
-        <div className="relative overflow-hidden bg-midnight dark:bg-carbon rounded-[20px] px-5 py-4 sm:px-6 sm:py-5 mb-6 border border-white/5 shadow-banner">
-          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl text-white leading-tight font-editorial-italic">
-                {data?.student.name
-                  ? <span>{greeting}, <span className="text-white font-medium">{data.student.name}</span>.</span>
-                  : <span>{greeting}.</span>}
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1 truncate">
-                {data?.student.branch || "Academic Branch"}
-              </p>
-            </div>
-
-            {data?.student.enrollment && (
-              <span className="inline-flex items-center shrink-0 bg-white/10 border border-white/10 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-200 font-mono tabular-nums">
-                {data.student.enrollment}
-              </span>
-            )}
-          </div>
-        </div>
-
         {error && <ErrorBanner error={error} onRetry={refresh} onLogin={() => router.push("/login")} />}
 
         {isLoading && !data ? (
