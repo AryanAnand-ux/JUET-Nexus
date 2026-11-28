@@ -103,6 +103,14 @@ export interface DashboardResponse {
 export type LoginFlow = 'campuslynx';
 
 // Exam Schedule
+export interface ExamSemester {
+  registrationid: string;
+  registrationdesc: string;
+  /** Raw ERP date bounds, preserved so the newest semester can be resolved. */
+  registrationdateto?: string | number;
+  registrationdatefrom?: string | number;
+}
+
 export interface ExamEvent {
   exameventid: string;
   exameventdesc: string;
@@ -121,6 +129,11 @@ export interface ExamScheduleResponse {
   event: string;
   items: ExamScheduleItem[];
   availableEvents?: ExamEvent[];
+  availableSemesters?: ExamSemester[];
+  /** ERP registration id for the displayed semester. */
+  registrationid?: string;
+  /** ERP exam event id for the displayed timetable. */
+  exameventid?: string;
 }
 
 // Grade Card

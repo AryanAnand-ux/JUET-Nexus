@@ -7,6 +7,7 @@ import { useHydrated } from "@/hooks/useHydrated";
 import { useExamSchedule } from "@/hooks/useExamSchedule";
 import { loadSession } from "@/lib/session";
 import { ExamSchedule } from "@/components/ExamSchedule";
+import { ExamFilterChips } from "@/components/ExamFilterChips";
 import { performLogout } from "@/utils/logout";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -58,7 +59,14 @@ export default function ExamPage() {
     }
   }, [router, isHydrated]);
 
-  const { data: examData, isLoading, error, refresh } = useExamSchedule();
+  const {
+    data: examData,
+    isLoading,
+    error,
+    refresh,
+    selectedEventId,
+    selectEvent,
+  } = useExamSchedule();
 
   // Read cached studentName & courseMap synchronously from localStorage so
   // visiting /dashboard/exam never triggers an unrelated background /api/dashboard refresh.
@@ -115,7 +123,7 @@ export default function ExamPage() {
       onRefresh={refresh}
       isRefreshing={isLoading}
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Top Action Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -134,6 +142,15 @@ export default function ExamPage() {
 
         {error && <ErrorBanner error={error} />}
 
+        {examData && (examData.availableEvents?.length ?? 0) > 0 && (
+          <ExamFilterChips
+            events={examData.availableEvents ?? []}
+            selectedEventId={selectedEventId}
+            isLoading={isLoading}
+            onSelect={selectEvent}
+          />
+        )}
+
         {isLoading ? (
           <LoadingSkeleton />
         ) : examData ? (
@@ -142,7 +159,7 @@ export default function ExamPage() {
             courseMap={courseMap}
           />
         ) : (
-          <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-12 text-center">
+          <div className="rounded-3xl border border-dashed border-[var(--line-subtle)] bg-[var(--surface-card)] p-8 text-center sm:p-12">
             <h3 className="text-base font-bold text-[var(--ink-strong)]">
               No Exam Data Found
             </h3>

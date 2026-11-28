@@ -14,6 +14,7 @@ import {
   type MarkItem,
 } from "@/lib/marksHelpers";
 import { ClipboardList } from "lucide-react";
+import { FilterPills } from "./FilterPills";
 
 export type AssessmentType = "ALL" | "T1" | "P1" | "T2" | "P2" | "T3";
 
@@ -445,25 +446,17 @@ const PerformanceHubComponent: React.FC<PerformanceHubProps> = ({
         </div>
       </div>
 
-      {/* Horizontal filter pills */}
-      <div className="mb-4 flex w-full gap-2 overflow-x-auto pb-1">
-        {ASSESSMENT_OPTIONS.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            onClick={() => setSelectedAssessment(option.id)}
-            title={option.fullLabel}
-            aria-pressed={selectedAssessment === option.id}
-            className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
-              selectedAssessment === option.id
-                ? "border-[var(--ink-strong)] bg-[var(--ink-strong)] text-[var(--surface-page)]"
-                : "border-[var(--line-subtle)] bg-[var(--surface-card)] text-[var(--ink-muted)] hover:text-[var(--ink-strong)]"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      {/* Horizontal filter pills — shared universal design with Exam */}
+      <FilterPills
+        options={ASSESSMENT_OPTIONS.map((option) => ({
+          id: option.id,
+          label: option.label,
+          title: option.fullLabel,
+        }))}
+        selectedId={selectedAssessment}
+        onSelect={setSelectedAssessment}
+        className="mb-4"
+      />
 
       {!hasAnyMarks ? (
         <section className="rounded-2xl border border-[var(--line-subtle)] bg-[var(--surface-card)] p-8 text-center">
