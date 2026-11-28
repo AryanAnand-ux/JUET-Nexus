@@ -7,7 +7,6 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { FigmaCard } from "./base";
 import type { AttendanceRecord } from "@/types";
 import { calculateBunkStatus } from "@/utils/bunkHelpers";
 import { getDisplayableAttendanceComponents } from "@/lib/attendanceComponents";
@@ -71,10 +70,12 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   }, [attendanceRecords, attendanceTarget]);
 
   return (
-    <FigmaCard 
-      heading={<span className="font-editorial-italic text-2xl text-[var(--ink-strong)] font-normal">Attendance</span>} 
-      className="border border-[var(--line-subtle)] shadow-card rounded-[24px] p-4 sm:p-6 md:p-8"
-    >
+    <div className="font-sans">
+      <h3 className="mb-4 border-b border-[var(--line-subtle)] pb-3 text-lg font-bold text-[var(--ink-strong)]">
+        <span className="font-editorial-italic text-2xl text-[var(--ink-strong)] font-normal">
+          Attendance
+        </span>
+      </h3>
       {attendanceRecords.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-sm text-[var(--ink-muted)]">
@@ -85,7 +86,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         <>
           {/* Overall Stats Cards — compact */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-2xl p-3 sm:p-4 shadow-card transition-all hover:scale-[1.01] duration-300">
+            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-[var(--ink-muted)] rounded-2xl p-3 sm:p-4 shadow-card transition-all hover:scale-[1.01] duration-300">
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-muted)] mb-1">
                 Enrolled Courses
               </p>
@@ -93,11 +94,11 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 {stats.subjectCount}
               </p>
             </div>
-            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-2xl p-3 sm:p-4 shadow-card transition-all hover:scale-[1.01] duration-300">
+            <div className="bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-[var(--ink-muted)] rounded-2xl p-3 sm:p-4 shadow-card transition-all hover:scale-[1.01] duration-300">
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-muted)] mb-1">
                 Attention Required (&lt;{attendanceTarget}%)
               </p>
-              <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${stats.belowThreshold > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+              <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--ink-strong)]">
                 {stats.belowThreshold}
               </p>
             </div>
@@ -131,7 +132,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 if (bunkStatus.status === "critical") {
                   return {
                     text: `Must attend next ${bunkStatus.count} class${bunkStatus.count > 1 ? "es" : ""}`,
-                    className: "text-rose-600 border-rose-100 bg-rose-50/40 dark:text-rose-400 dark:border-rose-900/40 dark:bg-rose-950/20",
+                    className: "text-[var(--ink-muted)] border-[var(--line-subtle)] bg-[var(--surface-subtle)]",
                   };
                 }
                 return {
@@ -139,8 +140,8 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     ? `Safe to miss ${bunkStatus.count} class${bunkStatus.count > 1 ? "es" : ""}`
                     : "Caution: Cannot miss any classes",
                   className: bunkStatus.count > 0
-                    ? "text-emerald-600 border-emerald-100 bg-emerald-50/40 dark:text-emerald-400 dark:border-emerald-900/40 dark:bg-emerald-950/20"
-                    : "text-amber-600 border-amber-100 bg-amber-50/40 dark:text-amber-400 dark:border-amber-900/40 dark:bg-amber-950/20",
+                    ? "border-[var(--ink-strong)] bg-[var(--ink-strong)] text-[var(--surface-page)]"
+                    : "text-[var(--ink-strong)] border-[var(--line-subtle)] bg-[var(--surface-subtle)]",
                 };
               })();
 
@@ -151,7 +152,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   href={`/dashboard/subject?id=${encodeURIComponent(record.subject)}&pct=${record.percentage}&lp=${record.lecturePercent}&tp=${record.tutorialPercent}&pp=${record.practicalPercent}${record.detailLink ? `&link=${encodeURIComponent(record.detailLink)}` : ''}`}
                   key={record.subject}
                   onClick={() => setNavigatingSubject(record.subject)}
-                  className="group relative block bg-[var(--surface-card)] hover:bg-neutral-50 dark:hover:bg-[#202020] border border-[var(--line-subtle)] hover:border-neutral-300 dark:hover:border-neutral-700 rounded-[20px] p-3.5 sm:p-5 transition-colors duration-200 hover:shadow-elevated active:scale-[0.995] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-600"
+                  className="group relative block bg-[var(--surface-card)] hover:bg-[var(--surface-subtle)] border border-[var(--line-subtle)] hover:border-[var(--ink-muted)] rounded-[20px] p-3.5 sm:p-5 transition-colors duration-200 hover:shadow-elevated active:scale-[0.995] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                 >
                   {/* Unified Responsive Layout: single SVG + metrics DOM shared across mobile and desktop */}
                   <div className="grid grid-cols-[72px_1fr] md:grid-cols-[96px_1fr] gap-x-3 gap-y-3 md:gap-x-6 md:gap-y-3 items-center">
@@ -204,7 +205,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                                   ? "Opening subject"
                                   : "Refreshing attendance"
                               }
-                              className={`rounded-full text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 flex items-center ${
+                              className={`rounded-full text-[10px] font-semibold text-[var(--ink-muted)] bg-[var(--surface-subtle)] flex items-center ${
                                 navigatingSubject === record.subject
                                   ? "px-2 md:px-2.5 py-0.5 md:py-1 gap-1 md:gap-1.5"
                                   : "p-1 md:p-1.5"
@@ -247,7 +248,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           </div>
         </>
       )}
-    </FigmaCard>
+    </div>
   );
 };
 

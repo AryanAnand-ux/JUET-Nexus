@@ -309,10 +309,10 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-5 w-full md:w-auto">
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-2xl font-extrabold tabular-nums ${
                     overallPct >= attendanceTarget
-                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60"
+                      ? "border border-[var(--ink-strong)] bg-[var(--ink-strong)] text-[var(--surface-page)]"
                       : overallPct >= Math.max(0, attendanceTarget - 5)
-                      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60"
-                      : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+                      ? "border border-[var(--line-subtle)] bg-[var(--surface-subtle)] text-[var(--ink-strong)]"
+                      : "border border-[var(--line-subtle)] bg-[var(--surface-subtle)] text-[var(--ink-muted)]"
                   }`}>
                     {overallPct % 1 === 0 ? overallPct.toFixed(0) : overallPct.toFixed(1)}%
                   </div>
@@ -321,10 +321,10 @@ export default function DashboardPage() {
                       <h3 className="text-base font-bold text-[var(--ink-strong)]">Overall Attendance</h3>
                       <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-[0.14em] ${
                         overallPct >= attendanceTarget
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                          ? "bg-[var(--ink-strong)] text-[var(--surface-page)]"
                           : overallPct >= Math.max(0, attendanceTarget - 5)
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                          : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                          ? "bg-[var(--surface-subtle)] text-[var(--ink-strong)]"
+                          : "bg-[var(--surface-subtle)] text-[var(--ink-muted)]"
                       }`}>
                         {overallPct >= attendanceTarget
                           ? "Good Standing"
